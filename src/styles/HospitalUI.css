@@ -1,0 +1,323 @@
+/* General Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Main Container */
+.hospital-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow-x: hidden; /* ✅ ป้องกันล้นด้านขวา */
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+
+/* Add this for the body too */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f8f0ff;
+}
+
+/* Left Sidebar */
+.sidebar {
+  width: 160px;
+  background-color: #7e3cbd;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+}
+
+.profile-avatar {
+  height: 80px;
+  width: 80px;
+  border-radius: 50%;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-letter {
+  color: #7e3cbd;
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.username {
+  margin-top: 8px;
+  color: white;
+  font-weight: bold;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  margin-top: 32px;
+  padding: 0 8px;
+}
+
+.sidebar-button {
+  padding: 12px;
+  margin-bottom: 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: white;
+  color: #7e3cbd;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-button:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-button.active {
+  background-color: #ffe066;
+  color: #111;
+}
+
+.logout-container {
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+.logout-button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: #ffcccc;
+  color: #cc0000;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logout-button:hover {
+  background-color: #ffb3b3;
+  transform: translateY(-1px);
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0; /* ป้องกันการ overflow ในบาง flex containers */
+}
+
+/* Top Navigation */
+.top-nav {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #d9c2f0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.nav-tab {
+  padding: 12px 32px;
+  font-weight: 600;
+  border: none;
+  background-color: #d9c2f0;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  background-color: #e9dcf7;
+}
+
+.nav-tab.active {
+  background-color: #f8f0ff;
+  border-bottom: 2px solid #7e3cbd;
+  color: #7e3cbd;
+}
+
+.date-selector {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  padding-right: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+
+.calendar-icon {
+  height: 24px;
+  width: 24px;
+  color: #cc0000;
+}
+
+.date-text {
+  margin-left: 8px;
+  font-weight: 600;
+  color: #4a2570;
+}
+
+/* Form Container */
+.form-container {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.form-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bed-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.input-label {
+  width: auto;
+  margin-right: 8px;
+  font-weight: auto;
+  color: #555;
+}
+
+.input-label.small {
+  width: 32px;
+}
+
+.input-label.nested {
+  width: 80px;
+  margin-left: 16px;
+}
+
+.input-field {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #e2d1f9;
+  border-radius: 4px;
+  background-color: #f3ebfd;
+  transition: all 0.2s ease;
+  color: #000;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #7e3cbd;
+  box-shadow: 0 0 0 2px rgba(126, 60, 189, 0.2);
+}
+
+.admission-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-title {
+  font-weight: 600;
+  color: #555;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.discharge-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.total-care {
+  margin-top: 12px;
+}
+
+.total-care .input-field {
+  max-width: 160px;
+}
+
+.patient-categories {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .discharge-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .patient-categories {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .bed-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .discharge-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .bed-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .discharge-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .patient-categories {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
