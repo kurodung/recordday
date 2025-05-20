@@ -47,7 +47,7 @@ export default function HospitalUI() {
             className={`nav-tab ${activeTab === 'tab3' ? 'active' : ''}`}
             onClick={() => setActiveTab('tab3')}
           >
-            ใช้เลือดออก
+            ใข้เลือดออก
           </button>
           <div className="date-selector">
             <svg xmlns="http://www.w3.org/2000/svg" className="calendar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,90 +59,107 @@ export default function HospitalUI() {
         
         {/* Form Content */}
         <div className="form-container">
-          {/* Top Row - จำนวนเตียง, ยอดยกมา, ยอดรับ */}
+          {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
           <div className="form-section">
-            <div className="bed-stats">
-              <div className="input-group">
-                <label className="input-label">จำนวนเตียง :</label>
-                <input type="text" className="input-field" />
-              </div>
-              
-              <div className="input-group">
-                <label className="input-label">ยอดยกมา :</label>
-                <input type="text" className="input-field" />
-              </div>
-              
-              <div className="admission-group">
-                <div className="group-title">ยอดรับ</div>
-                <div className="input-group nested">
-                  <label className="input-label nested">รับใหม่ :</label>
-                  <input type="text" className="input-field" />
+            <div className="flex-grid">
+              {/* ส่วนจำนวนเตียงและยอดยกมา */}
+              <div className="form-column">
+                <div className="section-label">ข้อมูลเตียง</div>
+                <div className="input-group">
+                  <label className="input-label">จำนวนเตียง:</label>
+                  <input type="number" className="input-field" min="0" />
                 </div>
-                <div className="input-group nested">
-                  <label className="input-label nested">รับย้าย :</label>
-                  <input type="text" className="input-field" />
+                <div className="input-group">
+                  <label className="input-label">ยอดยกมา:</label>
+                  <input type="number" className="input-field" min="0" />
+                </div>
+              </div>
+              
+              {/* ส่วนยอดรับใหม่ */}
+              <div className="form-column">
+                <div className="section-label">ยอดรับ</div>
+                <div className="input-group">
+                  <label className="input-label">รับใหม่:</label>
+                  <input type="number" className="input-field" min="0" />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">รับย้าย:</label>
+                  <input type="number" className="input-field" min="0" />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">รับย้าย:</label>
+                  <input type="number" className="input-field" min="0" />
+                </div>
+              </div>
+              
+              {/* ส่วนจำนวนคงพยาบาล */}
+              <div className="form-column">
+                <div className="section-label">คงพยาบาล</div>
+                <div className="input-group highlighted">
+                  <label className="input-label">คงพยาบาล:</label>
+                  <input type="number" className="input-field" min="0" readOnly />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Middle Row - ยอดจำหน่าย */}
+          {/* ส่วนยอดจำหน่าย */}
           <div className="form-section">
             <div className="section-title">ยอดจำหน่าย</div>
-            <div className="discharge-stats">
+            <div className="discharge-grid">
               <div className="input-group">
-                <label className="input-label">กลับบ้าน :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">กลับบ้าน:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label">ย้ายติด :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ย้ายออก:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label">Refer out :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">Refer out:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label">Refer back :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">Refer back:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label">กลับบ้าน :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">เสียชีวิต:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
-            </div>
-
-            <div className="input-group total-care">
-              <label className="input-label">คงพยาบาล :</label>
-              <input type="text" className="input-field" />
             </div>
           </div>
           
-          {/* Bottom Row - ประเภท */}
+          {/* ประเภทผู้ป่วย */}
           <div className="form-section">
-            <div className="section-title">ประเภท</div>
-            <div className="patient-categories">
+            <div className="section-title">ประเภทผู้ป่วย</div>
+            <div className="category-grid">
               <div className="input-group">
-                <label className="input-label small">1 :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ประเภท 1:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label small">2 :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ประเภท 2:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label small">3 :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ประเภท 3:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label small">4 :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ประเภท 4:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
               <div className="input-group">
-                <label className="input-label small">5 :</label>
-                <input type="text" className="input-field" />
+                <label className="input-label">ประเภท 5:</label>
+                <input type="number" className="input-field" min="0" />
               </div>
             </div>
+          </div>
+          
+          {/* ปุ่มบันทึก */}
+          <div className="button-container">
+            <button className="save-button">บันทึกข้อมูล</button>
           </div>
         </div>
       </div>
