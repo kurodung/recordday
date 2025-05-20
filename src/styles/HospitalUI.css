@@ -195,6 +195,37 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* เพิ่มคลาส horizontal-inputs สำหรับการแสดงผลแนวนอน */
+.horizontal-inputs {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.horizontal-inputs .input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  margin-right: 12px;
+}
+
+/* ปรับขนาดของ label และ input เพื่อให้สวยงามในแนวนอน */
+.horizontal-inputs .input-label {
+  min-width: auto;
+  margin-right: 8px;
+}
+
+/* เพิ่มคลาสสำหรับส่วนหัว section */
+.section-header {
+  font-weight: 600;
+  color: #7e3cbd;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0d0f5;
+}
+
 /* ปรับ Grid layouts */
 .flex-grid {
   display: flex;
@@ -252,10 +283,11 @@ body {
   padding: 8px;
   border: 1px solid #d9c2f0;
   border-radius: 4px;
+  color: #111;
   background-color: #fbf8ff;
   transition: all 0.2s ease;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .input-field:focus {

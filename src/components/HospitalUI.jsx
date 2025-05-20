@@ -75,20 +75,23 @@ export default function HospitalUI() {
                 </div>
               </div>
               
-              {/* ส่วนยอดรับใหม่ */}
+              {/* ส่วนยอดรับใหม่ - แนวนอนตามที่ต้องการ */}
               <div className="form-column">
-                <div className="section-label">ยอดรับ</div>
-                <div className="input-group">
-                  <label className="input-label">รับใหม่:</label>
-                  <input type="number" className="input-field" min="0" />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">รับย้าย:</label>
-                  <input type="number" className="input-field" min="0" />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">รับย้าย:</label>
-                  <input type="number" className="input-field" min="0" />
+                <div className="section-header">ยอดรับ</div>
+                {/* แก้ไขตรงนี้ เพิ่มคลาส horizontal-inputs เพื่อให้แสดงผลในแนวนอน */}
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label">รับใหม่:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">รับย้าย:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Refer in:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
                 </div>
               </div>
               
