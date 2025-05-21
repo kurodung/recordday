@@ -272,14 +272,14 @@ body {
 
 .input-label {
   min-width: auto;
-  margin-right: 8px;
-  font-weight: 500;
+  margin-right: 10px;
+  font-weight: auto;
   color: #333;
   white-space: nowrap;
 }
 
 .input-field {
-  width: 70px;
+  width: 72px;
   padding: 8px;
   border: 1px solid #d9c2f0;
   border-radius: 4px;

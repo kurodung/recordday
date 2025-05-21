@@ -65,12 +65,12 @@ export default function HospitalUI() {
               {/* ส่วนจำนวนเตียงและยอดยกมา */}
               <div className="form-column">
                 <div className="section-label">ข้อมูลเตียง</div>
-                <div className="input-group">
+                <div className="input-group highlighted">
                   <label className="input-label">จำนวนเตียง:</label>
-                  <input type="number" className="input-field" min="0" />
+                  <input type="number" className="input-field" min="0" readOnly/>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ยอดยกมา:</label>
+                  <label className="input-label" style={{paddingLeft: "15px"}}>ยอดยกมา:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
               </div>
@@ -88,8 +88,31 @@ export default function HospitalUI() {
                     <label className="input-label">รับย้าย:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">ยอดจำหน่าย</div>
+                {/* แก้ไขตรงนี้ เพิ่มคลาส horizontal-inputs เพื่อให้แสดงผลในแนวนอน */}
+                <div className="horizontal-inputs">
                   <div className="input-group">
-                    <label className="input-label">Refer in:</label>
+                    <label className="input-label">กลับบ้าน:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">ย้ายออก:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Refer out:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label" style={{ marginLeft: "-8px" }}>Refer back:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label" style={{ color: 'red' }} >เสียชีวิต:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
                 </div>
@@ -98,9 +121,9 @@ export default function HospitalUI() {
               {/* ส่วนจำนวนคงพยาบาล */}
               <div className="form-column">
                 <div className="section-label">คงพยาบาล</div>
-                <div className="input-group highlighted">
+                <div className="input-group">
                   <label className="input-label">คงพยาบาล:</label>
-                  <input type="number" className="input-field" min="0" readOnly />
+                  <input type="number" className="input-field" min="0" />
                 </div>
               </div>
             </div>
