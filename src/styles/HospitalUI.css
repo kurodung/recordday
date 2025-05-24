@@ -234,11 +234,12 @@ body {
 }
 
 .form-column {
-  flex: 1;
-  min-width: 250px;
+  display: inline-block;
+  width: fit-content;
+  min-width: auto;
   padding: 12px;
-  border-radius: 6px;
   background-color: #f9f6fd;
+  border-radius: 6px;
 }
 
 .discharge-grid {
