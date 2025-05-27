@@ -47,7 +47,7 @@ export default function HospitalUI() {
             className={`nav-tab ${activeTab === 'tab3' ? 'active' : ''}`}
             onClick={() => setActiveTab('tab3')}
           >
-            ใข้เลือดออก
+            ไข้เลือดออก
           </button>
           <div className="date-selector">
             <svg xmlns="http://www.w3.org/2000/svg" className="calendar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,32 +129,6 @@ export default function HospitalUI() {
             </div>
           </div>
 
-          {/* ส่วนยอดจำหน่าย */}
-          <div className="form-section">
-            <div className="section-title">ยอดจำหน่าย</div>
-            <div className="discharge-grid">
-              <div className="input-group">
-                <label className="input-label">กลับบ้าน:</label>
-                <input type="number" className="input-field" min="0" />
-              </div>
-              <div className="input-group">
-                <label className="input-label">ย้ายออก:</label>
-                <input type="number" className="input-field" min="0" />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Refer out:</label>
-                <input type="number" className="input-field" min="0" />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Refer back:</label>
-                <input type="number" className="input-field" min="0" />
-              </div>
-              <div className="input-group">
-                <label className="input-label">เสียชีวิต:</label>
-                <input type="number" className="input-field" min="0" />
-              </div>
-            </div>
-          </div>
           
           {/* ประเภทผู้ป่วย */}
           <div className="form-section">
