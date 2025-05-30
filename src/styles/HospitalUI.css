@@ -201,6 +201,7 @@ body {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 12px;
+  justify-content:"center";
   align-items: center;
 }
 
@@ -219,6 +220,14 @@ body {
 
 /* เพิ่มคลาสสำหรับส่วนหัว section */
 .section-header {
+  font-weight: 600;
+  color: #7e3cbd;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0d0f5;
+}
+
+.section-header-one {
   font-weight: 600;
   color: #7e3cbd;
   padding-bottom: 8px;

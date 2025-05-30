@@ -93,7 +93,6 @@ export default function HospitalUI() {
 
               <div className="form-column">
                 <div className="section-header">ยอดจำหน่าย</div>
-                {/* แก้ไขตรงนี้ เพิ่มคลาส horizontal-inputs เพื่อให้แสดงผลในแนวนอน */}
                 <div className="horizontal-inputs">
                   <div className="input-group">
                     <label className="input-label">กลับบ้าน:</label>
@@ -122,38 +121,243 @@ export default function HospitalUI() {
               <div className="form-column">
                 <div className="section-label">คงพยาบาล</div>
                 <div className="input-group">
-                  <label className="input-label">คงพยาบาล:</label>
-                  <input type="number" className="input-field" min="0" />
+                  <label className="input-label" style={{paddingLeft: 30}}>คงพยาบาล:</label>
+                  <input type="number" className="input-field" style={{marginRight: 70}} min="0" />
                 </div>
               </div>
             </div>
           </div>
 
-          
-          {/* ประเภทผู้ป่วย */}
           <div className="form-section">
-            <div className="section-title">ประเภทผู้ป่วย</div>
-            <div className="category-grid">
-              <div className="input-group">
-                <label className="input-label">ประเภท 1:</label>
-                <input type="number" className="input-field" min="0" />
+            <div className="flex-grid">
+              <div className="form-column">
+                <div className="section-header">ประเภทผู้ป่วย</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label">ประเภท 1:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">ประเภท 2:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">ประเภท 3:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">ประเภท 4:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">ประเภท 5:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
               </div>
-              <div className="input-group">
-                <label className="input-label">ประเภท 2:</label>
-                <input type="number" className="input-field" min="0" />
+
+              <div className="form-column">
+                <div className="section-header">Ventilator</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label">Invasive:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Non invasive:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
               </div>
-              <div className="input-group">
-                <label className="input-label">ประเภท 3:</label>
-                <input type="number" className="input-field" min="0" />
+
+              <div className="form-column">
+                <div className="section-header">ใช้เครื่อง HFNC</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
               </div>
-              <div className="input-group">
-                <label className="input-label">ประเภท 4:</label>
-                <input type="number" className="input-field" min="0" />
+
+              <div className="form-column">
+                <div className="section-header">ให้ออกซิเจน</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
               </div>
-              <div className="input-group">
-                <label className="input-label">ประเภท 5:</label>
-                <input type="number" className="input-field" min="0" />
+              
+              <div className="form-column">
+                <div className="section-header">เปลเสริม</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <div className="flex-grid">
+              <div className="form-column">
+                <div className="section-header">PAS</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">CPR</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-column">
+                <div className="section-header">Pre OP</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">Post OP</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">GCS</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">Strokeในตึก</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">จิตเวชในตึก</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">นักโทษในตึก</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">พยาบาลหัวหน้าเวร</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <div className="flex-grid">
+              <div className="form-column">
+                <div className="section-header">PAS</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">CPR</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-column">
+                <div className="section-header">Pre OP</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">Post OP</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
           
