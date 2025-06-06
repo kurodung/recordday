@@ -1,9 +1,48 @@
 // src/components/HospitalUI.jsx
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import "../styles/HospitalUI.css";
 
 export default function HospitalUI() {
   const [activeTab, setActiveTab] = useState('tab1');
+
+  // ✅ ref สำหรับ form container ทั้งหมด
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    const handleArrowNavigation = (e) => {
+      // ✅ เอาแค่ซ้าย/ขวา
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const inputs = formRef.current.querySelectorAll('input');
+        const inputsArray = Array.from(inputs);
+        const currentIndex = inputsArray.indexOf(document.activeElement);
+  
+        if (currentIndex === -1) return;
+  
+        let nextIndex = currentIndex;
+  
+        if (e.key === 'ArrowRight') {
+          nextIndex = currentIndex + 1;
+        } else if (e.key === 'ArrowLeft') {
+          nextIndex = currentIndex - 1;
+        }
+  
+        // ตรวจสอบ bounds
+        if (nextIndex >= 0 && nextIndex < inputsArray.length) {
+          inputsArray[nextIndex].focus();
+          e.preventDefault();
+        }
+      }
+    };
+  
+    const formEl = formRef.current;
+    if (formEl) {
+      formEl.addEventListener('keydown', handleArrowNavigation);
+      
+      return () => {
+        formEl.removeEventListener('keydown', handleArrowNavigation);
+      };
+    }
+  }, []);
   
   return (
     <div className="hospital-container">
@@ -58,7 +97,7 @@ export default function HospitalUI() {
         </div>
         
         {/* Form Content */}
-        <div className="form-container">
+        <div className="form-container" ref={formRef}>
           {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
           <div className="form-section">
             <div className="flex-grid">
@@ -69,9 +108,15 @@ export default function HospitalUI() {
                   <label className="input-label">จำนวนเตียง:</label>
                   <input type="number" className="input-field" min="0" readOnly/>
                 </div>
-                <div className="input-group">
-                  <label className="input-label" style={{paddingLeft: "15px"}}>ยอดยกมา:</label>
-                  <input type="number" className="input-field" min="0" />
+              </div>
+
+              <div className="form-column">
+                <div className="section-header">ยอดยกมา</div>
+                <div className="horizontal-inputs">
+                  <div className="input-group">
+                    <label className="input-label"></label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
                 </div>
               </div>
               
@@ -121,8 +166,8 @@ export default function HospitalUI() {
               <div className="form-column">
                 <div className="section-label">คงพยาบาล</div>
                 <div className="input-group">
-                  <label className="input-label" style={{paddingLeft: 30}}>คงพยาบาล:</label>
-                  <input type="number" className="input-field" style={{marginRight: 70}} min="0" />
+                  <label className="input-label"></label>
+                  <input type="number" className="input-field" min="0" />
                 </div>
               </div>
             </div>
@@ -171,25 +216,24 @@ export default function HospitalUI() {
               </div>
 
               <div className="form-column">
-                <div className="section-header">ใช้เครื่อง HFNC</div>
+                <div className="section-header">การช่วยหายใจและออกซิเจน</div>
                 <div className="horizontal-inputs">
                   <div className="input-group">
-                    <label className="input-label"></label>
+                    <label className="input-label">ใช้เครื่อง HFNC:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
-                </div>
-              </div>
-
-              <div className="form-column">
-                <div className="section-header">ให้ออกซิเจน</div>
-                <div className="horizontal-inputs">
                   <div className="input-group">
-                    <label className="input-label"></label>
+                    <label className="input-label">ให้ออกซิเจน:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
                 </div>
               </div>
               
+            </div>
+          </div>
+
+          <div className="form-section">
+            <div className="flex-grid">
               <div className="form-column">
                 <div className="section-header">เปลเสริม</div>
                 <div className="horizontal-inputs">
@@ -199,11 +243,7 @@ export default function HospitalUI() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="form-section">
-            <div className="flex-grid">
               <div className="form-column">
                 <div className="section-header">PAS</div>
                 <div className="horizontal-inputs">
@@ -225,20 +265,14 @@ export default function HospitalUI() {
               </div>
               
               <div className="form-column">
-                <div className="section-header">Pre OP</div>
+                <div className="section-header">การดูแลรอบการผ่าตัด</div>
                 <div className="horizontal-inputs">
-                  <div className="input-group">
-                    <label className="input-label"></label>
+                <div className="input-group">
+                    <label className="input-label">Pre OP:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
-                </div>
-              </div>
-
-              <div className="form-column">
-                <div className="section-header">Post OP</div>
-                <div className="horizontal-inputs">
                   <div className="input-group">
-                    <label className="input-label"></label>
+                    <label className="input-label">Post OP:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
                 </div>
@@ -293,67 +327,58 @@ export default function HospitalUI() {
                   </div>
                 </div>
               </div>
-
-              <div className="form-column">
-                <div className="section-header">พยาบาลหัวหน้าเวร</div>
-                <div className="horizontal-inputs">
-                  <div className="input-group">
-                    <label className="input-label"></label>
-                    <input type="number" className="input-field" min="0" />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
           <div className="form-section">
             <div className="flex-grid">
               <div className="form-column">
-                <div className="section-header">PAS</div>
+                <div className="section-header">อัตรากำลังทั้งหมด</div>
                 <div className="horizontal-inputs">
                   <div className="input-group">
-                    <label className="input-label"></label>
+                    <label className="input-label">RN:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">PN:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">NA:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">พนักงาน:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">เฉพาะ RN ขึ้นเสริม:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">productivity:</label>
                     <input type="number" className="input-field" min="0" />
                   </div>
                 </div>
               </div>
 
+
               <div className="form-column">
-                <div className="section-header">CPR</div>
+                <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
                 <div className="horizontal-inputs">
                   <div className="input-group">
                     <label className="input-label"></label>
-                    <input type="number" className="input-field" min="0" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="form-column">
-                <div className="section-header">Pre OP</div>
-                <div className="horizontal-inputs">
-                  <div className="input-group">
-                    <label className="input-label"></label>
-                    <input type="number" className="input-field" min="0" />
+                    <input type="text" className="input-field" style={{width: 250}}/>
                   </div>
                 </div>
               </div>
 
               <div className="form-column">
-                <div className="section-header">Post OP</div>
+                <div className="section-header" style={{color:"green"}}>พยาบาลหัวหน้าเวร</div>
                 <div className="horizontal-inputs">
                   <div className="input-group">
                     <label className="input-label"></label>
-                    <input type="number" className="input-field" min="0" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-column">
-                <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
-                <div className="horizontal-inputs">
-                  <div className="input-group">
-                    <label className="input-label"></label>
-                    <input type="number" className="input-field" min="0"  style={{ display: "block", margin: "0 auto" }}/>
+                    <input type="text" className="input-field" style={{width: 150}} />
                   </div>
                 </div>
               </div>
