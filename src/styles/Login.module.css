@@ -1,0 +1,94 @@
+/* Login.module.css */
+
+/* พื้นหลังกลางจอ */
+.loginPage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f8f0ff;
+}
+
+/* กล่องใหญ่แบ่ง 2 ฝั่ง */
+.loginBox {
+  display: flex;
+  width: 700px;
+  height: 400px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* ฝั่งซ้ายเป็น background image */
+.loginLeft {
+  flex: 1;
+  background: url('../assets/bgs.png') center/cover no-repeat;
+  padding-right: -100;
+}
+
+/* ฝั่งขวาเป็นฟอร์ม */
+.loginRight {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.loginHeader h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.loginHeader p {
+  margin: 10px 0 30px;
+  color: #777;
+}
+
+/* ช่องกรอก input */
+.inputGroup {
+  display: flex;
+  align-items: center;
+  background-color: #f6f6f6;
+  border-radius: 6px;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+}
+
+.icon {
+  margin-right: 10px;
+  color: #999;
+}
+
+.inputGroup input {
+  border: none;
+  background: none;
+  outline: none;
+  flex: 1;
+}
+
+/* ปุ่ม Login */
+.loginBtn {
+  background-color: #a076f9;
+  color: white;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s ease;
+}
+
+.loginBtn:hover {
+  background-color: #9159f5;
+}
+
+.afterText {
+  text-align: center;
+  margin-top: 20px;
+  color: #888;
+}
+
+
