@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import HospitalLayout from '../components/HospitalLayout';
 import "../styles/HospitalUI.css";
 
-export default function HospitalUI() {
+export default function LRpage() {
   // ✅ ref สำหรับ form container ทั้งหมด
   const formRef = useRef(null);
 
@@ -55,7 +55,7 @@ export default function HospitalUI() {
               <div className="section-label">ข้อมูลเตียง</div>
               <div className="input-group highlighted">
                 <label className="input-label">จำนวนเตียง:</label>
-                <input type="number" className="input-field" min="0"/>
+                <input type="number" className="input-field" min="0" readOnly/>
               </div>
             </div>
 
@@ -86,14 +86,14 @@ export default function HospitalUI() {
             </div>
 
             <div className="form-column">
-              <div className="section-header">ยอดจำหน่าย</div>
+              <div className="section-header">ยอดจำหน่าย(ค่อยมาแก้)</div>
               <div className="horizontal-inputs">
                 <div className="input-group">
                   <label className="input-label">กลับบ้าน:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ย้ายตึก:</label>
+                  <label className="input-label">ย้ายออก:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
@@ -125,40 +125,26 @@ export default function HospitalUI() {
         <div className="form-section">
           <div className="flex-grid">
             <div className="form-column">
-              <div className="section-header">ประเภทผู้ป่วย</div>
+              <div className="section-header">ชนิดการคลอด</div>
               <div className="horizontal-inputs">
                 <div className="input-group">
-                  <label className="input-label">ประเภท 1:</label>
+                  <label className="input-label">NL:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ประเภท 2:</label>
+                  <label className="input-label">Forcep:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ประเภท 3:</label>
+                  <label className="input-label">Vac:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ประเภท 4:</label>
+                  <label className="input-label">Br:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">ประเภท 5:</label>
-                  <input type="number" className="input-field" min="0" />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-column">
-              <div className="section-header">Ventilator</div>
-              <div className="horizontal-inputs">
-                <div className="input-group">
-                  <label className="input-label">Invasive:</label>
-                  <input type="number" className="input-field" min="0" />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Non invasive:</label>
+                  <label className="input-label">C/S:</label>
                   <input type="number" className="input-field" min="0" />
                 </div>
               </div>
@@ -177,12 +163,7 @@ export default function HospitalUI() {
                 </div>
               </div>
             </div>
-            
-          </div>
-        </div>
 
-        <div className="form-section">
-          <div className="flex-grid">
             <div className="form-column">
               <div className="section-header">เปลเสริม</div>
               <div className="horizontal-inputs">
@@ -213,6 +194,11 @@ export default function HospitalUI() {
               </div>
             </div>
             
+          </div>
+        </div>
+
+        <div className="form-section">
+          <div className="flex-grid">          
             <div className="form-column">
               <div className="section-header">การดูแลรอบการผ่าตัด</div>
               <div className="horizontal-inputs">
@@ -305,8 +291,10 @@ export default function HospitalUI() {
                   <input type="number" className="input-field" min="0" />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">productivity:</label>
-                  <input type="number" className="input-field" min="0" />
+                  <div className="input-group highlighted">
+                    <label className="input-label">productivity:</label>
+                    <input type="number" className="input-field" min="0" />
+                  </div>
                 </div>
               </div>
             </div>

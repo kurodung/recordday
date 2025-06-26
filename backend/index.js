@@ -4,53 +4,57 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-const db = require("./db");
+const db = require("./db"); // ✅ ใช้ mysql2/promise version
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // สมัครสมาชิก
 app.post("/register", async (req, res) => {
-  const { username, password, wardname} = req.body;
-  console.log("Trying to register:", username); // ✅ log
+  const { username, password, wardname } = req.body;
+  console.log("Trying to register:", username);
 
   const hash = await bcrypt.hash(password, 10);
   try {
-    const result = await db.query(
-      "INSERT INTO users (username, password, wardname) VALUES ($1, $2, $3)",
+    const [result] = await db.query(
+      "INSERT INTO users (username, password, wardname) VALUES (?, ?, ?)",
       [username, hash, wardname]
     );
-    console.log("User inserted"); // ✅ log
+    console.log("User inserted");
     res.status(201).json({ message: "User registered" });
   } catch (err) {
-    console.error("Register error:", err); // ✅ log actual error
-    res.status(400).json({ error: "Username already exists" });
+    console.error("Register error:", err);
+    res.status(400).json({ error: "Username already exists or database error" });
   }
 });
 
 // เข้าสู่ระบบ
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  const userResult = await db.query("SELECT * FROM users WHERE username = $1", [
-    username,
-  ]);
-  const user = userResult.rows[0];
 
-  if (!user) return res.status(401).json({ error: "Invalid credentials" });
+  try {
+    const [rows] = await db.query("SELECT * FROM users WHERE username = ?", [username]);
+    const user = rows[0];
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
-  const token = jwt.sign(
-    {
-      id: user.id,
-      username: user.username,
-      wardname: user.wardname,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-  res.json({ token });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        wardname: user.wardname,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.json({ token });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // ตรวจสอบ Token
@@ -64,6 +68,29 @@ app.get("/profile", (req, res) => {
     res.json(user);
   });
 });
+
+app.post("/api/ward-report", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).send("No token");
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const data = req.body;
+    const fields = Object.keys(data).join(",");
+    const placeholders = Object.keys(data).map(() => "?").join(",");
+    const values = Object.values(data);
+
+    const sql = `INSERT INTO ward_reports (${fields}) VALUES (${placeholders})`;
+    await db.query(sql, values);
+    res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
+  } catch (err) {
+    console.error("Ward report error:", err);
+    res.status(500).json({ error: "Database or token error" });
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

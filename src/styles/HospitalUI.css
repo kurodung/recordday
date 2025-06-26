@@ -22,7 +22,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Left Sidebar */
+/* Sidebar */
 .sidebar {
   width: 160px;
   background-color: #7e3cbd;
@@ -38,6 +38,7 @@ body {
   padding: 24px 0;
 }
 
+/* Avatar */
 .profile-avatar {
   height: 80px;
   width: 80px;
@@ -56,12 +57,95 @@ body {
   font-weight: bold;
 }
 
+/* NEW: Avatar circle (small) */
+.avatar-circle {
+  width: 70px;
+  height: 70px;
+  background-color: #f8edfd;
+  border-radius: 50%;
+  color: #7e3cbd;
+  font-weight: bold;
+  font-size: 28px;
+  text-align: center;
+  margin: 0 auto 0.5rem auto;
+  /* ใช้ Flexbox เพื่อจัดกลางแนวตั้ง-แนวนอน */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.sidebar-title {
+  font-weight: bold;
+  font-size: 1rem;
+  color: white;
+  text-align: center;
+}
+
+.sidebar-sub {
+  font-size: 0.85rem;
+  color: #ddd;
+  text-align: center;
+}
+
 .username {
   margin-top: 8px;
   color: white;
   font-weight: bold;
 }
 
+/* NEW: Sidebar Sections */
+.sidebar-section {
+  margin-bottom: 1rem;
+  padding: 0 12px;
+}
+
+.sidebar-section-label {
+  font-size: 0.75rem;
+  color: #ddd;
+  padding: 0.5rem 0;
+  margin-left: 8px;
+  text-transform: uppercase;
+}
+
+/* NEW: Sidebar Item Buttons */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sidebar-item:hover,
+.sidebar-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-icon {
+  margin-right: 10px;
+}
+
+.sidebar-item i {
+  margin-right: 8px;
+  width: 16px;
+  text-align: center;
+}
+
+/* Sidebar Badge */
+.badge {
+  background: #c084fc;
+  color: white;
+  font-size: 0.75rem;
+  padding: 0 6px;
+  border-radius: 12px;
+  margin-left: auto;
+}
+
+/* Sidebar Button (เวรเช้า/บ่าย/ดึก แบบเดิม) */
 .sidebar-menu {
   display: flex;
   flex-direction: column;
@@ -94,6 +178,7 @@ body {
   color: #111;
 }
 
+/* Logout */
 .logout-container {
   padding: 8px;
   margin-bottom: 16px;
@@ -187,6 +272,7 @@ body {
   overflow-y: auto;
 }
 
+/* ส่วนอื่น ๆ ยังคงเหมือนเดิม */
 .form-section {
   background-color: white;
   border-radius: 8px;
@@ -195,13 +281,12 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* เพิ่มคลาส horizontal-inputs สำหรับการแสดงผลแนวนอน */
 .horizontal-inputs {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content:"center";
+  justify-content: center;
   align-items: center;
 }
 
@@ -212,14 +297,12 @@ body {
   margin-right: 12px;
 }
 
-/* ปรับขนาดของ label และ input เพื่อให้สวยงามในแนวนอน */
 .horizontal-inputs .input-label {
   min-width: auto;
   margin-right: 8px;
 }
 
-/* เพิ่มคลาสสำหรับส่วนหัว section */
-.section-header {
+.section-header, .section-header-one {
   font-weight: 600;
   color: #7e3cbd;
   padding-bottom: 8px;
@@ -227,15 +310,6 @@ body {
   border-bottom: 1px solid #e0d0f5;
 }
 
-.section-header-one {
-  font-weight: 600;
-  color: #7e3cbd;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #e0d0f5;
-}
-
-/* ปรับ Grid layouts */
 .flex-grid {
   display: flex;
   flex-wrap: wrap;
@@ -264,7 +338,6 @@ body {
   gap: 12px;
 }
 
-/* ปรับ Input groups */
 .input-group {
   display: flex;
   align-items: center;
@@ -283,7 +356,6 @@ body {
 .input-label {
   min-width: auto;
   margin-right: 10px;
-  font-weight: auto;
   color: #333;
   white-space: nowrap;
 }
@@ -295,7 +367,6 @@ body {
   border-radius: 4px;
   color: #111;
   background-color: #fbf8ff;
-  transition: all 0.2s ease;
   text-align: center;
   font-size: 15px;
 }
@@ -306,7 +377,6 @@ body {
   box-shadow: 0 0 0 2px rgba(126, 60, 189, 0.2);
 }
 
-/* ไฮไลท์ช่องสำคัญ */
 .highlighted {
   background-color: #f0e6ff;
   padding: 8px;
@@ -328,7 +398,6 @@ body {
   margin-bottom: 16px;
 }
 
-/* ปุ่มบันทึก */
 .button-container {
   display: flex;
   justify-content: center;
@@ -354,16 +423,16 @@ body {
   box-shadow: 0 4px 8px rgba(126, 60, 189, 0.4);
 }
 
-/* Responsive adjustments */
+/* Responsive */
 @media (max-width: 992px) {
   .sidebar {
     width: 120px;
   }
-  
+
   .main-content {
     width: calc(100% - 120px);
   }
-  
+
   .profile-avatar {
     height: 60px;
     width: 60px;
@@ -374,7 +443,7 @@ body {
   .hospital-container {
     flex-direction: column;
   }
-  
+
   .sidebar {
     width: 100%;
     height: auto;
@@ -382,49 +451,49 @@ body {
     padding: 8px;
     align-items: center;
   }
-  
+
   .sidebar-header {
     padding: 8px;
     flex-direction: row;
     align-items: center;
   }
-  
+
   .profile-avatar {
     height: 40px;
     width: 40px;
     margin-right: 8px;
   }
-  
+
   .username {
     margin-top: 0;
   }
-  
+
   .sidebar-menu {
     flex-direction: row;
     margin-top: 0;
     margin-left: 16px;
     flex-grow: 0;
   }
-  
+
   .sidebar-button {
     margin-bottom: 0;
     margin-right: 8px;
     padding: 8px 12px;
   }
-  
+
   .logout-container {
     margin-left: auto;
     margin-bottom: 0;
   }
-  
+
   .logout-button {
     padding: 8px;
   }
-  
+
   .main-content {
     width: 100%;
   }
-  
+
   .nav-tab {
     padding: 12px 16px;
     font-size: 14px;

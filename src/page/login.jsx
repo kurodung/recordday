@@ -19,11 +19,18 @@ const Login = () => {
       const res = await axios.post('http://localhost:5000/login', form);
       localStorage.setItem('token', res.data.token);
       setError('');
-      navigate('/main'); // ✅ Redirect หลัง login สำเร็จ
+  
+      // 🔁 ตรวจสอบว่า username คือ 'lr' หรือไม่
+      if (form.username.toLowerCase() === 'lr') {
+        navigate('/lrpage'); // ✅ ไปหน้า LRpage
+      } else {
+        navigate('/main'); // ✅ ไปหน้า HospitalUI.jsx หรือหน้าหลักทั่วไป
+      }
     } catch (err) {
       setError('Invalid username or password');
     }
   };
+  
 
   return (
     <div className={styles.loginPage}>
