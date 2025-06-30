@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import { FiSun, FiSunset, FiMoon, FiBarChart, FiSettings } from "react-icons/fi";
-import "../styles/HospitalUI.css"; // ใช้ร่วมได้
+import { jwtDecode } from "jwt-decode"; 
+import {FiSun,FiSunset,FiMoon,FiBarChart,FiSettings,} from "react-icons/fi";
+import "../styles/HospitalUI.css";
 
 export default function HospitalLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [activeShift, setActiveShift] = useState("morning");
-  const [selectedDate, setSelectedDate] = useState(() =>
-    new Date().toISOString().split("T")[0]
+  const [selectedDate, setSelectedDate] = useState(
+    () => new Date().toISOString().split("T")[0]
   );
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
@@ -79,7 +79,9 @@ export default function HospitalLayout({ children }) {
     <div className="hospital-container">
       <div className="sidebar custom-sidebar">
         <div className="sidebar-header">
-          <div className="avatar-circle">{username?.charAt(0).toUpperCase()}</div>
+          <div className="avatar-circle">
+            {username?.charAt(0).toUpperCase()}
+          </div>
           <div className="sidebar-title">{wardname || "Ward"}</div>
         </div>
 
@@ -95,26 +97,32 @@ export default function HospitalLayout({ children }) {
         <div className="sidebar-section-label">เวรการทำงาน</div>
         <div className="sidebar-section shift-section">
           <div
-            className={`sidebar-item ${activeShift === "morning" ? "active" : ""}`}
+            className={`sidebar-item ${
+              activeShift === "morning" ? "active" : ""
+            }`}
             onClick={() => setActiveShift("morning")}
           >
             <FiSun className="sidebar-icon" /> เวรเช้า
           </div>
           <div
-            className={`sidebar-item ${activeShift === "afternoon" ? "active" : ""}`}
+            className={`sidebar-item ${
+              activeShift === "afternoon" ? "active" : ""
+            }`}
             onClick={() => setActiveShift("afternoon")}
           >
             <FiSunset className="sidebar-icon" /> เวรบ่าย
           </div>
           <div
-            className={`sidebar-item ${activeShift === "night" ? "active" : ""}`}
+            className={`sidebar-item ${
+              activeShift === "night" ? "active" : ""
+            }`}
             onClick={() => setActiveShift("night")}
           >
             <FiMoon className="sidebar-icon" /> เวรดึก
           </div>
         </div>
 
-        <div className="logout-container" style={{marginTop:"auto"}}>
+        <div className="logout-container" style={{ marginTop: "auto" }}>
           <button
             className="logout-button"
             onClick={() => {
@@ -130,7 +138,9 @@ export default function HospitalLayout({ children }) {
       <div className="main-content">
         <div className="top-nav">
           <button
-            className={`nav-tab ${isActiveTab(["/main", "/lrpage"]) ? "active" : ""}`}
+            className={`nav-tab ${
+              isActiveTab(["/main", "/lrpage"]) ? "active" : ""
+            }`}
             onClick={handleGeneralClick}
           >
             ทั่วไป
@@ -156,7 +166,15 @@ export default function HospitalLayout({ children }) {
             />
           </div>
         </div>
-        {children}
+        {/* เปลี่ยนตรงนี้ */}
+        {React.isValidElement(children)
+          ? React.cloneElement(children, {
+              username,
+              wardname,
+              selectedDate,
+              shift: activeShift,
+            })
+          : null}
       </div>
     </div>
   );

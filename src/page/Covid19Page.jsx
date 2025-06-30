@@ -1,6 +1,5 @@
 // src/pages/Covid19Page.jsx
 import { useState, useRef, useEffect } from "react";
-import HospitalLayout from '../components/HospitalLayout';
 import "../styles/HospitalUI.css";
 
 const Covid19Page = () => {
@@ -41,8 +40,6 @@ const Covid19Page = () => {
   }, []);
 
   return (
-    <HospitalLayout>
-          {/* Form Content */}
           <div className="form-container" ref={formRef}>
             {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
             <div className="form-section">
@@ -230,7 +227,6 @@ const Covid19Page = () => {
               <button className="save-button">บันทึกข้อมูล</button>
             </div>
           </div>
-        </HospitalLayout>
   );
 };
 

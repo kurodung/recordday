@@ -1,6 +1,5 @@
 // src/components/DenguePage.jsx
 import { useState, useRef, useEffect } from "react";
-import HospitalLayout from "../components/HospitalLayout";
 import "../styles/HospitalUI.css";
 
 export default function DenguePage() {
@@ -41,8 +40,6 @@ export default function DenguePage() {
   }, []);
 
   return (
-    <HospitalLayout>
-      {/* Form Content */}
       <div className="form-container" ref={formRef}>
         {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
         <div className="form-section">
@@ -195,6 +192,5 @@ export default function DenguePage() {
           <button className="save-button">บันทึกข้อมูล</button>
         </div>
       </div>
-    </HospitalLayout>
   );
 }

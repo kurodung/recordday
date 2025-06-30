@@ -9,6 +9,59 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const toMysqlDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return date.toISOString().split("T")[0]; // 'YYYY-MM-DD'
+};
+
+app.put("/api/hospital/:id", async (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+
+  try {
+    // ✅ แก้ date ให้ MySQL ใช้ได้
+    if (data.date) {
+      data.date = toMysqlDate(data.date);
+    }
+
+    const fields = Object.keys(data).filter((key) => key !== "id");
+    const values = fields.map((key) => data[key]);
+
+    const setClause = fields.map((field) => `${field} = ?`).join(", ");
+    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ?`;
+
+    await db.query(sql, [...values, id]);
+    res.status(200).json({ message: "อัปเดตข้อมูลสำเร็จ" });
+  } catch (err) {
+    console.error("Update error:", err); // ❗️ดู log นี้
+    res.status(500).json({ error: "Database update failed" });
+  }
+});
+
+
+app.get("/api/ward-report", async (req, res) => {
+  const { date, shift, wardname, username } = req.query;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT * FROM ward_reports WHERE date = ? AND shift = ? AND wardname = ? AND username = ? LIMIT 1`,
+      [date, shift, wardname, username]
+    );
+
+    if (rows.length > 0) {
+      res.json(rows[0]);
+    } else {
+      res.status(204).send();
+    }
+  } catch (err) {
+    console.error("Get ward report error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+
+
 // สมัครสมาชิก
 app.post("/register", async (req, res) => {
   const { username, password, wardname } = req.body;

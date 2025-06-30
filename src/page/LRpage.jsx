@@ -1,6 +1,5 @@
 // src/components/HospitalUI.jsx
 import { useState, useRef, useEffect } from 'react';
-import HospitalLayout from '../components/HospitalLayout';
 import "../styles/HospitalUI.css";
 
 export default function LRpage() {
@@ -44,8 +43,6 @@ export default function LRpage() {
   }, []);
   
   return (
-    <HospitalLayout>
-      {/* Form Content */}
       <div className="form-container" ref={formRef}>
         {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
         <div className="form-section">
@@ -327,6 +324,5 @@ export default function LRpage() {
         <button type="submit" className="save-button">บันทึกข้อมูล</button>
         </div>
       </div>
-    </HospitalLayout>
   );
 }
