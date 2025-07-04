@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { jwtDecode } from "jwt-decode"; 
-import {FiSun,FiSunset,FiMoon,FiBarChart,FiSettings,} from "react-icons/fi";
+import { jwtDecode } from "jwt-decode";
+import {
+  FiSun,
+  FiSunset,
+  FiMoon,
+  FiBarChart,
+  FiSettings,
+} from "react-icons/fi";
 import "../styles/HospitalUI.css";
 
 export default function HospitalLayout({ children }) {
@@ -14,6 +20,7 @@ export default function HospitalLayout({ children }) {
   );
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
+  const [supward, setSupward] = useState(""); // ✅ เพิ่ม
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -89,9 +96,13 @@ export default function HospitalLayout({ children }) {
           <div className="sidebar-item" onClick={() => navigate("/dashboard")}>
             <FiBarChart className="sidebar-icon" /> Dashboard
           </div>
-          <div className="sidebar-item" onClick={() => navigate("/settings")}>
-            <FiSettings className="sidebar-icon" /> Settings
-          </div>
+
+          {/* ✅ แสดง Settings เฉพาะ admin */}
+          {username === "admin" && (
+            <div className="sidebar-item" onClick={() => navigate("/settings")}>
+              <FiSettings className="sidebar-icon" /> Settings
+            </div>
+          )}
         </div>
 
         <div className="sidebar-section-label">เวรการทำงาน</div>
@@ -121,6 +132,32 @@ export default function HospitalLayout({ children }) {
             <FiMoon className="sidebar-icon" /> เวรดึก
           </div>
         </div>
+
+        {username === "lr" && (
+          <div className="sidebar-section">
+            <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
+            <select
+              className="sidebar-item"
+              style={{backgroundColor:"#7e3cbd"}}
+              value={supward}
+              onChange={(e) => {
+                const newSupward = e.target.value;
+                setSupward(newSupward);
+                if (newSupward) {
+                  navigate(
+                    `/main?supward=${encodeURIComponent(
+                      newSupward
+                    )}&shift=${activeShift}&date=${selectedDate}`
+                  );
+                }
+              }}
+            >
+              <option value="ผู้ใหญ่">ผู้ใหญ่</option>
+              <option value="ทารก">ทารก</option>
+              <option value="SNB">SNB</option>
+            </select>
+          </div>
+        )}
 
         <div className="logout-container" style={{ marginTop: "auto" }}>
           <button
@@ -166,11 +203,12 @@ export default function HospitalLayout({ children }) {
             />
           </div>
         </div>
-        {/* เปลี่ยนตรงนี้ */}
+
         {React.isValidElement(children)
           ? React.cloneElement(children, {
               username,
               wardname,
+              supward,
               selectedDate,
               shift: activeShift,
             })

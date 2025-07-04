@@ -15,38 +15,53 @@ const toMysqlDate = (value) => {
   return date.toISOString().split("T")[0]; // 'YYYY-MM-DD'
 };
 
+const normalizeToZero = (val) => {
+  return val === null || val === undefined || val === "" ? 0 : parseInt(val) || 0;
+};
+
+const forceNumberFields = [
+  "type1", "type2", "type3", "type4", "type5", "rn"
+];
+
+// PUT: อัปเดตข้อมูล ward report
 app.put("/api/hospital/:id", async (req, res) => {
   const { id } = req.params;
   const data = req.body;
 
   try {
-    // ✅ แก้ date ให้ MySQL ใช้ได้
     if (data.date) {
       data.date = toMysqlDate(data.date);
     }
 
+    forceNumberFields.forEach((key) => {
+      if (key in data) {
+        data[key] = normalizeToZero(data[key]);
+      }
+    });
+
     const fields = Object.keys(data).filter((key) => key !== "id");
     const values = fields.map((key) => data[key]);
-
     const setClause = fields.map((field) => `${field} = ?`).join(", ");
-    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ?`;
+    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ? AND supward = ?`;
 
-    await db.query(sql, [...values, id]);
+    await db.query(sql, [...values, id, data.supward]);
     res.status(200).json({ message: "อัปเดตข้อมูลสำเร็จ" });
   } catch (err) {
-    console.error("Update error:", err); // ❗️ดู log นี้
-    res.status(500).json({ error: "Database update failed" });
+    console.error("Update error:", err);
+    res.status(500).json({ message: "Database update failed" });
   }
 });
 
-
+// GET: ดึงข้อมูล ward report
 app.get("/api/ward-report", async (req, res) => {
-  const { date, shift, wardname, username } = req.query;
+  const { date, shift, wardname, username, supward } = req.query;
 
   try {
     const [rows] = await db.query(
-      `SELECT * FROM ward_reports WHERE date = ? AND shift = ? AND wardname = ? AND username = ? LIMIT 1`,
-      [date, shift, wardname, username]
+      `SELECT * FROM ward_reports 
+       WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND supward = ?
+       LIMIT 1`,
+      [date, shift, wardname, username, supward]
     );
 
     if (rows.length > 0) {
@@ -55,14 +70,43 @@ app.get("/api/ward-report", async (req, res) => {
       res.status(204).send();
     }
   } catch (err) {
-    console.error("Get ward report error:", err);
-    res.status(500).json({ error: "Database error" });
+    console.error("Ward report error:", err);
+    res.status(500).json({ error: err.message || "Database or token error" });
   }
 });
 
+// POST: บันทึกข้อมูลใหม่
+app.post("/api/ward-report", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "No token provided" });
 
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-// สมัครสมาชิก
+    const data = req.body;
+
+    forceNumberFields.forEach((key) => {
+      if (key in data) {
+        data[key] = normalizeToZero(data[key]);
+      }
+    });
+
+    const fields = Object.keys(data).join(",");
+    const placeholders = Object.keys(data).map(() => "?").join(",");
+    const values = Object.values(data);
+
+    const sql = `INSERT INTO ward_reports (${fields}) VALUES (${placeholders})`;
+    await db.query(sql, values);
+
+    res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
+  } catch (err) {
+    console.error("Ward report error:", err);
+    res.status(500).json({ message: "Database or token error" });
+  }
+});
+
+// POST: สมัครสมาชิก
 app.post("/register", async (req, res) => {
   const { username, password, wardname } = req.body;
   console.log("Trying to register:", username);
@@ -77,11 +121,11 @@ app.post("/register", async (req, res) => {
     res.status(201).json({ message: "User registered" });
   } catch (err) {
     console.error("Register error:", err);
-    res.status(400).json({ error: "Username already exists or database error" });
+    res.status(400).json({ message: "Username already exists or database error" });
   }
 });
 
-// เข้าสู่ระบบ
+// POST: เข้าสู่ระบบ
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -89,10 +133,10 @@ app.post("/login", async (req, res) => {
     const [rows] = await db.query("SELECT * FROM users WHERE username = ?", [username]);
     const user = rows[0];
 
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: "Invalid credentials" });
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
       {
@@ -101,16 +145,16 @@ app.post("/login", async (req, res) => {
         wardname: user.wardname,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "8h" }
     );
     res.json({ token });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// ตรวจสอบ Token
+// GET: ตรวจสอบ token
 app.get("/profile", (req, res) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -121,29 +165,6 @@ app.get("/profile", (req, res) => {
     res.json(user);
   });
 });
-
-app.post("/api/ward-report", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.status(401).send("No token");
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const data = req.body;
-    const fields = Object.keys(data).join(",");
-    const placeholders = Object.keys(data).map(() => "?").join(",");
-    const values = Object.values(data);
-
-    const sql = `INSERT INTO ward_reports (${fields}) VALUES (${placeholders})`;
-    await db.query(sql, values);
-    res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
-  } catch (err) {
-    console.error("Ward report error:", err);
-    res.status(500).json({ error: "Database or token error" });
-  }
-});
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

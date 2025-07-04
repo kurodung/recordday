@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 
 export default function HospitalUI({
@@ -7,60 +8,58 @@ export default function HospitalUI({
   selectedDate,
   shift,
 }) {
-  const [formData, setFormData] = useState({
-    bed_total: 50,
-  });
+  const [formData, setFormData] = useState({ bed_total: 50 });
   const formRef = useRef(null);
+  const [searchParams] = useSearchParams();
+  const supward = searchParams.get("supward"); // ✅ รับจาก URL
 
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (username && wardname && selectedDate && shift) {
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(
-            `http://localhost:5000/api/ward-report?date=${selectedDate}&shift=${shift}&wardname=${wardname}&username=${username}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
+      if (!username || !wardname || !supward || !selectedDate || !shift) return;
 
-          if (res.status === 204) {
-            // ✅ ไม่มีข้อมูลเดิม
-            setFormData({});
-            return;
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `http://localhost:5000/api/ward-report?date=${selectedDate}&shift=${shift}&wardname=${wardname}&username=${username}&supward=${supward}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
           }
+        );
 
-          if (res.ok) {
-            const text = await res.text(); // ใช้ text ก่อน
-            if (text) {
-              const data = JSON.parse(text); // ✅ แปลง text เป็น JSON
-              setFormData(data);
-            } else {
-              setFormData({});
-            }
-          } else {
-            console.warn("โหลดข้อมูลล้มเหลว", res.status);
-          }
-        } catch (err) {
-          console.error("โหลดข้อมูลเดิมล้มเหลว", err);
+        if (res.status === 204) {
+          // ไม่มีข้อมูลเดิม
+          setFormData({
+            bed_total: 50,
+            username,
+            wardname,
+            supward, // ✅ เพิ่ม
+            date: selectedDate,
+            shift,
+          });
+          return;
         }
+
+        if (res.ok) {
+          const text = await res.text();
+          const data = text ? JSON.parse(text) : {};
+          setFormData({
+            ...data,
+            username,
+            wardname,
+            supward, // ✅ เพิ่ม
+            date: selectedDate,
+            shift,
+          });
+        } else {
+          console.warn("โหลดข้อมูลล้มเหลว", res.status);
+        }
+      } catch (err) {
+        console.error("โหลดข้อมูลเดิมล้มเหลว", err);
       }
     };
 
     fetchExistingData();
-  }, [username, wardname, selectedDate, shift]);
-
-  useEffect(() => {
-    console.log("Received props:", { username, wardname, selectedDate, shift });
-
-    setFormData((prev) => ({
-      ...prev,
-      username,
-      wardname,
-      date: selectedDate,
-      shift,
-    }));
-  }, [username, wardname, selectedDate, shift]);
+  }, [username, wardname, selectedDate, shift, supward]);
 
   useEffect(() => {
     const handleArrowNavigation = (e) => {
@@ -94,15 +93,24 @@ export default function HospitalUI({
 
   const handleSubmit = async () => {
     try {
-      if (formData.date instanceof Date) {
-        formData.date = formData.date.toISOString().split("T")[0];
-      }
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        ...formData,
+        supward, // ✅ ส่งไปด้วย
+        date:
+          formData.date instanceof Date
+            ? formData.date.toISOString().split("T")[0]
+            : formData.date,
+      };
+
+      delete payload.productivity;
+      delete payload.type;
+
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
         ? `http://localhost:5000/api/hospital/${formData.id}`
         : "http://localhost:5000/api/ward-report";
-
-      const token = localStorage.getItem("token");
 
       const response = await fetch(url, {
         method,
@@ -110,18 +118,19 @@ export default function HospitalUI({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
       if (response.ok) {
         alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
+        window.location.reload();
       } else {
-        alert("เกิดข้อผิดพลาด: " + result.message);
+        alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่ทราบสาเหตุ"));
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("เกิดข้อผิดพลาด");
+      alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
     }
   };
 
@@ -149,6 +158,9 @@ export default function HospitalUI({
 
   return (
     <div className="form-container" ref={formRef}>
+      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
+        กลุ่ม: {supward || "-"}
+      </h2>
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
@@ -190,14 +202,8 @@ export default function HospitalUI({
           <div className="form-column">
             <div className="section-header">ประเภทผู้ป่วย</div>
             <div className="horizontal-inputs">
-              {["1", "2", "3", "4", "5"].map((n) =>
-                renderInput(
-                  `ประเภท ${n}:`,
-                  `type${n}`,
-                  "number",
-                  null,
-                  `type${n}`
-                )
+              {["5", "4", "3", "2", "1"].map((n) =>
+                renderInput(`ประเภท ${n}:`, `type${n}`, "number", null, false)
               )}
             </div>
           </div>
@@ -228,7 +234,7 @@ export default function HospitalUI({
             <div className="section-header">CPR</div>
             {renderInput("", "cpr")}
           </div>
-          <div className="form-column" style={{  }}>
+          <div className="form-column" style={{}}>
             <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
             {renderInput("", "infection", "number", "180px")}
           </div>
@@ -269,7 +275,7 @@ export default function HospitalUI({
               {renderInput("พนักงาน:", "other_staff")}
               {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
               <div className="input-group highlighted">
-                {renderInput("productivity:", "productivity")}
+                {renderInput("productivity:","productivity","number","100px",true)}
               </div>
             </div>
           </div>
