@@ -11,30 +11,40 @@ export default function HospitalUI({
   const [formData, setFormData] = useState({ bed_total: 50 });
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
-  const supward = searchParams.get("supward"); // ✅ รับจาก URL
+  const supward = searchParams.get("supward");
 
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (!username || !wardname || !supward || !selectedDate || !shift) return;
+      if (!username || !wardname || !selectedDate || !shift) return;
 
       try {
         const token = localStorage.getItem("token");
+        const queryParams = new URLSearchParams({
+          date: selectedDate,
+          shift,
+          wardname,
+          username,
+        });
+
+        if (supward) {
+          queryParams.append("supward", supward);
+        }
+
         const res = await fetch(
-          `http://localhost:5000/api/ward-report?date=${selectedDate}&shift=${shift}&wardname=${wardname}&username=${username}&supward=${supward}`,
+          `http://localhost:5000/api/ward-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
 
         if (res.status === 204) {
-          // ไม่มีข้อมูลเดิม
           setFormData({
             bed_total: 50,
             username,
             wardname,
-            supward, // ✅ เพิ่ม
             date: selectedDate,
             shift,
+            ...(supward && { supward }),
           });
           return;
         }
@@ -46,9 +56,9 @@ export default function HospitalUI({
             ...data,
             username,
             wardname,
-            supward, // ✅ เพิ่ม
             date: selectedDate,
             shift,
+            ...(supward && { supward }),
           });
         } else {
           console.warn("โหลดข้อมูลล้มเหลว", res.status);
@@ -97,12 +107,18 @@ export default function HospitalUI({
 
       const payload = {
         ...formData,
-        supward, // ✅ ส่งไปด้วย
         date:
           formData.date instanceof Date
             ? formData.date.toISOString().split("T")[0]
             : formData.date,
       };
+
+      // ส่ง supward เฉพาะถ้ามี
+      if (supward) {
+        payload.supward = supward;
+      } else {
+        delete payload.supward;
+      }
 
       delete payload.productivity;
       delete payload.type;
@@ -158,7 +174,9 @@ export default function HospitalUI({
 
   return (
     <div className="form-container" ref={formRef}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
+      <h2
+        style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}
+      >
         กลุ่ม: {supward || "-"}
       </h2>
       <div className="form-section">
@@ -275,7 +293,13 @@ export default function HospitalUI({
               {renderInput("พนักงาน:", "other_staff")}
               {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
               <div className="input-group highlighted">
-                {renderInput("productivity:","productivity","number","100px",true)}
+                {renderInput(
+                  "productivity:",
+                  "productivity",
+                  "number",
+                  "100px",
+                  true
+                )}
               </div>
             </div>
           </div>

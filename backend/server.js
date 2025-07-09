@@ -15,14 +15,6 @@ const toMysqlDate = (value) => {
   return date.toISOString().split("T")[0]; // 'YYYY-MM-DD'
 };
 
-const normalizeToZero = (val) => {
-  return val === null || val === undefined || val === "" ? 0 : parseInt(val) || 0;
-};
-
-const forceNumberFields = [
-  "type1", "type2", "type3", "type4", "type5", "rn"
-];
-
 // PUT: อัปเดตข้อมูล ward report
 app.put("/api/hospital/:id", async (req, res) => {
   const { id } = req.params;
@@ -33,18 +25,22 @@ app.put("/api/hospital/:id", async (req, res) => {
       data.date = toMysqlDate(data.date);
     }
 
-    forceNumberFields.forEach((key) => {
-      if (key in data) {
-        data[key] = normalizeToZero(data[key]);
-      }
-    });
-
     const fields = Object.keys(data).filter((key) => key !== "id");
     const values = fields.map((key) => data[key]);
     const setClause = fields.map((field) => `${field} = ?`).join(", ");
-    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ? AND supward = ?`;
+    const sql = `
+  UPDATE ward_reports 
+  SET ${setClause} 
+  WHERE id = ? ${
+    data.supward ? "AND supward = ?" : "AND (supward IS NULL OR supward = '')"
+  }
+`;
 
-    await db.query(sql, [...values, id, data.supward]);
+    const params = data.supward
+      ? [...values, id, data.supward]
+      : [...values, id];
+    await db.query(sql, params);
+
     res.status(200).json({ message: "อัปเดตข้อมูลสำเร็จ" });
   } catch (err) {
     console.error("Update error:", err);
@@ -57,21 +53,33 @@ app.get("/api/ward-report", async (req, res) => {
   const { date, shift, wardname, username, supward } = req.query;
 
   try {
-    const [rows] = await db.query(
-      `SELECT * FROM ward_reports 
-       WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND supward = ?
-       LIMIT 1`,
-      [date, shift, wardname, username, supward]
-    );
+    let rows;
+    if (supward) {
+      // ถ้ามี supward
+      [rows] = await db.query(
+        `SELECT * FROM ward_reports 
+         WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND supward = ?
+         LIMIT 1`,
+        [date, shift, wardname, username, supward]
+      );
+    } else {
+      // ถ้าไม่มี supward
+      [rows] = await db.query(
+        `SELECT * FROM ward_reports 
+         WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND (supward IS NULL OR supward = '')
+         LIMIT 1`,
+        [date, shift, wardname, username]
+      );
+    }
 
     if (rows.length > 0) {
       res.json(rows[0]);
     } else {
-      res.status(204).send();
+      res.status(204).send(); // no content
     }
   } catch (err) {
     console.error("Ward report error:", err);
-    res.status(500).json({ error: err.message || "Database or token error" });
+    res.status(500).json({ error: err.message || "Database error" });
   }
 });
 
@@ -86,14 +94,10 @@ app.post("/api/ward-report", async (req, res) => {
 
     const data = req.body;
 
-    forceNumberFields.forEach((key) => {
-      if (key in data) {
-        data[key] = normalizeToZero(data[key]);
-      }
-    });
-
     const fields = Object.keys(data).join(",");
-    const placeholders = Object.keys(data).map(() => "?").join(",");
+    const placeholders = Object.keys(data)
+      .map(() => "?")
+      .join(",");
     const values = Object.values(data);
 
     const sql = `INSERT INTO ward_reports (${fields}) VALUES (${placeholders})`;
@@ -121,7 +125,9 @@ app.post("/register", async (req, res) => {
     res.status(201).json({ message: "User registered" });
   } catch (err) {
     console.error("Register error:", err);
-    res.status(400).json({ message: "Username already exists or database error" });
+    res
+      .status(400)
+      .json({ message: "Username already exists or database error" });
   }
 });
 
@@ -130,7 +136,9 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const [rows] = await db.query("SELECT * FROM users WHERE username = ?", [username]);
+    const [rows] = await db.query("SELECT * FROM users WHERE username = ?", [
+      username,
+    ]);
     const user = rows[0];
 
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
@@ -145,7 +153,7 @@ app.post("/login", async (req, res) => {
         wardname: user.wardname,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "10h" }
     );
     res.json({ token });
   } catch (err) {

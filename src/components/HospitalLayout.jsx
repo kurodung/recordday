@@ -20,27 +20,60 @@ export default function HospitalLayout({ children }) {
   );
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
-  const [supward, setSupward] = useState(""); // ✅ เพิ่ม
+  const [supward, setSupward] = useState("");
+
+  // กำหนด user ที่มี supward dropdown และ options
+  const usersWithSupward = {
+    lr: ["ห้องคลอด", "รอคลอด"],
+    pp: ["ผู้ใหญ่", "ทารก", "SNB"],
+  };
+
+  const supwardOptions = usersWithSupward[username?.toLowerCase()];
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/");
-    } else {
-      try {
-        const decoded = jwtDecode(token);
-        setUsername(decoded.username);
-        setWardname(decoded.wardname);
-      } catch (err) {
-        console.error("Invalid token", err);
-        navigate("/");
-      }
+      return;
+    }
+    try {
+      const decoded = jwtDecode(token);
+      setUsername(decoded.username);
+      setWardname(decoded.wardname);
+    } catch (err) {
+      console.error("Invalid token", err);
+      navigate("/");
     }
 
     const { shift, date } = getCurrentShiftAndDate();
     setActiveShift(shift);
     setSelectedDate(date);
-  }, []);
+  }, [navigate]);
+
+  // ตั้งค่า supward เริ่มต้นและจัดการ navigation ให้ถูกต้อง
+  useEffect(() => {
+    if (!username) return; // รอ username โหลดก่อน
+
+    const lowerUser = username.toLowerCase();
+
+    if (usersWithSupward[lowerUser]) {
+      // user ที่มี supward dropdown
+      if (!supward) {
+        const defaultSupward = usersWithSupward[lowerUser][0];
+        setSupward(defaultSupward);
+        navigate(
+          `/main?supward=${encodeURIComponent(defaultSupward)}&shift=${activeShift}&date=${selectedDate}`,
+          { replace: true }
+        );
+      }
+    } else {
+      // user ที่ไม่มี supward (เช่น admin)
+      if (supward !== "") {
+        setSupward("");
+        navigate(`/main?shift=${activeShift}&date=${selectedDate}`, { replace: true });
+      }
+    }
+  }, [username, supward, activeShift, selectedDate, navigate]);
 
   const getCurrentShiftAndDate = () => {
     const now = new Date();
@@ -97,7 +130,7 @@ export default function HospitalLayout({ children }) {
             <FiBarChart className="sidebar-icon" /> Dashboard
           </div>
 
-          {/* ✅ แสดง Settings เฉพาะ admin */}
+          {/* แสดง Settings เฉพาะ admin */}
           {username === "admin" && (
             <div className="sidebar-item" onClick={() => navigate("/settings")}>
               <FiSettings className="sidebar-icon" /> Settings
@@ -133,12 +166,13 @@ export default function HospitalLayout({ children }) {
           </div>
         </div>
 
-        {username === "lr" && (
+        {/* แสดง dropdown supward สำหรับ user ที่กำหนด */}
+        {supwardOptions && (
           <div className="sidebar-section">
             <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
             <select
               className="sidebar-item"
-              style={{backgroundColor:"#7e3cbd"}}
+              style={{ backgroundColor: "#7e3cbd" }}
               value={supward}
               onChange={(e) => {
                 const newSupward = e.target.value;
@@ -152,9 +186,11 @@ export default function HospitalLayout({ children }) {
                 }
               }}
             >
-              <option value="ผู้ใหญ่">ผู้ใหญ่</option>
-              <option value="ทารก">ทารก</option>
-              <option value="SNB">SNB</option>
+              {supwardOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </div>
         )}
