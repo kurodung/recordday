@@ -22,7 +22,6 @@ export default function HospitalLayout({ children }) {
   const [wardname, setWardname] = useState("");
   const [supward, setSupward] = useState("");
 
-  // กำหนด user ที่มี supward dropdown และ options
   const usersWithSupward = {
     lr: ["ห้องคลอด", "รอคลอด"],
     pp: ["ผู้ใหญ่", "ทารก", "SNB"],
@@ -50,27 +49,30 @@ export default function HospitalLayout({ children }) {
     setSelectedDate(date);
   }, [navigate]);
 
-  // ตั้งค่า supward เริ่มต้นและจัดการ navigation ให้ถูกต้อง
+  // ✅ จุดที่ 1: set default supward → ให้ไปยัง /lrpage ถ้า username เป็น lr
   useEffect(() => {
-    if (!username) return; // รอ username โหลดก่อน
+    if (!username) return;
 
     const lowerUser = username.toLowerCase();
 
     if (usersWithSupward[lowerUser]) {
-      // user ที่มี supward dropdown
       if (!supward) {
         const defaultSupward = usersWithSupward[lowerUser][0];
         setSupward(defaultSupward);
+        const path = lowerUser === "lr" ? "/lrpage" : "/main";
         navigate(
-          `/main?supward=${encodeURIComponent(defaultSupward)}&shift=${activeShift}&date=${selectedDate}`,
+          `${path}?supward=${encodeURIComponent(
+            defaultSupward
+          )}&shift=${activeShift}&date=${selectedDate}`,
           { replace: true }
         );
       }
     } else {
-      // user ที่ไม่มี supward (เช่น admin)
       if (supward !== "") {
         setSupward("");
-        navigate(`/main?shift=${activeShift}&date=${selectedDate}`, { replace: true });
+        navigate(`/main?shift=${activeShift}&date=${selectedDate}`, {
+          replace: true,
+        });
       }
     }
   }, [username, supward, activeShift, selectedDate, navigate]);
@@ -100,20 +102,21 @@ export default function HospitalLayout({ children }) {
   };
 
   const handleGeneralClick = () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      const decoded = jwtDecode(token);
-      const user = decoded.username?.trim().toLowerCase();
-      if (user === "lr") {
-        navigate("/lrpage");
-      } else {
-        navigate("/main");
-      }
-    } catch (err) {
-      navigate("/main");
-    }
-  };
+  const lowerUser = username?.trim().toLowerCase();
+  const path = lowerUser === "lr" ? "/lrpage" : "/main";
+
+  const queryParams = new URLSearchParams({
+    shift: activeShift,
+    date: selectedDate,
+  });
+
+  if (supward) {
+    queryParams.append("supward", supward);
+  }
+
+  navigate(`${path}?${queryParams.toString()}`);
+};
+
 
   return (
     <div className="hospital-container">
@@ -130,7 +133,6 @@ export default function HospitalLayout({ children }) {
             <FiBarChart className="sidebar-icon" /> Dashboard
           </div>
 
-          {/* แสดง Settings เฉพาะ admin */}
           {username === "admin" && (
             <div className="sidebar-item" onClick={() => navigate("/settings")}>
               <FiSettings className="sidebar-icon" /> Settings
@@ -166,7 +168,6 @@ export default function HospitalLayout({ children }) {
           </div>
         </div>
 
-        {/* แสดง dropdown supward สำหรับ user ที่กำหนด */}
         {supwardOptions && (
           <div className="sidebar-section">
             <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
@@ -177,9 +178,10 @@ export default function HospitalLayout({ children }) {
               onChange={(e) => {
                 const newSupward = e.target.value;
                 setSupward(newSupward);
+                const currentPath = location.pathname; // 👈 ใช้ path ปัจจุบัน เช่น /dengue
                 if (newSupward) {
                   navigate(
-                    `/main?supward=${encodeURIComponent(
+                    `${currentPath}?supward=${encodeURIComponent(
                       newSupward
                     )}&shift=${activeShift}&date=${selectedDate}`
                   );
@@ -220,16 +222,38 @@ export default function HospitalLayout({ children }) {
           </button>
           <button
             className={`nav-tab ${isActiveTab("/covid") ? "active" : ""}`}
-            onClick={() => navigate("/covid")}
+            onClick={() => {
+              if (supward) {
+                navigate(
+                  `/covid?supward=${encodeURIComponent(
+                    supward
+                  )}&shift=${activeShift}&date=${selectedDate}`
+                );
+              } else {
+                navigate("/covid");
+              }
+            }}
           >
             Covid-19
           </button>
+
           <button
             className={`nav-tab ${isActiveTab("/dengue") ? "active" : ""}`}
-            onClick={() => navigate("/dengue")}
+            onClick={() => {
+              if (supward) {
+                navigate(
+                  `/dengue?supward=${encodeURIComponent(
+                    supward
+                  )}&shift=${activeShift}&date=${selectedDate}`
+                );
+              } else {
+                navigate("/dengue");
+              }
+            }}
           >
             ไข้เลือดออก
           </button>
+
           <div className="date-selector">
             <input
               type="date"

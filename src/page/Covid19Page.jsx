@@ -1,9 +1,129 @@
-// src/pages/Covid19Page.jsx
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 
-const Covid19Page = () => {
+const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
   const formRef = useRef(null);
+  const [formData, setFormData] = useState({});
+  const [searchParams] = useSearchParams();
+  const supward = searchParams.get("supward");
+
+  // โหลดข้อมูลเดิม
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!username || !wardname || !selectedDate || !shift) return;
+
+      try {
+        const token = localStorage.getItem("token");
+        const queryParams = new URLSearchParams({
+          date: selectedDate,
+          shift,
+          wardname,
+          username,
+        });
+
+        if (supward) {
+          queryParams.append("supward", supward);
+        }
+
+        const res = await fetch(
+          `http://localhost:5000/api/covid-report?${queryParams.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (res.status === 204) {
+          setFormData({
+            username,
+            wardname,
+            date: selectedDate,
+            shift,
+            ...(supward && { supward }),
+          });
+          return;
+        }
+
+        if (res.ok) {
+          const data = await res.json();
+          setFormData({
+            ...data,
+            username,
+            wardname,
+            date: selectedDate,
+            shift,
+            ...(supward && { supward }),
+          });
+        } else {
+          console.warn("โหลดข้อมูลล้มเหลว", res.status);
+        }
+      } catch (err) {
+        console.error("โหลดข้อมูลเดิมล้มเหลว", err);
+      }
+    };
+
+    fetchExistingData();
+  }, [username, wardname, selectedDate, shift, supward]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const payload = {
+        ...formData,
+        date:
+          formData.date instanceof Date
+            ? formData.date.toISOString().split("T")[0]
+            : formData.date,
+      };
+
+      if (supward) payload.supward = supward;
+
+      const method = formData.id ? "PUT" : "POST";
+      const url = formData.id
+        ? `http://localhost:5000/api/covid-report/${formData.id}`
+        : `http://localhost:5000/api/covid-report`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
+        window.location.reload();
+      } else {
+        alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่ทราบสาเหตุ"));
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+    }
+  };
+
+  const renderInput = (label, name, type = "number", width = null) => (
+    <div className="input-group">
+      {label && <label className="input-label">{label}</label>}
+      <input
+        type={type}
+        name={name}
+        min={type === "number" ? "0" : undefined}
+        className="input-field"
+        value={formData[name] || ""}
+        onChange={handleChange}
+        style={width ? { width } : {}}
+      />
+    </div>
+  );
 
   useEffect(() => {
     const handleArrowNavigation = (e) => {
@@ -14,13 +134,7 @@ const Covid19Page = () => {
 
         if (currentIndex === -1) return;
 
-        let nextIndex = currentIndex;
-
-        if (e.key === "ArrowRight") {
-          nextIndex = currentIndex + 1;
-        } else if (e.key === "ArrowLeft") {
-          nextIndex = currentIndex - 1;
-        }
+        let nextIndex = currentIndex + (e.key === "ArrowRight" ? 1 : -1);
 
         if (nextIndex >= 0 && nextIndex < inputsArray.length) {
           inputsArray[nextIndex].focus();
@@ -32,201 +146,103 @@ const Covid19Page = () => {
     const formEl = formRef.current;
     if (formEl) {
       formEl.addEventListener("keydown", handleArrowNavigation);
-
-      return () => {
-        formEl.removeEventListener("keydown", handleArrowNavigation);
-      };
+      return () => formEl.removeEventListener("keydown", handleArrowNavigation);
     }
   }, []);
 
   return (
-          <div className="form-container" ref={formRef}>
-            {/* ส่วนข้อมูลเตียงและการรับผู้ป่วย */}
-            <div className="form-section">
-              <div className="flex-grid">
-                {/* ส่วนยอดรับใหม่ - แนวนอนตามที่ต้องการ */}
-                <div className="form-column">
-                  <div className="section-header">จำนวนผู้ป่วย</div>
-                  {/* แก้ไขตรงนี้ เพิ่มคลาส horizontal-inputs เพื่อให้แสดงผลในแนวนอน */}
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label">ยอดยกมา:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">รับใหม่:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">รับย้าย:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">จำหน่าย:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">รับย้าย:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-    
-                <div className="form-column">
-                  <div className="section-header">กลุ่มอายุ</div>
-                  {/* แก้ไขตรงนี้ เพิ่มคลาส horizontal-inputs เพื่อให้แสดงผลในแนวนอน */}
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label">ผู้ใหญ่:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">เด็ก:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Newborn:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">หญิงตั้งครรภ์:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">หลังคลอด:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-    
-              </div>
-            </div>
-    
-            <div className="form-section">
-              <div className="flex-grid">
-                <div className="form-column">
-                  <div className="section-header">ประเภท/ระดับความรุนแรง</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label" style={{color:"red"}} >5/แดง:</label>
-                      <input type="number" className="input-field" min="0"/>
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label" style={{color:"#DAA520"}}>4/เหลือง:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label" style={{color:"green"}}>3/เขียว:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Asym/ไม่มีอาการ:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-    
-                <div className="form-column">
-                  <div className="section-header">Ventilator</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label">Invasive:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">NON Invasive:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-column">
-                  <div className="section-header">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label">ใช้เครื่อง HFNC:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">ให้ออกซิเจน:</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-column">
-                  <div className="section-header">ห้อง/เตียงว่าง</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label"></label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            <div className="form-section">
-              <div className="flex-grid">
-                <div className="form-column">
-                  <div className="section-header">หัตถการ</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label">CPR</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Pre op</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Post op</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">CRRT</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Ecmo</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Prone position</label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-column">
-                  <div className="section-header">เสียชีวิต</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label"></label>
-                      <input type="number" className="input-field" min="0" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-column">
-                  <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
-                  <div className="horizontal-inputs">
-                    <div className="input-group">
-                      <label className="input-label"></label>
-                      <input type="text" className="input-field" style={{width: 250}} />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-    
-            {/* ปุ่มบันทึก */}
-            <div className="button-container">
-              <button className="save-button">บันทึกข้อมูล</button>
+    <div className="form-container" ref={formRef}>
+      {/* ตัวอย่างเรียก renderInput */}
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">จำนวนผู้ป่วย</div>
+            <div className="horizontal-inputs">
+              {renderInput("ยอดยกมา:", "bed_carry")}
+              {renderInput("รับใหม่:", "bed_new")}
+              {renderInput("รับย้าย:", "bed_transfer_in")}
+              {renderInput("จำหน่าย:", "discharge")}
+              {renderInput("คงพยาบาล:", "bed_remain")}
             </div>
           </div>
+          <div className="form-column">
+            <div className="section-header">ช่วงอายุ</div>
+            <div className="horizontal-inputs">
+              {renderInput("ผู้ใหญ่:", "adult")}
+              {renderInput("เด็ก:", "child")}
+              {renderInput("Newborn:", "Newborn")}
+              {renderInput("หญิงตั้งครรภ์:", "Pregnant")}
+              {renderInput("หลังคลอด:", "Postpartum")}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">ประเภท/ระดับความรุนแรง</div>
+            <div className="horizontal-inputs">
+              {renderInput("5/แดง:", "red5")}
+              {renderInput("4/เหลือง:", "yellow4")}
+              {renderInput("3/เขียว:", "green3")}
+              {renderInput("Asym/ไม่มีอาการ:", "Asym")}
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header">Ventilator</div>
+            <div className="horizontal-inputs">
+              {renderInput("Invasive:", "vent_invasive")}
+              {renderInput("Non invasive:", "vent_noninvasive")}
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header">ใช้เครื่อง HFNC</div>
+            {renderInput("", "hfnc")}
+            </div>
+          <div className="form-column">
+            <div className="section-header">ให้ออกซิเจน</div>
+            {renderInput("", "oxygen")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ห้อง/เตียงว่าง</div>
+            {renderInput("", "roombed_empty")}
+          </div>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">หัตถการ</div>
+            <div className="horizontal-inputs">
+              {renderInput("CPR:", "cpr")}
+              {renderInput("Pre op:", "pre_op")}
+              {renderInput("Post op:", "post_op")}
+              {renderInput("CRRT:", "crrt")}
+              {renderInput("Ecmo:", "ecmo")}
+              {renderInput("Prone position:", "prone_position")}
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header">เสียชีวิต</div>
+            {renderInput("", "died")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
+            <div className="horizontal-inputs">
+              {renderInput("", "incident", "text", 250)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="button-container">
+        <button className="save-button" onClick={handleSubmit}>
+          บันทึกข้อมูล
+        </button>
+      </div>
+    </div>
   );
 };
 
