@@ -18,11 +18,6 @@ app.use("/api/ward-report", wardReportRoutes);
 app.use("/api/covid-report", covidRoutes);
 app.use("/api/dengue-report", dengueRoutes);
 
-// เดิมคุณมี PUT แยกอยู่แบบนี้
-// /api/hospital/:id
-// อาจจะควรเอาไปรวมไว้ใน wardReportRoutes แทน
-// หรือถ้าจะใช้ต่อไป ให้ใส่ไว้ก่อน listen
-
 const db = require("./db");
 const toMysqlDate = (value) => {
   if (!value) return null;

@@ -83,7 +83,7 @@ export default function LRpage() {
             </div>
 
             <div className="form-column">
-              <div className="section-header">ยอดจำหน่าย(ค่อยมาแก้)</div>
+              <div className="section-header">ยอดจำหน่าย</div>
               <div className="horizontal-inputs">
                 <div className="input-group">
                   <label className="input-label">กลับบ้าน:</label>

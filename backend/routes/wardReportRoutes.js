@@ -77,4 +77,24 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+router.get("/bed-total", async (req, res) => {
+  const { wardname, supward } = req.query;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT bed_total FROM wards 
+       WHERE wardname = ? 
+       AND (supward = ? OR (supward IS NULL AND (? IS NULL OR ? = '')))`,
+      [wardname, supward, supward, supward]
+    );
+
+    if (rows.length === 0) return res.status(404).json({ bed_total: 0 });
+    res.json({ bed_total: rows[0].bed_total });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching bed total" });
+  }
+});
+
+
+
 module.exports = router;

@@ -8,7 +8,7 @@ export default function HospitalUI({
   selectedDate,
   shift,
 }) {
-  const [formData, setFormData] = useState({ bed_total: 50 });
+  const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
   const supward = searchParams.get("supward");
@@ -38,14 +38,15 @@ export default function HospitalUI({
         );
 
         if (res.status === 204) {
-          setFormData({
-            bed_total: 50,
+          // ไม่ตั้งค่า bed_total = 50 ตรงนี้
+          setFormData((prev) => ({
+            ...prev,
             username,
             wardname,
             date: selectedDate,
             shift,
             ...(supward && { supward }),
-          });
+          }));
           return;
         }
 
@@ -70,6 +71,30 @@ export default function HospitalUI({
 
     fetchExistingData();
   }, [username, wardname, selectedDate, shift, supward]);
+
+  useEffect(() => {
+    const fetchBedTotal = async () => {
+  if (!wardname) return;
+
+  const supwardQuery = supward ? `&supward=${supward}` : "";
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/ward-report/bed-total?wardname=${wardname}${supwardQuery}`
+    );
+    const data = await response.json();
+    setFormData((prev) => ({
+      ...prev,
+      bed_total: data.bed_total || 0,
+    }));
+  } catch (err) {
+    console.error("Error fetching bed total:", err);
+  }
+};
+
+
+    fetchBedTotal();
+  }, [wardname, supward]);
 
   useEffect(() => {
     const handleArrowNavigation = (e) => {
