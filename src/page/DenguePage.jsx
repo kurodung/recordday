@@ -150,7 +150,9 @@ const DenguePage = ({ username, wardname, selectedDate, shift }) => {
         <div className="flex-grid">
           <div className="form-column">
             <div className="section-header">จำนวนเตียง</div>
-            {renderInput("จำนวนเตียง:", "bed_total")}
+            <div className="input-group highlighted">
+              {renderInput("จำนวนเตียง:", "bed_total")}
+              </div>
           </div>
           <div className="form-column">
             <div className="section-header">ยอดยกมา</div>
