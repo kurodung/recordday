@@ -21,78 +21,59 @@ export default function HospitalLayout({ children }) {
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
   const [supward, setSupward] = useState("");
-
-  const usersWithSupward = {
-    lr: ["ห้องคลอด", "รอคลอด"],
-    pp: ["ผู้ใหญ่", "ทารก", "SNB"],
-  };
-
-  const supwardOptions = usersWithSupward[username?.toLowerCase()];
+  const [supwardOptions, setSupwardOptions] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/");
-      return;
-    }
-    try {
+    if (token) {
       const decoded = jwtDecode(token);
       setUsername(decoded.username);
       setWardname(decoded.wardname);
-    } catch (err) {
-      console.error("Invalid token", err);
-      navigate("/");
     }
+  }, []);
 
-    const { shift, date } = getCurrentShiftAndDate();
-    setActiveShift(shift);
-    setSelectedDate(date);
-  }, [navigate]);
+  useEffect(() => {
+    const fetchSupwards = async () => {
+      if (!username) return;
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/supwards?username=${encodeURIComponent(
+            username
+          )}`
+        );
+        const data = await response.json();
+        setSupwardOptions(data.supwards || []);
+      } catch (err) {
+        console.error("Failed to fetch supward options", err);
+      }
+    };
+    fetchSupwards();
+  }, [username]);
 
-  // ✅ จุดที่ 1: set default supward → ให้ไปยัง /lrpage ถ้า username เป็น lr
   useEffect(() => {
     if (!username) return;
-
-    const lowerUser = username.toLowerCase();
-
-    if (usersWithSupward[lowerUser]) {
-      if (!supward) {
-        const defaultSupward = usersWithSupward[lowerUser][0];
-        setSupward(defaultSupward);
-        const path = lowerUser === "lr" ? "/lrpage" : "/main";
-        navigate(
-          `${path}?supward=${encodeURIComponent(
-            defaultSupward
-          )}&shift=${activeShift}&date=${selectedDate}`,
-          { replace: true }
-        );
+    if (!supward && supwardOptions.length > 0) {
+      const defaultSupward = supwardOptions[0];
+      setSupward(defaultSupward);
+  
+      let path = "/main";
+      if (username.toLowerCase() === "lr") {
+        if (defaultSupward === "ห้องคลอด") {
+          path = "/lrpage";
+        } else if (defaultSupward === "รอคลอด") {
+          path = "/main";
+        }
       }
-    } else {
-      if (supward !== "") {
-        setSupward("");
-        navigate(`/main?shift=${activeShift}&date=${selectedDate}`, {
-          replace: true,
-        });
-      }
+  
+      navigate(
+        `${path}?supward=${encodeURIComponent(
+          defaultSupward
+        )}&shift=${activeShift}&date=${selectedDate}`,
+        { replace: true }
+      );
     }
-  }, [username, supward, activeShift, selectedDate, navigate]);
-
-  const getCurrentShiftAndDate = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const getFormattedDate = (date) => date.toISOString().split("T")[0];
-
-    if (hour >= 8 && (hour < 16 || (hour === 16 && minute < 30))) {
-      return { shift: "morning", date: getFormattedDate(now) };
-    } else if ((hour === 16 && minute >= 30) || (hour >= 17 && hour < 24)) {
-      return { shift: "afternoon", date: getFormattedDate(now) };
-    } else {
-      const prev = new Date(now);
-      prev.setDate(now.getDate() - 1);
-      return { shift: "night", date: getFormattedDate(prev) };
-    }
-  };
+  }, [username, supward, supwardOptions, activeShift, selectedDate, navigate]);
+  
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths)) {
@@ -102,21 +83,17 @@ export default function HospitalLayout({ children }) {
   };
 
   const handleGeneralClick = () => {
-  const lowerUser = username?.trim().toLowerCase();
-  const path = lowerUser === "lr" ? "/lrpage" : "/main";
-
-  const queryParams = new URLSearchParams({
-    shift: activeShift,
-    date: selectedDate,
-  });
-
-  if (supward) {
-    queryParams.append("supward", supward);
-  }
-
-  navigate(`${path}?${queryParams.toString()}`);
-};
-
+    const lowerUser = username?.trim().toLowerCase();
+    const path = lowerUser === "lr" ? "/lrpage" : "/main";
+    const queryParams = new URLSearchParams({
+      shift: activeShift,
+      date: selectedDate,
+    });
+    if (supward) {
+      queryParams.append("supward", supward);
+    }
+    navigate(`${path}?${queryParams.toString()}`);
+  };
 
   return (
     <div className="hospital-container">
@@ -130,45 +107,43 @@ export default function HospitalLayout({ children }) {
 
         <div className="sidebar-section">
           <div className="sidebar-item" onClick={() => navigate("/dashboard")}>
-            <FiBarChart className="sidebar-icon" /> Dashboard
+            {" "}
+            <FiBarChart className="sidebar-icon" /> Dashboard{" "}
           </div>
-
           {username === "admin" && (
             <div className="sidebar-item" onClick={() => navigate("/settings")}>
-              <FiSettings className="sidebar-icon" /> Settings
+              {" "}
+              <FiSettings className="sidebar-icon" /> Settings{" "}
             </div>
           )}
         </div>
 
         <div className="sidebar-section-label">เวรการทำงาน</div>
         <div className="sidebar-section shift-section">
-          <div
-            className={`sidebar-item ${
-              activeShift === "morning" ? "active" : ""
-            }`}
-            onClick={() => setActiveShift("morning")}
-          >
-            <FiSun className="sidebar-icon" /> เวรเช้า
-          </div>
-          <div
-            className={`sidebar-item ${
-              activeShift === "afternoon" ? "active" : ""
-            }`}
-            onClick={() => setActiveShift("afternoon")}
-          >
-            <FiSunset className="sidebar-icon" /> เวรบ่าย
-          </div>
-          <div
-            className={`sidebar-item ${
-              activeShift === "night" ? "active" : ""
-            }`}
-            onClick={() => setActiveShift("night")}
-          >
-            <FiMoon className="sidebar-icon" /> เวรดึก
-          </div>
+        <div
+  className={`sidebar-item input-group ${activeShift === "morning" ? "highlighted" : ""}`}
+  onClick={() => setActiveShift("morning")}
+>
+  <FiSun className="sidebar-icon" /> เวรเช้า
+</div>
+
+<div
+  className={`sidebar-item input-group ${activeShift === "afternoon" ? "highlighted" : ""}`}
+  onClick={() => setActiveShift("afternoon")}
+>
+  <FiSunset className="sidebar-icon" /> เวรบ่าย
+</div>
+
+<div
+  className={`sidebar-item input-group ${activeShift === "night" ? "highlighted" : ""}`}
+  onClick={() => setActiveShift("night")}
+>
+  <FiMoon className="sidebar-icon" /> เวรดึก
+</div>
+
         </div>
 
-        {supwardOptions && (
+        {supwardOptions.length > 0 && (
           <div className="sidebar-section">
             <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
             <select
@@ -178,14 +153,22 @@ export default function HospitalLayout({ children }) {
               onChange={(e) => {
                 const newSupward = e.target.value;
                 setSupward(newSupward);
-                const currentPath = location.pathname; // 👈 ใช้ path ปัจจุบัน เช่น /dengue
-                if (newSupward) {
-                  navigate(
-                    `${currentPath}?supward=${encodeURIComponent(
-                      newSupward
-                    )}&shift=${activeShift}&date=${selectedDate}`
-                  );
+                let path = location.pathname;
+
+                // เช็ค username และ supward เพื่อตัดสินใจเปลี่ยน path
+                if (username.toLowerCase() === "lr") {
+                  if (newSupward === "ห้องคลอด") {
+                    path = "/lrpage";
+                  } else if (newSupward === "รอคลอด") {
+                    path = "/main";
+                  }
                 }
+
+                navigate(
+                  `${path}?supward=${encodeURIComponent(
+                    newSupward
+                  )}&shift=${activeShift}&date=${selectedDate}`
+                );
               }}
             >
               {supwardOptions.map((option) => (
@@ -220,6 +203,7 @@ export default function HospitalLayout({ children }) {
           >
             ทั่วไป
           </button>
+
           <button
             className={`nav-tab ${isActiveTab("/covid") ? "active" : ""}`}
             onClick={() => {

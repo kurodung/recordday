@@ -153,6 +153,9 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
   return (
     <div className="form-container" ref={formRef}>
       {/* ตัวอย่างเรียก renderInput */}
+      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
+        กลุ่ม: {supward || "-"}
+      </h2>
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">

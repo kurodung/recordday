@@ -17,6 +17,7 @@ app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
 app.use("/api/ward-report", wardReportRoutes);
 app.use("/api/covid-report", covidRoutes);
 app.use("/api/dengue-report", dengueRoutes);
+app.use("/api/supwards", require("./routes/supwards"));
 
 const db = require("./db");
 const toMysqlDate = (value) => {

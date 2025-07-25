@@ -13,6 +13,7 @@ export default function HospitalUI({
   const [searchParams] = useSearchParams();
   const supward = searchParams.get("supward");
 
+  // ดึงข้อมูลรายงานเดิม (ถ้ามี) ตามเงื่อนไข username, wardname, date, shift, supward
   useEffect(() => {
     const fetchExistingData = async () => {
       if (!username || !wardname || !selectedDate || !shift) return;
@@ -38,7 +39,7 @@ export default function HospitalUI({
         );
 
         if (res.status === 204) {
-          // ไม่ตั้งค่า bed_total = 50 ตรงนี้
+          // กรณีไม่มีข้อมูลเดิม กำหนดค่าพื้นฐาน (ไม่ตั้ง bed_total = 50)
           setFormData((prev) => ({
             ...prev,
             username,
@@ -72,30 +73,35 @@ export default function HospitalUI({
     fetchExistingData();
   }, [username, wardname, selectedDate, shift, supward]);
 
+  // ดึงจำนวนเตียงทั้งหมดจาก ward และ supward (ถ้ามี)
   useEffect(() => {
-    const fetchBedTotal = async () => {
-  if (!wardname) return;
-
-  const supwardQuery = supward ? `&supward=${supward}` : "";
-
-  try {
-    const response = await fetch(
-      `http://localhost:5000/api/ward-report/bed-total?wardname=${wardname}${supwardQuery}`
-    );
-    const data = await response.json();
-    setFormData((prev) => ({
-      ...prev,
-      bed_total: data.bed_total || 0,
-    }));
-  } catch (err) {
-    console.error("Error fetching bed total:", err);
-  }
-};
-
-
-    fetchBedTotal();
+    if (!wardname) return;
+  
+    const supwardQuery = supward ? `&supward=${encodeURIComponent(supward)}` : "";
+    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(wardname)}${supwardQuery}`;
+    console.log("Fetching bed total URL:", url);
+  
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        console.log("Received bed total:", data.bed_total);
+        setFormData((prev) => ({
+          ...prev,
+          bed_total: data.bed_total || 0,
+        }));
+      })
+      .catch((err) => {
+        console.error("Failed to fetch bed total:", err);
+      });
   }, [wardname, supward]);
+  
+  
+  
 
+  // เพิ่ม event listener สำหรับกดลูกศรซ้ายขวา เพื่อขยับโฟกัส input
   useEffect(() => {
     const handleArrowNavigation = (e) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -145,12 +151,13 @@ export default function HospitalUI({
         delete payload.supward;
       }
 
+      // ลบข้อมูลที่ไม่ต้องการส่ง
       delete payload.productivity;
       delete payload.type;
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/hospital/${formData.id}`
+        ? `http://localhost:5000/api/ward-report/${formData.id}`
         : "http://localhost:5000/api/ward-report";
 
       const response = await fetch(url, {
@@ -182,7 +189,7 @@ export default function HospitalUI({
     width = null,
     isReadOnly = false
   ) => (
-    <div className="input-group">
+    <div className="input-group" key={name}>
       <label className="input-label">{label}</label>
       <input
         type={type}
@@ -199,9 +206,7 @@ export default function HospitalUI({
 
   return (
     <div className="form-container" ref={formRef}>
-      <h2
-        style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}
-      >
+      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
         กลุ่ม: {supward || "-"}
       </h2>
       <div className="form-section">
