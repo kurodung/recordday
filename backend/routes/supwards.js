@@ -19,9 +19,12 @@ router.get("/", async (req, res) => {
       if (!user) return res.status(404).json({ message: "User not found" });
   
       const [rows] = await db.query(
-        "SELECT DISTINCT supward FROM wards WHERE wardname = ?",
+        `SELECT DISTINCT supward FROM wards 
+         WHERE wardname = ?
+         ORDER BY FIELD(supward, 'SNB', 'NICU')`,
         [user.wardname]
       );
+      
   
       const supwards = rows.map((row) => row.supward);
       res.json({ supwards });

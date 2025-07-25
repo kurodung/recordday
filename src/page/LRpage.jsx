@@ -68,7 +68,9 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
   useEffect(() => {
     if (!wardname) return;
 
-    const supwardQuery = supward ? `&supward=${encodeURIComponent(supward)}` : "";
+    const supwardQuery = supward
+      ? `&supward=${encodeURIComponent(supward)}`
+      : "";
     const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
       wardname
     )}${supwardQuery}`;
@@ -261,47 +263,69 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
           </div>
 
           <div className="flex-grid">
-          <div className="form-column">
-            <div className="section-header">เปลเสริม</div>
-            {renderInput("", "extra_crib")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">PAS</div>
-            {renderInput("", "pas")}
-          </div>
-         
-          <div className="form-column">
-            <div className="section-header">CPR</div>
-            {renderInput("", "cpr")}
-          </div>
-          <div className="form-column" style={{}}>
-            <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
-            {renderInput("", "infection", "number", "180px")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">GCS 2T</div>
-            {renderInput("", "gcs")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">Strokeในตึก</div>
-            {renderInput("", "stroke")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">จิตเวชในตึก</div>
-            {renderInput("", "psych")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">นักโทษในตึก</div>
-            {renderInput("", "prisoner")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">การดูแลรอบการผ่าตัด</div>
-            <div className="horizontal-inputs">
-              {renderInput("Pre OP:", "pre_op")}
-              {renderInput("Post OP:", "post_op")}
+            <div className="form-column">
+              <div className="section-header">เปลเสริม</div>
+              {renderInput("", "extra_crib")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">PAS</div>
+              {renderInput("", "pas")}
+            </div>
+
+            <div className="form-column">
+              <div className="section-header">CPR</div>
+              {renderInput("", "cpr")}
+            </div>
+
+            <div className="form-column">
+              <div className="section-header">เปลเสริม</div>
+              {renderInput("", "extra_crib")}
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="form-section">
+        <div className="flex-grid">
+
+          <div className="flex-grid">
+            <div className="form-column">
+              <div className="section-header">PAS</div>
+              {renderInput("", "pas")}
+            </div>
+
+            <div className="form-column">
+              <div className="section-header">CPR</div>
+              {renderInput("", "cpr")}
+            </div>
+            <div className="form-column" style={{}}>
+              <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
+              {renderInput("", "infection", "number", "180px")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">GCS 2T</div>
+              {renderInput("", "gcs")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">Strokeในตึก</div>
+              {renderInput("", "stroke")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">จิตเวชในตึก</div>
+              {renderInput("", "psych")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">นักโทษในตึก</div>
+              {renderInput("", "prisoner")}
+            </div>
+            <div className="form-column">
+              <div className="section-header">การดูแลรอบการผ่าตัด</div>
+              <div className="horizontal-inputs">
+                {renderInput("Pre OP:", "pre_op")}
+                {renderInput("Post OP:", "post_op")}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
