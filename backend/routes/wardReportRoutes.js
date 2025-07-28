@@ -10,14 +10,14 @@ const toMysqlDate = (value) => {
 };
 
 router.get("/", async (req, res) => {
-  const { date, shift, wardname, username, supward } = req.query;
+  const { date, shift, wardname, username, subward } = req.query;
 
   try {
-    const hasSupward = supward !== undefined && supward !== null && supward !== "";
+    const hassubward = subward !== undefined && subward !== null && subward !== "";
 
-    const sqlCondition = hasSupward
-      ? "supward = ?"
-      : "(supward IS NULL OR supward = '')";
+    const sqlCondition = hassubward
+      ? "subward = ?"
+      : "(subward IS NULL OR subward = '')";
 
     const sql = `
       SELECT * FROM ward_reports 
@@ -26,8 +26,8 @@ router.get("/", async (req, res) => {
       LIMIT 1
     `;
 
-    const params = hasSupward
-      ? [date, shift, wardname, username, supward]
+    const params = hassubward
+      ? [date, shift, wardname, username, subward]
       : [date, shift, wardname, username];
 
     const [rows] = await db.query(sql, params);
@@ -68,14 +68,14 @@ router.put("/:id", async (req, res) => {
   try {
     if (data.date) data.date = toMysqlDate(data.date);
 
-    const hasSupward = data.supward !== undefined && data.supward !== null && data.supward !== "";
+    const hassubward = data.subward !== undefined && data.subward !== null && data.subward !== "";
 
     const fields = Object.keys(data).filter((key) => key !== "id");
     const values = fields.map((key) => data[key]);
 
-    const sqlCondition = hasSupward
-      ? "AND supward = ?"
-      : "AND (supward IS NULL OR supward = '')";
+    const sqlCondition = hassubward
+      ? "AND subward = ?"
+      : "AND (subward IS NULL OR subward = '')";
 
     const setClause = fields.map((field) => `${field} = ?`).join(", ");
     const sql = `
@@ -84,8 +84,8 @@ router.put("/:id", async (req, res) => {
       WHERE id = ? ${sqlCondition}
     `;
 
-    const params = hasSupward
-      ? [...values, id, data.supward]
+    const params = hassubward
+      ? [...values, id, data.subward]
       : [...values, id];
 
     await db.query(sql, params);
@@ -97,13 +97,13 @@ router.put("/:id", async (req, res) => {
 });
 
 router.get("/bed-total", async (req, res) => {
-  let { wardname, supward } = req.query;
+  let { wardname, subward } = req.query;
 
   if (!wardname) return res.status(400).json({ message: "wardname required" });
 
-  // แปลง supward: ถ้าเป็น undefined, null, หรือ empty string ให้เป็น null
-  if (!supward || supward.trim() === "") {
-    supward = null;
+  // แปลง subward: ถ้าเป็น undefined, null, หรือ empty string ให้เป็น null
+  if (!subward || subward.trim() === "") {
+    subward = null;
   }
 
   try {
@@ -111,11 +111,11 @@ router.get("/bed-total", async (req, res) => {
       `SELECT bed_total FROM wards
        WHERE wardname = ?
        AND (
-         (supward = ?)
-         OR (supward IS NULL AND ? IS NULL)
-         OR (supward = '' AND ? IS NULL)
+         (subward = ?)
+         OR (subward IS NULL AND ? IS NULL)
+         OR (subward = '' AND ? IS NULL)
        )`,
-      [wardname, supward, supward, supward]
+      [wardname, subward, subward, subward]
     );
 
     if (rows.length === 0) return res.status(404).json({ bed_total: 0 });

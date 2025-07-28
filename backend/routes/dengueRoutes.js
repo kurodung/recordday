@@ -8,16 +8,16 @@ function formatDateTime(date) {
 }
 
 router.get("/", async (req, res) => {
-  const { date, shift, wardname, username, supward } = req.query;
+  const { date, shift, wardname, username, subward } = req.query;
 
   try {
     const [rows] = await db.query(
       `SELECT * FROM dengue_reports 
        WHERE date = ? AND shift = ? AND wardname = ? AND username = ? 
-       AND ${supward ? "supward = ?" : "(supward IS NULL OR supward = '')"}
+       AND ${subward ? "subward = ?" : "(subward IS NULL OR subward = '')"}
        LIMIT 1`,
-      supward
-        ? [date, shift, wardname, username, supward]
+      subward
+        ? [date, shift, wardname, username, subward]
         : [date, shift, wardname, username]
     );
 

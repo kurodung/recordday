@@ -11,9 +11,9 @@ export default function HospitalUI({
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
-  const supward = searchParams.get("supward");
+  const subward = searchParams.get("subward");
 
-  // ดึงข้อมูลรายงานเดิม (ถ้ามี) ตามเงื่อนไข username, wardname, date, shift, supward
+  // ดึงข้อมูลรายงานเดิม (ถ้ามี) ตามเงื่อนไข username, wardname, date, shift, subward
   useEffect(() => {
     const fetchExistingData = async () => {
       if (!username || !wardname || !selectedDate || !shift) return;
@@ -27,8 +27,8 @@ export default function HospitalUI({
           username,
         });
 
-        if (supward) {
-          queryParams.append("supward", supward);
+        if (subward) {
+          queryParams.append("subward", subward);
         }
 
         const res = await fetch(
@@ -46,7 +46,7 @@ export default function HospitalUI({
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           }));
           return;
         }
@@ -60,7 +60,7 @@ export default function HospitalUI({
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           });
         } else {
           console.warn("โหลดข้อมูลล้มเหลว", res.status);
@@ -71,14 +71,14 @@ export default function HospitalUI({
     };
 
     fetchExistingData();
-  }, [username, wardname, selectedDate, shift, supward]);
+  }, [username, wardname, selectedDate, shift, subward]);
 
-  // ดึงจำนวนเตียงทั้งหมดจาก ward และ supward (ถ้ามี)
+  // ดึงจำนวนเตียงทั้งหมดจาก ward และ subward (ถ้ามี)
   useEffect(() => {
     if (!wardname) return;
   
-    const supwardQuery = supward ? `&supward=${encodeURIComponent(supward)}` : "";
-    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(wardname)}${supwardQuery}`;
+    const subwardQuery = subward ? `&subward=${encodeURIComponent(subward)}` : "";
+    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(wardname)}${subwardQuery}`;
     console.log("Fetching bed total URL:", url);
   
     fetch(url)
@@ -96,7 +96,7 @@ export default function HospitalUI({
       .catch((err) => {
         console.error("Failed to fetch bed total:", err);
       });
-  }, [wardname, supward]);
+  }, [wardname, subward]);
   
   
   
@@ -144,11 +144,11 @@ export default function HospitalUI({
             : formData.date,
       };
 
-      // ส่ง supward เฉพาะถ้ามี
-      if (supward) {
-        payload.supward = supward;
+      // ส่ง subward เฉพาะถ้ามี
+      if (subward) {
+        payload.subward = subward;
       } else {
-        delete payload.supward;
+        delete payload.subward;
       }
 
       // ลบข้อมูลที่ไม่ต้องการส่ง
@@ -207,7 +207,7 @@ export default function HospitalUI({
   return (
     <div className="form-container" ref={formRef}>
       <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
-        กลุ่ม: {supward || "-"}
+        กลุ่ม: {subward || "-"}
       </h2>
       <div className="form-section">
         <div className="flex-grid">

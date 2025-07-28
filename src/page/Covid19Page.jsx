@@ -6,7 +6,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
   const formRef = useRef(null);
   const [formData, setFormData] = useState({});
   const [searchParams] = useSearchParams();
-  const supward = searchParams.get("supward");
+  const subward = searchParams.get("subward");
 
   // โหลดข้อมูลเดิม
   useEffect(() => {
@@ -22,8 +22,8 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
           username,
         });
 
-        if (supward) {
-          queryParams.append("supward", supward);
+        if (subward) {
+          queryParams.append("subward", subward);
         }
 
         const res = await fetch(
@@ -39,7 +39,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           });
           return;
         }
@@ -52,7 +52,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           });
         } else {
           console.warn("โหลดข้อมูลล้มเหลว", res.status);
@@ -63,7 +63,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
     };
 
     fetchExistingData();
-  }, [username, wardname, selectedDate, shift, supward]);
+  }, [username, wardname, selectedDate, shift, subward]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,7 +81,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
             : formData.date,
       };
 
-      if (supward) payload.supward = supward;
+      if (subward) payload.subward = subward;
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
@@ -154,7 +154,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
     <div className="form-container" ref={formRef}>
       {/* ตัวอย่างเรียก renderInput */}
       <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
-        กลุ่ม: {supward || "-"}
+        กลุ่ม: {subward || "-"}
       </h2>
       <div className="form-section">
         <div className="flex-grid">

@@ -1,4 +1,4 @@
-// routes/supwards.js
+// routes/subwards.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
@@ -19,18 +19,18 @@ router.get("/", async (req, res) => {
       if (!user) return res.status(404).json({ message: "User not found" });
   
       const [rows] = await db.query(
-        `SELECT DISTINCT supward FROM wards 
+        `SELECT DISTINCT subward FROM wards 
          WHERE wardname = ?
-         ORDER BY FIELD(supward, 'SNB', 'NICU')`,
+         ORDER BY FIELD(subward, 'SNB', 'NICU')`,
         [user.wardname]
       );
       
   
-      const supwards = rows.map((row) => row.supward);
-      res.json({ supwards });
+      const subwards = rows.map((row) => row.subward);
+      res.json({ subwards });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ message: "Error fetching supwards" });
+      res.status(500).json({ message: "Error fetching subwards" });
     }
   });
   

@@ -20,8 +20,8 @@ export default function HospitalLayout({ children }) {
   );
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
-  const [supward, setSupward] = useState("");
-  const [supwardOptions, setSupwardOptions] = useState([]);
+  const [subward, setsubward] = useState("");
+  const [subwardOptions, setsubwardOptions] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -33,46 +33,46 @@ export default function HospitalLayout({ children }) {
   }, []);
 
   useEffect(() => {
-    const fetchSupwards = async () => {
+    const fetchsubwards = async () => {
       if (!username) return;
       try {
         const response = await fetch(
-          `http://localhost:5000/api/supwards?username=${encodeURIComponent(
+          `http://localhost:5000/api/subwards?username=${encodeURIComponent(
             username
           )}`
         );
         const data = await response.json();
-        setSupwardOptions(data.supwards || []);
+        setsubwardOptions(data.subwards || []);
       } catch (err) {
-        console.error("Failed to fetch supward options", err);
+        console.error("Failed to fetch subward options", err);
       }
     };
-    fetchSupwards();
+    fetchsubwards();
   }, [username]);
 
   useEffect(() => {
     if (!username) return;
-    if (!supward && supwardOptions.length > 0) {
-      const defaultSupward = supwardOptions[0];
-      setSupward(defaultSupward);
+    if (!subward && subwardOptions.length > 0) {
+      const defaultsubward = subwardOptions[0];
+      setsubward(defaultsubward);
   
       let path = "/main";
       if (username.toLowerCase() === "lr") {
-        if (defaultSupward === "ห้องคลอด") {
+        if (defaultsubward === "ห้องคลอด") {
           path = "/lrpage";
-        } else if (defaultSupward === "รอคลอด") {
+        } else if (defaultsubward === "รอคลอด") {
           path = "/main";
         }
       }
   
       navigate(
-        `${path}?supward=${encodeURIComponent(
-          defaultSupward
+        `${path}?subward=${encodeURIComponent(
+          defaultsubward
         )}&shift=${activeShift}&date=${selectedDate}`,
         { replace: true }
       );
     }
-  }, [username, supward, supwardOptions, activeShift, selectedDate, navigate]);
+  }, [username, subward, subwardOptions, activeShift, selectedDate, navigate]);
   
 
   const isActiveTab = (paths) => {
@@ -89,8 +89,8 @@ export default function HospitalLayout({ children }) {
       shift: activeShift,
       date: selectedDate,
     });
-    if (supward) {
-      queryParams.append("supward", supward);
+    if (subward) {
+      queryParams.append("subward", subward);
     }
     navigate(`${path}?${queryParams.toString()}`);
   };
@@ -143,35 +143,35 @@ export default function HospitalLayout({ children }) {
 
         </div>
 
-        {supwardOptions.length > 0 && (
+        {subwardOptions.length > 0 && (
           <div className="sidebar-section">
             <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
             <select
               className="sidebar-item"
               style={{ backgroundColor: "#7e3cbd" }}
-              value={supward}
+              value={subward}
               onChange={(e) => {
-                const newSupward = e.target.value;
-                setSupward(newSupward);
+                const newsubward = e.target.value;
+                setsubward(newsubward);
                 let path = location.pathname;
 
-                // เช็ค username และ supward เพื่อตัดสินใจเปลี่ยน path
+                // เช็ค username และ subward เพื่อตัดสินใจเปลี่ยน path
                 if (username.toLowerCase() === "lr") {
-                  if (newSupward === "ห้องคลอด") {
+                  if (newsubward === "ห้องคลอด") {
                     path = "/lrpage";
-                  } else if (newSupward === "รอคลอด") {
+                  } else if (newsubward === "รอคลอด") {
                     path = "/main";
                   }
                 }
 
                 navigate(
-                  `${path}?supward=${encodeURIComponent(
-                    newSupward
+                  `${path}?subward=${encodeURIComponent(
+                    newsubward
                   )}&shift=${activeShift}&date=${selectedDate}`
                 );
               }}
             >
-              {supwardOptions.map((option) => (
+              {subwardOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -207,10 +207,10 @@ export default function HospitalLayout({ children }) {
           <button
             className={`nav-tab ${isActiveTab("/covid") ? "active" : ""}`}
             onClick={() => {
-              if (supward) {
+              if (subward) {
                 navigate(
-                  `/covid?supward=${encodeURIComponent(
-                    supward
+                  `/covid?subward=${encodeURIComponent(
+                    subward
                   )}&shift=${activeShift}&date=${selectedDate}`
                 );
               } else {
@@ -224,10 +224,10 @@ export default function HospitalLayout({ children }) {
           <button
             className={`nav-tab ${isActiveTab("/dengue") ? "active" : ""}`}
             onClick={() => {
-              if (supward) {
+              if (subward) {
                 navigate(
-                  `/dengue?supward=${encodeURIComponent(
-                    supward
+                  `/dengue?subward=${encodeURIComponent(
+                    subward
                   )}&shift=${activeShift}&date=${selectedDate}`
                 );
               } else {
@@ -252,7 +252,7 @@ export default function HospitalLayout({ children }) {
           ? React.cloneElement(children, {
               username,
               wardname,
-              supward,
+              subward,
               selectedDate,
               shift: activeShift,
             })

@@ -6,7 +6,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
-  const supward = searchParams.get("supward");
+  const subward = searchParams.get("subward");
 
   // ดึงข้อมูลเดิมจาก API
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
           wardname,
           username,
         });
-        if (supward) queryParams.append("supward", supward);
+        if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
           `http://localhost:5000/api/ward-report?${queryParams.toString()}`,
@@ -37,7 +37,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           }));
           return;
         }
@@ -51,7 +51,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             wardname,
             date: selectedDate,
             shift,
-            ...(supward && { supward }),
+            ...(subward && { subward }),
           });
         } else {
           console.warn("โหลดข้อมูลล้มเหลว", res.status);
@@ -62,18 +62,18 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
     };
 
     fetchExistingData();
-  }, [username, wardname, selectedDate, shift, supward]);
+  }, [username, wardname, selectedDate, shift, subward]);
 
   // ดึง bed_total จาก API
   useEffect(() => {
     if (!wardname) return;
 
-    const supwardQuery = supward
-      ? `&supward=${encodeURIComponent(supward)}`
+    const subwardQuery = subward
+      ? `&subward=${encodeURIComponent(subward)}`
       : "";
     const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
       wardname
-    )}${supwardQuery}`;
+    )}${subwardQuery}`;
     console.log("Fetching bed total URL:", url);
 
     fetch(url)
@@ -91,7 +91,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
       .catch((err) => {
         console.error("Failed to fetch bed total:", err);
       });
-  }, [wardname, supward]);
+  }, [wardname, subward]);
 
   // event listener เลื่อนโฟกัส input ซ้ายขวา
   useEffect(() => {
@@ -138,10 +138,10 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             : formData.date,
       };
 
-      if (supward) {
-        payload.supward = supward;
+      if (subward) {
+        payload.subward = subward;
       } else {
-        delete payload.supward;
+        delete payload.subward;
       }
 
       // ลบข้อมูลไม่ต้องการส่ง
@@ -203,7 +203,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
       <h2
         style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}
       >
-        กลุ่ม: {supward || "-"}
+        กลุ่ม: {subward || "-"}
       </h2>
 
       <div className="form-section">

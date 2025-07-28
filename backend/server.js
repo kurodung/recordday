@@ -17,7 +17,7 @@ app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
 app.use("/api/ward-report", wardReportRoutes);
 app.use("/api/covid-report", covidRoutes);
 app.use("/api/dengue-report", dengueRoutes);
-app.use("/api/supwards", require("./routes/supwards"));
+app.use("/api/subwards", require("./routes/subwards"));
 
 const db = require("./db");
 const toMysqlDate = (value) => {
@@ -41,11 +41,11 @@ app.put("/api/hospital/:id", async (req, res) => {
     const sql = `
       UPDATE ward_reports 
       SET ${setClause} 
-      WHERE id = ? ${data.supward ? "AND supward = ?" : "AND (supward IS NULL OR supward = '')"}
+      WHERE id = ? ${data.subward ? "AND subward = ?" : "AND (subward IS NULL OR subward = '')"}
     `;
 
-    const params = data.supward
-      ? [...values, id, data.supward]
+    const params = data.subward
+      ? [...values, id, data.subward]
       : [...values, id];
     await db.query(sql, params);
 
