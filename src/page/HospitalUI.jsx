@@ -13,6 +13,8 @@ export default function HospitalUI({
   const [searchParams] = useSearchParams();
   const subward = searchParams.get("subward");
 
+  const [bedTotal, setBedTotal] = useState(null);
+
   // ดึงข้อมูลรายงานเดิม (ถ้ามี) ตามเงื่อนไข username, wardname, date, shift, subward
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -39,21 +41,32 @@ export default function HospitalUI({
         );
 
         if (res.status === 204) {
-          // กรณีไม่มีข้อมูลเดิม กำหนดค่าพื้นฐาน (ไม่ตั้ง bed_total = 50)
-          setFormData((prev) => ({
-            ...prev,
+          setFormData({
             username,
             wardname,
             date: selectedDate,
             shift,
             ...(subward && { subward }),
-          }));
+          });
           return;
         }
 
         if (res.ok) {
           const text = await res.text();
           const data = text ? JSON.parse(text) : {};
+
+          // ตรวจสอบ shift ว่าตรงกับที่ request หรือไม่
+          if (data.shift !== shift) {
+            setFormData({
+              username,
+              wardname,
+              date: selectedDate,
+              shift,
+              ...(subward && { subward }),
+            });
+            return;
+          }
+
           setFormData({
             ...data,
             username,
@@ -76,11 +89,15 @@ export default function HospitalUI({
   // ดึงจำนวนเตียงทั้งหมดจาก ward และ subward (ถ้ามี)
   useEffect(() => {
     if (!wardname) return;
-  
-    const subwardQuery = subward ? `&subward=${encodeURIComponent(subward)}` : "";
-    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(wardname)}${subwardQuery}`;
+
+    const subwardQuery = subward
+      ? `&subward=${encodeURIComponent(subward)}`
+      : "";
+    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
+      wardname
+    )}${subwardQuery}`;
     console.log("Fetching bed total URL:", url);
-  
+
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -88,18 +105,13 @@ export default function HospitalUI({
       })
       .then((data) => {
         console.log("Received bed total:", data.bed_total);
-        setFormData((prev) => ({
-          ...prev,
-          bed_total: data.bed_total || 0,
-        }));
+        setBedTotal(data.bed_total || 0);
       })
       .catch((err) => {
         console.error("Failed to fetch bed total:", err);
+        setBedTotal(null);
       });
   }, [wardname, subward]);
-  
-  
-  
 
   // เพิ่ม event listener สำหรับกดลูกศรซ้ายขวา เพื่อขยับโฟกัส input
   useEffect(() => {
@@ -206,7 +218,9 @@ export default function HospitalUI({
 
   return (
     <div className="form-container" ref={formRef}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
+      <h2
+        style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}
+      >
         กลุ่ม: {subward || "-"}
       </h2>
       <div className="form-section">
@@ -214,7 +228,13 @@ export default function HospitalUI({
           <div className="form-column">
             <div className="section-label">ข้อมูลเตียง</div>
             <div className="input-group highlighted">
-              {renderInput("จำนวนเตียง:", "bed_total", "number", "", true)}
+              <label className="input-label">จำนวนเตียง:</label>
+  <input
+    type="number"
+    value={bedTotal !== null ? bedTotal : ""}
+    className="input-field"
+    readOnly
+  />
             </div>
           </div>
           <div className="form-column">
@@ -322,6 +342,7 @@ export default function HospitalUI({
               {renderInput("NA:", "na")}
               {renderInput("พนักงาน:", "other_staff")}
               {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
+              {renderInput("RN ปรับลด:", "rn_down")}
               <div className="input-group highlighted">
                 {renderInput(
                   "productivity:",
@@ -336,7 +357,7 @@ export default function HospitalUI({
           <div className="form-column">
             <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
             <div className="horizontal-inputs">
-              {renderInput("", "incident", "text", 250)}
+              {renderInput("", "incident", "text", 200)}
             </div>
           </div>
           <div className="form-column">

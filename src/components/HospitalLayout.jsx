@@ -23,6 +23,7 @@ export default function HospitalLayout({ children }) {
   const [subward, setsubward] = useState("");
   const [subwardOptions, setsubwardOptions] = useState([]);
 
+  // อ่านข้อมูล user จาก token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -32,6 +33,7 @@ export default function HospitalLayout({ children }) {
     }
   }, []);
 
+  // ดึงข้อมูล subward options
   useEffect(() => {
     const fetchsubwards = async () => {
       if (!username) return;
@@ -50,30 +52,39 @@ export default function HospitalLayout({ children }) {
     fetchsubwards();
   }, [username]);
 
+  // กำหนดค่า default subward เมื่อยังไม่มี
   useEffect(() => {
     if (!username) return;
     if (!subward && subwardOptions.length > 0) {
-      const defaultsubward = subwardOptions[0];
-      setsubward(defaultsubward);
-  
-      let path = "/main";
-      if (username.toLowerCase() === "lr") {
-        if (defaultsubward === "ห้องคลอด") {
-          path = "/lrpage";
-        } else if (defaultsubward === "รอคลอด") {
-          path = "/main";
-        }
-      }
-  
-      navigate(
-        `${path}?subward=${encodeURIComponent(
-          defaultsubward
-        )}&shift=${activeShift}&date=${selectedDate}`,
-        { replace: true }
-      );
+      setsubward(subwardOptions[0]);
     }
-  }, [username, subward, subwardOptions, activeShift, selectedDate, navigate]);
-  
+  }, [username, subward, subwardOptions]);
+
+  // ทำ navigate ทุกครั้งที่ activeShift, selectedDate หรือ subward เปลี่ยน
+  useEffect(() => {
+    if (!username) return;
+
+    let path = location.pathname;
+
+    if (username.toLowerCase() === "lr") {
+      if (subward === "ห้องคลอด") {
+        path = "/lrpage";
+      } else if (subward === "รอคลอด") {
+        path = "/main";
+      }
+    }
+
+    const queryParams = new URLSearchParams({
+      shift: activeShift,
+      date: selectedDate,
+    });
+
+    if (subward) {
+      queryParams.append("subward", subward);
+    }
+
+    navigate(`${path}?${queryParams.toString()}`, { replace: true });
+  }, [activeShift, selectedDate, subward, username, navigate, location.pathname]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths)) {
@@ -107,40 +118,43 @@ export default function HospitalLayout({ children }) {
 
         <div className="sidebar-section">
           <div className="sidebar-item" onClick={() => navigate("/dashboard")}>
-            {" "}
-            <FiBarChart className="sidebar-icon" /> Dashboard{" "}
+            <FiBarChart className="sidebar-icon" /> Dashboard
           </div>
           {username === "admin" && (
             <div className="sidebar-item" onClick={() => navigate("/settings")}>
-              {" "}
-              <FiSettings className="sidebar-icon" /> Settings{" "}
+              <FiSettings className="sidebar-icon" /> Settings
             </div>
           )}
         </div>
 
         <div className="sidebar-section-label">เวรการทำงาน</div>
         <div className="sidebar-section shift-section">
-        <div
-  className={`sidebar-item input-group ${activeShift === "morning" ? "highlighted" : ""}`}
-  onClick={() => setActiveShift("morning")}
->
-  <FiSun className="sidebar-icon" /> เวรเช้า
-</div>
+          <div
+            className={`sidebar-item input-group ${
+              activeShift === "morning" ? "highlighted" : ""
+            }`}
+            onClick={() => setActiveShift("morning")}
+          >
+            <FiSun className="sidebar-icon" /> เวรเช้า
+          </div>
 
-<div
-  className={`sidebar-item input-group ${activeShift === "afternoon" ? "highlighted" : ""}`}
-  onClick={() => setActiveShift("afternoon")}
->
-  <FiSunset className="sidebar-icon" /> เวรบ่าย
-</div>
+          <div
+            className={`sidebar-item input-group ${
+              activeShift === "afternoon" ? "highlighted" : ""
+            }`}
+            onClick={() => setActiveShift("afternoon")}
+          >
+            <FiSunset className="sidebar-icon" /> เวรบ่าย
+          </div>
 
-<div
-  className={`sidebar-item input-group ${activeShift === "night" ? "highlighted" : ""}`}
-  onClick={() => setActiveShift("night")}
->
-  <FiMoon className="sidebar-icon" /> เวรดึก
-</div>
-
+          <div
+            className={`sidebar-item input-group ${
+              activeShift === "night" ? "highlighted" : ""
+            }`}
+            onClick={() => setActiveShift("night")}
+          >
+            <FiMoon className="sidebar-icon" /> เวรดึก
+          </div>
         </div>
 
         {subwardOptions.length > 0 && (
@@ -150,26 +164,7 @@ export default function HospitalLayout({ children }) {
               className="sidebar-item"
               style={{ backgroundColor: "#7e3cbd" }}
               value={subward}
-              onChange={(e) => {
-                const newsubward = e.target.value;
-                setsubward(newsubward);
-                let path = location.pathname;
-
-                // เช็ค username และ subward เพื่อตัดสินใจเปลี่ยน path
-                if (username.toLowerCase() === "lr") {
-                  if (newsubward === "ห้องคลอด") {
-                    path = "/lrpage";
-                  } else if (newsubward === "รอคลอด") {
-                    path = "/main";
-                  }
-                }
-
-                navigate(
-                  `${path}?subward=${encodeURIComponent(
-                    newsubward
-                  )}&shift=${activeShift}&date=${selectedDate}`
-                );
-              }}
+              onChange={(e) => setsubward(e.target.value)}
             >
               {subwardOptions.map((option) => (
                 <option key={option} value={option}>

@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT * FROM covid_report 
+      `SELECT * FROM covid_reports 
        WHERE date = ? AND shift = ? AND wardname = ? AND username = ? 
        AND ${subward ? "subward = ?" : "(subward IS NULL OR subward = '')"}
        LIMIT 1`,
@@ -44,7 +44,7 @@ router.post("/", async (req, res) => {
     const values = Object.values(data);
 
     await db.query(
-      `INSERT INTO covid_report (${fields}) VALUES (${placeholders})`,
+      `INSERT INTO covid_reports (${fields}) VALUES (${placeholders})`,
       values
     );
 
@@ -74,7 +74,7 @@ router.put('/:id', async (req, res) => {
     const values = keys.map((key) => body[key]);
 
     const setClause = keys.map((key) => `${key} = ?`).join(', ');
-    const sql = `UPDATE covid_report SET ${setClause} WHERE id = ?`;
+    const sql = `UPDATE covid_reports SET ${setClause} WHERE id = ?`;
     values.push(id);
 
     const [result] = await db.execute(sql, values);
