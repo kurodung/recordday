@@ -412,6 +412,71 @@ body {
   cursor: default;
 }
 
+.dashboard-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: auto;
+  font-family: sans-serif;
+}
+
+.dashboard-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.summary-cards {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background-color: #f4f6f8;
+  padding: 20px;
+  border-radius: 10px;
+  width: 30%;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 16px;
+  color: #555;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.filter-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 30px;
+  justify-content: space-between;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+}
+
+.filter-item label {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.filter-item select,
+.filter-item input {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+
 .section-title {
   font-size: 16px;
   font-weight: 600;

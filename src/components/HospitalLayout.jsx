@@ -84,7 +84,14 @@ export default function HospitalLayout({ children }) {
     }
 
     navigate(`${path}?${queryParams.toString()}`, { replace: true });
-  }, [activeShift, selectedDate, subward, username, navigate, location.pathname]);
+  }, [
+    activeShift,
+    selectedDate,
+    subward,
+    username,
+    navigate,
+    location.pathname,
+  ]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths)) {
@@ -157,7 +164,8 @@ export default function HospitalLayout({ children }) {
           </div>
         </div>
 
-        {subwardOptions.length > 0 && (
+        {subwardOptions.length > 1 ||
+        (subwardOptions.length === 1 && subwardOptions[0]) ? (
           <div className="sidebar-section">
             <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
             <select
@@ -173,7 +181,7 @@ export default function HospitalLayout({ children }) {
               ))}
             </select>
           </div>
-        )}
+        ) : null}
 
         <div className="logout-container" style={{ marginTop: "auto" }}>
           <button

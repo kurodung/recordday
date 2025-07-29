@@ -6,6 +6,7 @@ import Covid19Page from "./page/Covid19Page";
 import DenguePage from "./page/DenguePage";
 import LoginPage from "./page/Login";
 import LRpage from "./page/LRpage";
+import Dashboard from "./page/Dashboard";
 import HospitalLayout from "./components/HospitalLayout";
 
 const App = () => {
@@ -42,6 +43,14 @@ const App = () => {
           element={
             <HospitalLayout>
               <LRpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <HospitalLayout>
+              <Dashboard />
             </HospitalLayout>
           }
         />
