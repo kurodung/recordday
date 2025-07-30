@@ -1,0 +1,430 @@
+/* Dashboard.module.css - CamelCase Hospital Dashboard Styles */
+
+/* Dashboard Container */
+.dashboardContainer {
+  padding: 24px;
+  background-color: #f8f0ff;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header Section */
+.dashboardHeader {
+  background: linear-gradient(135deg, #7e3cbd 0%, #a855f7 100%);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  color: white;
+  box-shadow: 0 8px 32px rgba(126, 60, 189, 0.3);
+}
+
+.dashboardHeaderContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboardTitle {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.dashboardSubtitle {
+  font-size: 16px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.dashboardDate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboardDateText {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Summary Cards Grid */
+.summaryCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.summaryCard {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(126, 60, 189, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.summaryCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.summaryCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.summaryCardIcon {
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.summaryCardIcon.blue {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.summaryCardIcon.green {
+  background-color: #ecfdf5;
+  color: #10b981;
+}
+
+.summaryCardIcon.yellow {
+  background-color: #fffbeb;
+  color: #f59e0b;
+}
+
+.summaryCardIcon.red {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
+.summaryCardLabel {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.summaryCardValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Filter Section */
+.filterSection {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(126, 60, 189, 0.1);
+}
+
+.filterHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filterTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  margin-left: 8px;
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  align-items: end;
+}
+
+.filterItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.filterLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.filterInput,
+.filterSelect {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  outline: none;
+  background-color: white;
+  color: #111827;
+}
+
+.filterInput:focus,
+.filterSelect:focus {
+  border-color: #7e3cbd;
+}
+
+.filterSelect:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.clearFiltersBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #7e3cbd;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(126, 60, 189, 0.3);
+}
+
+.clearFiltersBtn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(126, 60, 189, 0.4);
+}
+
+/* Charts Section */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.chartContainer {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(126, 60, 189, 0.1);
+}
+
+.chartTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chartTitleSmall {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.fullWidthChart {
+  grid-column: 1 / -1;
+}
+
+/* Loading State */
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  gap: 8px;
+}
+
+.loadingText {
+  color: #7e3cbd;
+}
+
+.loadingSpinner {
+  color: #7e3cbd;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.errorContainer {
+  color: #dc2626;
+  text-align: center;
+  padding: 20px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartTitleSmall {
+    text-align: left;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboardContainer {
+    padding: 16px;
+  }
+
+  .dashboardHeader {
+    padding: 20px;
+  }
+
+  .dashboardHeaderContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .dashboardTitle {
+    font-size: 24px;
+  }
+
+  .summaryCardsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .summaryCard {
+    padding: 20px;
+  }
+
+  .summaryCardValue {
+    font-size: 28px;
+  }
+
+  .filterSection {
+    padding: 20px;
+  }
+
+  .filterGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .chartContainer {
+    padding: 20px;
+  }
+
+  .chartTitle {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboardContainer {
+    padding: 12px;
+  }
+
+  .dashboardHeader {
+    padding: 16px;
+  }
+
+  .dashboardTitle {
+    font-size: 20px;
+  }
+
+  .dashboardSubtitle {
+    font-size: 14px;
+  }
+
+  .summaryCardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCardValue {
+    font-size: 24px;
+  }
+
+  .filterSection {
+    padding: 16px;
+  }
+
+  .chartContainer {
+    padding: 16px;
+  }
+}
+
+/* Custom Scrollbar */
+.dashboardContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboardContainer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.dashboardContainer::-webkit-scrollbar-thumb {
+  background: #7e3cbd;
+  border-radius: 4px;
+}
+
+.dashboardContainer::-webkit-scrollbar-thumb:hover {
+  background: #6d28d9;
+}
+
+/* Animation Classes */
+.fadeIn {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

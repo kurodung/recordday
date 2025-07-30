@@ -38,8 +38,8 @@ const Login = () => {
         <div className={styles.loginLeft}>{/* ภาพพื้นหลัง */}</div>
         <div className={styles.loginRight}>
           <div className={styles.loginHeader}>
-            <h2>We are <strong>Login</strong></h2>
-            <p>Welcome back! Log in to your account.</p>
+            <h2>ระบบรายงานประจำวัน</h2>
+            <p>โรงพยาบาลมหาราชนครศรีธรรมราช</p>
           </div>
           <form onSubmit={handleSubmit}>
             <div className={styles.inputGroup}>

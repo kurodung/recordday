@@ -62,16 +62,19 @@ export default function HospitalLayout({ children }) {
 
   // ทำ navigate ทุกครั้งที่ activeShift, selectedDate หรือ subward เปลี่ยน
   useEffect(() => {
-    if (!username) return;
+  if (!username) return;
 
+  // ป้องกันไม่ให้เปลี่ยน path ถ้าอยู่ในหน้าอื่นที่ไม่ใช่ main หรือ lrpage
+  const allowedPaths = ["/main", "/lrpage"];
+  const isAllowedPath = allowedPaths.includes(location.pathname);
+
+  if (username.toLowerCase() === "lr" && isAllowedPath) {
     let path = location.pathname;
 
-    if (username.toLowerCase() === "lr") {
-      if (subward === "ห้องคลอด") {
-        path = "/lrpage";
-      } else if (subward === "รอคลอด") {
-        path = "/main";
-      }
+    if (subward === "ห้องคลอด") {
+      path = "/lrpage";
+    } else if (subward === "รอคลอด") {
+      path = "/main";
     }
 
     const queryParams = new URLSearchParams({
@@ -84,14 +87,10 @@ export default function HospitalLayout({ children }) {
     }
 
     navigate(`${path}?${queryParams.toString()}`, { replace: true });
-  }, [
-    activeShift,
-    selectedDate,
-    subward,
-    username,
-    navigate,
-    location.pathname,
-  ]);
+  }
+
+}, [activeShift, selectedDate, subward, username, navigate, location.pathname]);
+
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths)) {
@@ -124,9 +123,6 @@ export default function HospitalLayout({ children }) {
         </div>
 
         <div className="sidebar-section">
-          <div className="sidebar-item" onClick={() => navigate("/dashboard")}>
-            <FiBarChart className="sidebar-icon" /> Dashboard
-          </div>
           {username === "admin" && (
             <div className="sidebar-item" onClick={() => navigate("/settings")}>
               <FiSettings className="sidebar-icon" /> Settings
@@ -239,6 +235,15 @@ export default function HospitalLayout({ children }) {
             }}
           >
             ไข้เลือดออก
+          </button>
+
+          <button
+            className={`nav-tab ${isActiveTab("/dashboard") ? "active" : ""}`}
+            style={{ display: "flex", alignItems: "center" }}
+            onClick={() => navigate("/dashboard")}
+          >
+            <FiBarChart className="sidebar-icon" />
+            Dashboard
           </button>
 
           <div className="date-selector">

@@ -412,18 +412,6 @@ body {
   cursor: default;
 }
 
-.dashboard-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: auto;
-  font-family: sans-serif;
-}
-
-.dashboard-title {
-  font-size: 24px;
-  margin-bottom: 20px;
-  text-align: center;
-}
 
 .summary-cards {
   display: flex;

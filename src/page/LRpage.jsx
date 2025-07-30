@@ -205,7 +205,6 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
       >
         กลุ่ม: {subward || "-"}
       </h2>
-
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
@@ -261,25 +260,48 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
               {renderInput("ให้ออกซิเจน:", "oxygen")}
             </div>
           </div>
+          <div className="form-column">
+            <div className="section-header">เปลเสริม</div>
+            {renderInput("", "extra_bed")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">PAS</div>
+            {renderInput("", "pas")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">CPR</div>
+            {renderInput("", "cpr")}
+          </div>
+        </div>
+      </div>
 
-          <div className="flex-grid">
-            <div className="form-column">
-              <div className="section-header">เปลเสริม</div>
-              {renderInput("", "extra_crib")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">PAS</div>
-              {renderInput("", "pas")}
-            </div>
-
-            <div className="form-column">
-              <div className="section-header">CPR</div>
-              {renderInput("", "cpr")}
-            </div>
-
-            <div className="form-column">
-              <div className="section-header">เปลเสริม</div>
-              {renderInput("", "extra_crib")}
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column" style={{}}>
+            <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
+            {renderInput("", "infection", "number", "180px")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">GCS 2T</div>
+            {renderInput("", "gcs")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">Strokeในตึก</div>
+            {renderInput("", "stroke")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">จิตเวชในตึก</div>
+            {renderInput("", "psych")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">นักโทษในตึก</div>
+            {renderInput("", "prisoner")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">การดูแลรอบการผ่าตัด</div>
+            <div className="horizontal-inputs">
+              {renderInput("Pre OP:", "pre_op")}
+              {renderInput("Post OP:", "post_op")}
             </div>
           </div>
         </div>
@@ -287,51 +309,42 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
 
       <div className="form-section">
         <div className="flex-grid">
-
-          <div className="flex-grid">
-            <div className="form-column">
-              <div className="section-header">PAS</div>
-              {renderInput("", "pas")}
-            </div>
-
-            <div className="form-column">
-              <div className="section-header">CPR</div>
-              {renderInput("", "cpr")}
-            </div>
-            <div className="form-column" style={{}}>
-              <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
-              {renderInput("", "infection", "number", "180px")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">GCS 2T</div>
-              {renderInput("", "gcs")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">Strokeในตึก</div>
-              {renderInput("", "stroke")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">จิตเวชในตึก</div>
-              {renderInput("", "psych")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">นักโทษในตึก</div>
-              {renderInput("", "prisoner")}
-            </div>
-            <div className="form-column">
-              <div className="section-header">การดูแลรอบการผ่าตัด</div>
-              <div className="horizontal-inputs">
-                {renderInput("Pre OP:", "pre_op")}
-                {renderInput("Post OP:", "post_op")}
+          <div className="form-column">
+            <div className="section-header">อัตรากำลังทั้งหมด</div>
+            <div className="horizontal-inputs">
+              {renderInput("RN:", "rn")}
+              {renderInput("PN:", "pn")}
+              {renderInput("NA:", "na")}
+              {renderInput("พนักงาน:", "other_staff")}
+              {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
+              {renderInput("RN ปรับลด:", "rn_down")}
+              <div className="input-group highlighted">
+                {renderInput(
+                  "productivity:",
+                  "productivity",
+                  "number",
+                  "100px",
+                  true
+                )}
               </div>
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
+            <div className="horizontal-inputs">
+              {renderInput("", "incident", "text", 200)}
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header" style={{ color: "green" }}>
+              พยาบาลหัวหน้าเวร
+            </div>
+            <div className="horizontal-inputs">
+              {renderInput("", "head_nurse", "text", 150)}
             </div>
           </div>
         </div>
       </div>
-
-      {/* --- เพิ่ม input ส่วนอื่น ๆ ตามต้องการ --- */}
-      {/* ตัวอย่างเดียวกับ HospitalUI */}
-      {/* ... */}
 
       <div className="button-container">
         <button type="button" className="save-button" onClick={handleSubmit}>

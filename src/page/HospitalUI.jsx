@@ -229,12 +229,12 @@ export default function HospitalUI({
             <div className="section-label">ข้อมูลเตียง</div>
             <div className="input-group highlighted">
               <label className="input-label">จำนวนเตียง:</label>
-  <input
-    type="number"
-    value={bedTotal !== null ? bedTotal : ""}
-    className="input-field"
-    readOnly
-  />
+              <input
+                type="number"
+                value={bedTotal !== null ? bedTotal : ""}
+                className="input-field"
+                readOnly
+              />
             </div>
           </div>
           <div className="form-column">
@@ -294,6 +294,10 @@ export default function HospitalUI({
 
       <div className="form-section">
         <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">เปลเสริม</div>
+            {renderInput("", "extra_bed")}
+          </div>
           <div className="form-column">
             <div className="section-header">PAS</div>
             {renderInput("", "pas")}
