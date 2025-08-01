@@ -166,6 +166,7 @@ export default function HospitalUI({
       // ลบข้อมูลที่ไม่ต้องการส่ง
       delete payload.productivity;
       delete payload.type;
+      delete payload.bed_remain;
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
@@ -260,7 +261,7 @@ export default function HospitalUI({
           </div>
           <div className="form-column">
             <div className="section-label">คงพยาบาล</div>
-            {renderInput("", "bed_remain")}
+            {renderInput("", "bed_remain", "number", null, true)}
           </div>
         </div>
       </div>

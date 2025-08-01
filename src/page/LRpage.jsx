@@ -24,7 +24,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `http://localhost:5000/api/ward-report?${queryParams.toString()}`,
+          `http://localhost:5000/api/lr-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -137,6 +137,13 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             ? formData.date.toISOString().split("T")[0]
             : formData.date,
       };
+      
+      if (subward) {
+        payload.subward = subward;
+      } else {
+        delete payload.subward;
+      }
+      
 
       if (subward) {
         payload.subward = subward;
@@ -147,11 +154,12 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
       // ลบข้อมูลไม่ต้องการส่ง
       delete payload.productivity;
       delete payload.type;
+      delete payload.bed_remain;
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/ward-report/${formData.id}`
-        : "http://localhost:5000/api/ward-report";
+        ? `http://localhost:5000/api/lr-report/${formData.id}`
+        : "http://localhost:5000/api/lr-report";
 
       const response = await fetch(url, {
         method,
@@ -236,7 +244,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
           </div>
           <div className="form-column">
             <div className="section-label">คงพยาบาล</div>
-            {renderInput("", "bed_remain")}
+            {renderInput("", "bed_remain", "number", null, true)}
           </div>
         </div>
       </div>

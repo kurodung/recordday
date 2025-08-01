@@ -12,6 +12,7 @@ const wardReportRoutes = require("./routes/wardReportRoutes");
 const covidRoutes = require("./routes/covidRoutes");
 const dengueRoutes = require("./routes/dengueRoutes");
 const dashboardRoute = require("./routes/dashboard");
+const lrReportRoutes = require("./routes/lrReportRoutes");
 
 // Register Routes
 app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
@@ -20,6 +21,7 @@ app.use("/api/covid-report", covidRoutes);
 app.use("/api/dengue-report", dengueRoutes);
 app.use("/api/subwards", require("./routes/subwards"));
 app.use("/api/dashboard", dashboardRoute);
+app.use("/api/lr-report", lrReportRoutes);
 
 const db = require("./db");
 const toMysqlDate = (value) => {
