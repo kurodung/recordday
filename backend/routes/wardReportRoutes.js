@@ -13,7 +13,8 @@ router.get("/", async (req, res) => {
   const { date, shift, wardname, username, subward } = req.query;
 
   try {
-    const hassubward = subward !== undefined && subward !== null && subward !== "";
+    const hassubward =
+      subward !== undefined && subward !== null && subward !== "";
 
     const sqlCondition = hassubward
       ? "subward = ?"
@@ -39,7 +40,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-
 router.post("/", async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token" });
@@ -48,7 +48,9 @@ router.post("/", async (req, res) => {
     jwt.verify(token, process.env.JWT_SECRET);
     const data = req.body;
     const fields = Object.keys(data).join(",");
-    const placeholders = Object.keys(data).map(() => "?").join(",");
+    const placeholders = Object.keys(data)
+      .map(() => "?")
+      .join(",");
     const values = Object.values(data);
 
     await db.query(
@@ -68,7 +70,10 @@ router.put("/:id", async (req, res) => {
   try {
     if (data.date) data.date = toMysqlDate(data.date);
 
-    const hassubward = data.subward !== undefined && data.subward !== null && data.subward !== "";
+    const hassubward =
+      data.subward !== undefined &&
+      data.subward !== null &&
+      data.subward !== "";
 
     const fields = Object.keys(data).filter((key) => key !== "id");
     const values = fields.map((key) => data[key]);
@@ -84,9 +89,7 @@ router.put("/:id", async (req, res) => {
       WHERE id = ? ${sqlCondition}
     `;
 
-    const params = hassubward
-      ? [...values, id, data.subward]
-      : [...values, id];
+    const params = hassubward ? [...values, id, data.subward] : [...values, id];
 
     await db.query(sql, params);
 
@@ -101,34 +104,27 @@ router.get("/bed-total", async (req, res) => {
 
   if (!wardname) return res.status(400).json({ message: "wardname required" });
 
-  // แปลง subward: ถ้าเป็น undefined, null, หรือ empty string ให้เป็น null
+  // Normalize subward: ถ้าเป็น undefined, null, หรือ empty string ให้เป็น null
   if (!subward || subward.trim() === "") {
     subward = null;
   }
 
   try {
-    const [rows] = await db.query(
-      `SELECT bed_total FROM wards
-       WHERE wardname = ?
-       AND (
-         (subward = ?)
-         OR (subward IS NULL AND ? IS NULL)
-         OR (subward = '' AND ? IS NULL)
-       )`,
-      [wardname, subward, subward, subward]
-    );
+    let sql = `SELECT bed_total FROM wards WHERE wardname = ? AND subward ${subward ? "= ?" : "IS NULL"} LIMIT 1`;
+    let params = subward ? [wardname, subward] : [wardname];
 
-    if (rows.length === 0) return res.status(404).json({ bed_total: 0 });
+    const [rows] = await db.query(sql, params);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ bed_total: 0 });
+    }
+
     res.json({ bed_total: rows[0].bed_total });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching bed total" });
   }
 });
-
-
-
-
 
 
 module.exports = router;

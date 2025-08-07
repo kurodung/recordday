@@ -13,17 +13,20 @@ const covidRoutes = require("./routes/covidRoutes");
 const dengueRoutes = require("./routes/dengueRoutes");
 const dashboardRoute = require("./routes/dashboard");
 const lrReportRoutes = require("./routes/lrReportRoutes");
+const subwardsRoute = require("./routes/subwards");
 
 // Register Routes
 app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
 app.use("/api/ward-report", wardReportRoutes);
 app.use("/api/covid-report", covidRoutes);
 app.use("/api/dengue-report", dengueRoutes);
-app.use("/api/subwards", require("./routes/subwards"));
+app.use("/api/subwards", subwardsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/lr-report", lrReportRoutes);
 
+// Database
 const db = require("./db");
+
 const toMysqlDate = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -51,6 +54,7 @@ app.put("/api/hospital/:id", async (req, res) => {
     const params = data.subward
       ? [...values, id, data.subward]
       : [...values, id];
+
     await db.query(sql, params);
 
     res.status(200).json({ message: "อัปเดตข้อมูลสำเร็จ" });
@@ -60,5 +64,10 @@ app.put("/api/hospital/:id", async (req, res) => {
   }
 });
 
+// ✅ ควรใช้ port 5000 (ไม่ใช่ 3306 ซึ่งเป็นของ MySQL)
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
+console.log("Mounting wardReportRoutes at /api/ward-report");
+app.use("/api/ward-report", wardReportRoutes);
+
