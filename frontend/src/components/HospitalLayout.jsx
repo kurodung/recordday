@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+
 import {
   FiSun,
   FiSunset,
@@ -26,10 +27,27 @@ export default function HospitalLayout({ children }) {
   // อ่านข้อมูล user จาก token
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
+
+    if (!token || token.split(".").length !== 3) {
+      navigate("/");
+      return;
+    }
+
+    try {
       const decoded = jwtDecode(token);
-      setUsername(decoded.username);
-      setWardname(decoded.wardname);
+
+      // ✅ Logging ภายใน scope ที่ประกาศไว้
+
+      if (decoded?.username) {
+        setUsername(decoded.username);
+        setWardname(decoded.wardname);
+      } else {
+        throw new Error("Username not found in token");
+      }
+    } catch (error) {
+      console.error("Invalid token:", error);
+      localStorage.removeItem("token");
+      navigate("/");
     }
   }, []);
 
@@ -61,36 +79,26 @@ export default function HospitalLayout({ children }) {
 
   // ทำ navigate ทุกครั้งที่ activeShift, selectedDate หรือ subward เปลี่ยน
   useEffect(() => {
-    if (!username) return;
+    if (!username || !subward) return; // ⛔ รอให้โหลดค่าครบก่อน
 
     const allowedPaths = ["/main", "/lrpage"];
     const isAllowedPath = allowedPaths.includes(location.pathname);
-
     if (!isAllowedPath) return;
 
     let path = location.pathname;
-
     const lowerUser = username.toLowerCase();
 
     if (lowerUser === "lr") {
-      if (subward === "ห้องคลอด") {
-        path = "/lrpage";
-      } else if (subward === "รอคลอด") {
-        path = "/main";
-      }
+      path = subward === "ห้องคลอด" ? "/lrpage" : "/main";
     } else {
-      // สำหรับ user ทั่วไป บังคับให้ใช้ /main
       path = "/main";
     }
 
     const queryParams = new URLSearchParams({
       shift: activeShift,
       date: selectedDate,
+      subward,
     });
-
-    if (subward) {
-      queryParams.append("subward", subward);
-    }
 
     navigate(`${path}?${queryParams.toString()}`, { replace: true });
   }, [
