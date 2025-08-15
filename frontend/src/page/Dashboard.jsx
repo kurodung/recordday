@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -14,7 +15,6 @@ import {
   Cell,
 } from "recharts";
 import {
-  Calendar,
   Filter,
   Users,
   Activity,
@@ -25,7 +25,43 @@ import {
 } from "lucide-react";
 import styles from "../styles/Dashboard.module.css";
 
+// คืนค่าเป็นวันตาม local time เช่น "2025-08-15" (แก้ปัญหาเลือก -1 วัน)
+const dateKey = (v) => {
+  const dt = new Date(v);
+  if (Number.isNaN(dt)) return "";
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(0, 10);
+};
+
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
+  const qpDate = searchParams.get("date") || "";
+  const qpShift = searchParams.get("shift") || "";
+
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // ฟิลเตอร์มี shift เพิ่มเข้ามา
+  const [filters, setFilters] = useState({
+    date: "",
+    shift: "",
+    ward: "",
+    subward: "",
+    month: "",
+    year: "",
+  });
+
+  // sync ค่าเริ่มจาก URL (?date=...&shift=...)
+  useEffect(() => {
+    setFilters((f) => ({
+      ...f,
+      date: qpDate || f.date,
+      shift: qpShift || f.shift,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qpDate, qpShift]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -44,27 +80,20 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [filters, setFilters] = useState({
-    date: "",
-    ward: "",
-    subward: "",
-    month: "",
-    year: "",
-  });
-
+  // ตัวเลือกในแผงฟิลเตอร์
   const filterOptions = useMemo(() => {
     const uniqueWards = [...new Set(data.map((d) => d.wardname))].sort();
+
+    // ปีจากคีย์วันแบบ local (ป้องกัน timezone เหลื่อม)
     const uniqueYears = [
       ...new Set(
         data
-          .map((d) => new Date(d.date).getFullYear())
-          .filter((year) => !isNaN(year))
+          .map((d) => dateKey(d.date))
+          .filter(Boolean)
+          .map((s) => Number(s.slice(0, 4)))
       ),
     ].sort((a, b) => b - a);
+
     const uniqueSubwards = filters.ward
       ? [
           ...new Set(
@@ -74,35 +103,42 @@ export default function Dashboard() {
           ),
         ].sort()
       : [];
+
     return { wards: uniqueWards, years: uniqueYears, subwards: uniqueSubwards };
   }, [data, filters.ward]);
 
+  // เปลี่ยน ward แล้วเคลียร์ subward
   useEffect(() => {
     setFilters((f) => ({ ...f, subward: "" }));
   }, [filters.ward]);
 
+  // กรองข้อมูลตาม date/shift/ward/subward/month/year
   const filteredData = useMemo(() => {
     return data.filter((d) => {
-      const itemDateStr = String(d.date || "");
-      const itemDate = new Date(itemDateStr);
-      const matchesDate = !filters.date || itemDateStr.startsWith(filters.date);
+      const key = dateKey(d.date); // "YYYY-MM-DD" ตามเวลาท้องถิ่น
+      const matchesDate = !filters.date || key === filters.date;
+
+      const yearNum = key ? Number(key.slice(0, 4)) : NaN;
+      const monthNum = key ? Number(key.slice(5, 7)) : NaN;
+
       const matchesWard = !filters.ward || d.wardname === filters.ward;
       const matchesSubward = !filters.subward || d.subward === filters.subward;
-      const matchesMonth =
-        !filters.month ||
-        itemDate.getMonth() + 1 === parseInt(filters.month, 10);
-      const matchesYear =
-        !filters.year || itemDate.getFullYear() === parseInt(filters.year, 10);
+      const matchesMonth = !filters.month || monthNum === Number(filters.month);
+      const matchesYear = !filters.year || yearNum === Number(filters.year);
+      const matchesShift = !filters.shift || d.shift === filters.shift;
+
       return (
         matchesDate &&
         matchesWard &&
         matchesSubward &&
         matchesMonth &&
-        matchesYear
+        matchesYear &&
+        matchesShift
       );
     });
   }, [data, filters]);
 
+  // สรุปสถิติ
   const summaryStats = useMemo(() => {
     const totalAdmissions = filteredData.reduce(
       (sum, row) => sum + (row.bed_new || 0),
@@ -128,6 +164,7 @@ export default function Dashboard() {
     };
   }, [filteredData]);
 
+  // พายชาร์ตกระจายตาม ward
   const wardDistribution = useMemo(() => {
     const wardCounts = {};
     filteredData.forEach((d) => {
@@ -142,7 +179,14 @@ export default function Dashboard() {
   };
 
   const clearFilters = () => {
-    setFilters({ date: "", ward: "", subward: "", month: "", year: "" });
+    setFilters({
+      date: "",
+      shift: "",
+      ward: "",
+      subward: "",
+      month: "",
+      year: "",
+    });
   };
 
   const COLORS = [
@@ -232,6 +276,17 @@ export default function Dashboard() {
               label: "เลือกวันที่",
               type: "date",
               value: filters.date,
+            },
+            {
+              name: "shift",
+              label: "เลือกเวร",
+              type: "select",
+              value: filters.shift,
+              options: [
+                { value: "morning", label: "เวรเช้า" },
+                { value: "afternoon", label: "เวรบ่าย" },
+                { value: "night", label: "เวรดึก" },
+              ],
             },
             {
               name: "year",
@@ -414,7 +469,6 @@ export default function Dashboard() {
             />
             <YAxis />
             <Tooltip formatter={(value, name) => [value, name]} />
-
             <Legend />
             <Bar
               dataKey="bed_new"
