@@ -27,7 +27,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
         }
 
         const res = await fetch(
-          `http:/localhost:5000/api/covid-report?${queryParams.toString()}`,
+          `http://localhost:5000/api/covid-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

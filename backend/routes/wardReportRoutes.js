@@ -102,29 +102,41 @@ router.put("/:id", async (req, res) => {
 router.get("/bed-total", async (req, res) => {
   let { wardname, subward } = req.query;
 
-  if (!wardname) return res.status(400).json({ message: "wardname required" });
-
-  // Normalize subward: ถ้าเป็น undefined, null, หรือ empty string ให้เป็น null
-  if (!subward || subward.trim() === "") {
-    subward = null;
+  if (!wardname) {
+    return res.status(400).json({ message: "wardname required" });
   }
+
+  // admin ไม่ใช่ ward จริง → คืน 0 เงียบ ๆ
+  if (wardname.trim().toLowerCase() === "admin") {
+    return res.json({ bed_total: 0 });
+  }
+
+  const hasSub = typeof subward === "string" && subward.trim() !== "";
+  const cleanSub = hasSub ? subward.trim() : null;
 
   try {
-    let sql = `SELECT bed_total FROM wards WHERE wardname = ? AND subward ${subward ? "= ?" : "IS NULL"} LIMIT 1`;
-    let params = subward ? [wardname, subward] : [wardname];
+    // รองรับทั้ง NULL และ '' ในคอลัมน์ subward
+    const sql = `
+      SELECT bed_total
+      FROM wards
+      WHERE wardname = ?
+        AND (
+          (? IS NULL AND (subward IS NULL OR subward = ''))
+          OR subward = ?
+        )
+      LIMIT 1
+    `;
+    const params = [wardname, cleanSub, cleanSub];
 
     const [rows] = await db.query(sql, params);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ bed_total: 0 });
-    }
-
-    res.json({ bed_total: rows[0].bed_total });
+    return res.json({ bed_total: rows?.[0]?.bed_total ?? 0 }); // ✅ 200 เสมอ
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error fetching bed total" });
+    return res.status(500).json({ message: "Error fetching bed total" });
   }
 });
+
+
 
 
 module.exports = router;

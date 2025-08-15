@@ -74,7 +74,6 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
     const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
       wardname
     )}${subwardQuery}`;
-    console.log("Fetching bed total URL:", url);
 
     fetch(url)
       .then((res) => {
@@ -82,7 +81,6 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
         return res.json();
       })
       .then((data) => {
-        console.log("Received bed total:", data.bed_total);
         setFormData((prev) => ({
           ...prev,
           bed_total: data.bed_total || 0,

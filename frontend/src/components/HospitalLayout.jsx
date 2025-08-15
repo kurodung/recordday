@@ -78,37 +78,26 @@ export default function HospitalLayout({ children }) {
   }, [subwardOptions, subward]);
 
   // ทำ navigate ทุกครั้งที่ activeShift, selectedDate หรือ subward เปลี่ยน
-  useEffect(() => {
-    if (!username || !subward) return; // ⛔ รอให้โหลดค่าครบก่อน
+// อัปเดต query ของหน้า "ปัจจุบัน" ทุกครั้งที่ shift/date/subward เปลี่ยน
+useEffect(() => {
+  if (!username) return;
 
-    const allowedPaths = ["/main", "/lrpage"];
-    const isAllowedPath = allowedPaths.includes(location.pathname);
-    if (!isAllowedPath) return;
+  const params = new URLSearchParams(location.search);
+  params.set("shift", activeShift);
+  params.set("date", selectedDate);
 
-    let path = location.pathname;
-    const lowerUser = username.toLowerCase();
+  // เพิ่ม subward เฉพาะเมื่อมีค่า; ถ้าไม่มีให้ลบออกเพื่อรองรับ ward ที่ไม่มี subward
+  if (subward) {
+    params.set("subward", subward);
+  } else {
+    params.delete("subward");
+  }
 
-    if (lowerUser === "lr") {
-      path = subward === "ห้องคลอด" ? "/lrpage" : "/main";
-    } else {
-      path = "/main";
-    }
+  // อัปเดตเฉพาะ query บน path เดิม (ไม่บังคับย้ายหน้า)
+  navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+}, [activeShift, selectedDate, subward, username, location.pathname, location.search, navigate]);
 
-    const queryParams = new URLSearchParams({
-      shift: activeShift,
-      date: selectedDate,
-      subward,
-    });
 
-    navigate(`${path}?${queryParams.toString()}`, { replace: true });
-  }, [
-    activeShift,
-    selectedDate,
-    subward,
-    username,
-    navigate,
-    location.pathname,
-  ]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths)) {
