@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* ----- ให้ root เต็มจอเสมอ ----- */
+html, body, #root {
+  height: 100%;
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0;
+}
+
+/* ----- ตัวแปร/ฟอนต์เท่านั้น ห้ามจัดเลย์เอาต์ที่ :root ----- */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -12,33 +21,26 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
+/* ----- body ไม่ต้อง flex ให้หน้าล็อกอินจัดกลางเอง ----- */
+body {
+  display: block;
+  min-width: 0;
+  min-height: 100dvh;
+  margin: 0;
+  background: transparent; /* ให้พื้นหลังของ .loginPage โชว์เต็มขอบจอ */
+}
+
+/* ลิงก์/ปุ่มเดิมคงไว้ได้ */
 a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
 }
-a:hover {
-  color: #535bf2;
-}
+a:hover { color: #535bf2; }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: auto;
-  min-height: auto;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+h1 { font-size: 3.2em; line-height: 1.1; }
 
 button {
   border-radius: 8px;
@@ -51,23 +53,12 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
+button:hover { border-color: #646cff; }
 button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
 
+/* โหมดไลท์: ไม่ต้องใส่พื้นหลังชมพูที่ :root เพื่อเลี่ยงขอบขาว/ชมพู */
 @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #f8f0ff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  :root { color: #213547; }
+  button { background-color: #f9f9f9; }
 }

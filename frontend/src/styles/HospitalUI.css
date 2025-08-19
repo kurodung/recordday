@@ -515,63 +515,111 @@ body {
   }
 }
 
-@media (max-width: 768px) {
-  .hospital-container {
-    flex-direction: column;
-  }
+/* ===== Drawer มือถือ + ปุ่มแฮมเบอร์เกอร์ + แท็บเลื่อน ===== */
 
-  .sidebar {
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    padding: 8px;
-    align-items: center;
-  }
-
-  .sidebar-header {
-    padding: 8px;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .profile-avatar {
-    height: 40px;
-    width: 40px;
-    margin-right: 8px;
-  }
-
-  .username {
-    margin-top: 0;
-  }
-
-  .sidebar-menu {
-    flex-direction: row;
-    margin-top: 0;
-    margin-left: 16px;
-    flex-grow: 0;
-  }
-
-  .sidebar-button {
-    margin-bottom: 0;
-    margin-right: 8px;
-    padding: 8px 12px;
-  }
-
-  .logout-container {
-    margin-left: auto;
-    margin-bottom: 0;
-  }
-
-  .logout-button {
-    padding: 8px;
-  }
-
-  .main-content {
-    width: 100%;
-  }
-
-  .nav-tab {
-    padding: 12px 16px;
-    font-size: 14px;
-  }
+/* ปุ่มไอคอน (เปิดเมนู/ปิดเมนู) */
+.icon-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.1);
+  background: #fff;
+  color: #333;
+  cursor: pointer;
 }
+
+/* ให้ top-nav จัดตรงกลางสวยขึ้น และรองรับคอนเทนต์ 3 ส่วน: [ปุ่มเมนู] [แท็บเลื่อน] [วันที่] */
+.top-nav {
+  align-items: center;
+  gap: 8px;
+}
+
+/* คอนเทนเนอร์แท็บแบบเลื่อนได้แนวนอน */
+.tabs-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 8px;
+  scrollbar-width: thin;
+}
+.tabs-scroll::-webkit-scrollbar { height: 6px; }
+.tabs-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 6px; }
+
+/* อินพุตวันที่ */
+.date-input {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.15);
+  background: #fff;
+  color: #333;
+  padding: 0 10px;
+}
+
+/* ---------- มือถือ (<= 768px): ทำ Sidebar เป็น Drawer ---------- */
+@media (max-width: 768px) {
+  /* Sidebar หลุดออกจาก flow เป็นลิ้นชักซ้าย */
+  .sidebar.mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(86vw, 320px);
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    z-index: 1000;
+  }
+  .sidebar.mobile.open {
+    transform: translateX(0);
+  }
+
+  /* ฉากดำคลุมทั้งจอ */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 999;
+  }
+
+  /* เนื้อหา main กว้างเต็มหน้าจอ */
+  .main-content { width: 100%; }
+
+  /* ปรับขนาดให้แตะง่าย */
+  .top-nav { padding: 8px; }
+  .nav-tab { height: 42px; padding: 0 12px; font-size: 14px; }
+  .date-input { height: 42px; }
+}
+
+/* หน้าจอเล็กมาก (<= 420px): แท็บชิดขึ้นนิด */
+@media (max-width: 420px) {
+  .tabs-scroll { gap: 6px; }
+  .date-input { width: 120px; }
+}
+
+
+/* บังคับให้ไอคอนปฏิทินของ Chrome/Edge แสดงเป็นสีม่วง */
+/* ใช้ไอคอนปฏิทินเป็นพื้นหลังของ input แทน และเผื่อที่ด้านขวา */
+.top-nav .date-input,
+.filter-item input[type="date"] {
+  color-scheme: light;             /* กันไอคอนขาวใน Dark Mode */
+  background-color: #fff;
+  color: #111;            /* เว้นที่ให้ไอคอน */
+  border-radius: 10px;
+
+  /* ไอคอนปฏิทิน (percent-encode, 1 บรรทัด) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e3cbd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 18px 18px;
+}
+
+/* ซ่อนไอคอน native แต่ยังคลิกพื้นที่เดิมเพื่อเปิดปฏิทินได้ */
+.top-nav .date-input::-webkit-calendar-picker-indicator,
+.filter-item input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+
+
+

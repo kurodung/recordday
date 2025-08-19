@@ -3,140 +3,233 @@ const router = express.Router();
 const db = require("../db");
 const jwt = require("jsonwebtoken");
 
-const toMysqlDate = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return date.toISOString().split("T")[0];
+/* ----------------------- helpers ----------------------- */
+const toMysqlDate = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d)) return null;
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+};
+const toInt = (v) => (v === "" || v == null ? 0 : Number(v) || 0);
+const isNonEmpty = (v) => typeof v === "string" && v.trim() !== "";
+
+/** คืน { clause, params } สำหรับ WHERE subward */
+const subwardCond = (subward) =>
+  isNonEmpty(subward)
+    ? { clause: "subward = ?", params: [subward.trim()] }
+    : { clause: "(subward IS NULL OR subward = '')", params: [] };
+
+/** map payload ด้วย whitelist และกัน bed_remain (generated) */
+const ALLOWED_INT = new Set([
+  "bed_carry", "bed_new", "bed_transfer_in",
+  "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
+  "type1", "type2", "type3", "type4", "type5",
+  "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
+  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner",
+  "pre_op", "post_op",
+  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down",
+]);
+const ALLOWED_TEXT = new Set(["incident", "head_nurse"]);
+
+const buildRecord = (body) => {
+  const b = body || {};
+  const rec = {
+    username: String(b.username || ""),
+    wardname: String(b.wardname || ""),
+    date: toMysqlDate(b.date),
+    shift: String(b.shift || ""),
+    subward: isNonEmpty(b.subward) ? String(b.subward).trim() : null,
+  };
+  for (const [k, v] of Object.entries(b)) {
+    if (ALLOWED_INT.has(k)) rec[k] = toInt(v);
+    else if (ALLOWED_TEXT.has(k)) rec[k] = v ?? null;
+  }
+  delete rec.bed_remain; // generated column
+  return rec;
 };
 
+const requireCore = (rec) =>
+  !!(rec.username && rec.wardname && rec.date && rec.shift);
+
+/** จัดการ error DB ให้สถานะ/ข้อความสม่ำเสมอ */
+const respondDbError = (res, err) => {
+  console.error("DB error:", {
+    code: err.code, errno: err.errno, sqlState: err.sqlState,
+    sqlMessage: err.sqlMessage, message: err.message,
+  });
+  if (err.code === "ER_NON_DEFAULT_VALUE_FOR_GENERATED_COLUMN") {
+    return res.status(400).json({ message: "bed_remain เป็น generated column ห้ามกำหนดค่า" });
+  }
+  if (err.code === "ER_BAD_FIELD_ERROR") {
+    return res.status(400).json({ message: "Unknown column in payload" });
+  }
+  if (err.code === "ER_BAD_NULL_ERROR") {
+    return res.status(400).json({ message: "Null not allowed for some field" });
+  }
+  if (err.code === "ER_NO_DEFAULT_FOR_FIELD") {
+    return res.status(400).json({ message: "Required DB field missing (no default)" });
+  }
+  if (err.code === "ER_DUP_ENTRY") {
+    return res.status(409).json({ message: "Duplicate entry (unique key)" });
+  }
+  return res.status(500).json({ message: "Database error" });
+};
+
+/* ------------------- auth middleware ------------------- */
+const requireBearer = (req, res, next) => {
+  const auth = req.headers.authorization || "";
+  if (!auth.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token" });
+  }
+  try {
+    jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+    return next();
+  } catch (e) {
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+/* ===================== Routes ===================== */
+
+/** GET /api/ward-report
+ *  ดึงรายงานของวัน/เวร/วอร์ด/ผู้ใช้ (+subward) */
 router.get("/", async (req, res) => {
   const { date, shift, wardname, username, subward } = req.query;
+  if (!date || !shift || !wardname || !username) {
+    return res.status(400).json({
+      message: "missing required query params",
+      got: { date, shift, wardname, username, subward },
+    });
+  }
+
+  const sw = subwardCond(subward);
+  const sql = `
+    SELECT * FROM ward_reports
+    WHERE date = ? AND shift = ? AND wardname = ? AND username = ?
+      AND ${sw.clause}
+    LIMIT 1
+  `;
+  const params = [date, shift, wardname, username, ...sw.params];
 
   try {
-    const hassubward =
-      subward !== undefined && subward !== null && subward !== "";
-
-    const sqlCondition = hassubward
-      ? "subward = ?"
-      : "(subward IS NULL OR subward = '')";
-
-    const sql = `
-      SELECT * FROM ward_reports 
-      WHERE date = ? AND shift = ? AND wardname = ? AND username = ?
-      AND ${sqlCondition}
-      LIMIT 1
-    `;
-
-    const params = hassubward
-      ? [date, shift, wardname, username, subward]
-      : [date, shift, wardname, username];
-
     const [rows] = await db.query(sql, params);
-
-    if (rows.length > 0) res.json(rows[0]);
-    else res.status(204).send();
+    if (!rows || rows.length === 0) return res.status(204).send();
+    return res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ message: "Database error" });
+    return respondDbError(res, err);
   }
 });
 
-router.post("/", async (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "No token" });
-
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    const data = req.body;
-    const fields = Object.keys(data).join(",");
-    const placeholders = Object.keys(data)
-      .map(() => "?")
-      .join(",");
-    const values = Object.values(data);
-
-    await db.query(
-      `INSERT INTO ward_reports (${fields}) VALUES (${placeholders})`,
-      values
-    );
-    res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
-  } catch (err) {
-    res.status(500).json({ message: "Database or token error" });
-  }
-});
-
-router.put("/:id", async (req, res) => {
-  const { id } = req.params;
-  const data = req.body;
-
-  try {
-    if (data.date) data.date = toMysqlDate(data.date);
-
-    const hassubward =
-      data.subward !== undefined &&
-      data.subward !== null &&
-      data.subward !== "";
-
-    const fields = Object.keys(data).filter((key) => key !== "id");
-    const values = fields.map((key) => data[key]);
-
-    const sqlCondition = hassubward
-      ? "AND subward = ?"
-      : "AND (subward IS NULL OR subward = '')";
-
-    const setClause = fields.map((field) => `${field} = ?`).join(", ");
-    const sql = `
-      UPDATE ward_reports 
-      SET ${setClause} 
-      WHERE id = ? ${sqlCondition}
-    `;
-
-    const params = hassubward ? [...values, id, data.subward] : [...values, id];
-
-    await db.query(sql, params);
-
-    res.status(200).json({ message: "อัปเดตข้อมูลสำเร็จ" });
-  } catch (err) {
-    res.status(500).json({ message: "Database update failed" });
-  }
-});
-
+/** GET /api/ward-report/bed-total
+ *  ดึงจำนวนเตียงจากตาราง wards; ไม่เจอคืน 0 (200) */
 router.get("/bed-total", async (req, res) => {
-  let { wardname, subward } = req.query;
+  const wardname = req.query.wardname;
+  const subward = req.query.subward;
 
-  if (!wardname) {
+  if (!isNonEmpty(wardname)) {
     return res.status(400).json({ message: "wardname required" });
   }
 
-  // admin ไม่ใช่ ward จริง → คืน 0 เงียบ ๆ
-  if (wardname.trim().toLowerCase() === "admin") {
-    return res.json({ bed_total: 0 });
-  }
-
-  const hasSub = typeof subward === "string" && subward.trim() !== "";
-  const cleanSub = hasSub ? subward.trim() : null;
-
   try {
-    // รองรับทั้ง NULL และ '' ในคอลัมน์ subward
-    const sql = `
-      SELECT bed_total
-      FROM wards
-      WHERE wardname = ?
-        AND (
-          (? IS NULL AND (subward IS NULL OR subward = ''))
-          OR subward = ?
-        )
-      LIMIT 1
-    `;
-    const params = [wardname, cleanSub, cleanSub];
+    // 1) ลองหาแบบตรงตัวก่อน (มี subward ก็ใช้ subward)
+    const sw = subwardCond(subward);
+    const [rows] = await db.query(
+      `SELECT bed_total FROM wards WHERE wardname = ? AND ${sw.clause} LIMIT 1`,
+      [wardname, ...sw.params]
+    );
 
-    const [rows] = await db.query(sql, params);
-    return res.json({ bed_total: rows?.[0]?.bed_total ?? 0 }); // ✅ 200 เสมอ
+    // 2) ไม่พบและมี subward → ลองระดับ ward (subward IS NULL)
+    if ((!rows || rows.length === 0) && isNonEmpty(subward)) {
+      const [rows2] = await db.query(
+        `SELECT bed_total FROM wards WHERE wardname = ? AND subward IS NULL LIMIT 1`,
+        [wardname]
+      );
+      if (rows2 && rows2.length) {
+        return res.json({ bed_total: Number(rows2[0].bed_total) || 0 });
+      }
+      return res.json({ bed_total: 0 });
+    }
+
+    // 3) พบหรือไม่พบตั้งแต่รอบแรก
+    if (!rows || rows.length === 0) return res.json({ bed_total: 0 });
+    return res.json({ bed_total: Number(rows[0].bed_total) || 0 });
   } catch (err) {
-    console.error(err);
+    console.error("GET /ward-report/bed-total error:", err);
     return res.status(500).json({ message: "Error fetching bed total" });
   }
 });
 
+/** POST /api/ward-report
+ *  บันทึกรายงาน (upsert ด้วย UNIQUE KEY ถ้าตั้งไว้) */
+router.post("/", requireBearer, async (req, res) => {
+  try {
+    const record = buildRecord(req.body);
+    if (!requireCore(record)) {
+      return res.status(400).json({ message: "username, wardname, date, shift are required" });
+    }
 
+    const cols = Object.keys(record);
+    const placeholders = cols.map(() => "?").join(",");
+    const values = cols.map((c) => record[c]);
+    const updates = cols
+      .filter((c) => !["username", "wardname", "date", "shift", "subward"].includes(c))
+      .map((c) => `${c}=VALUES(${c})`)
+      .join(", ");
 
+    const sql = `
+      INSERT INTO ward_reports (${cols.join(",")})
+      VALUES (${placeholders})
+      ${updates ? `ON DUPLICATE KEY UPDATE ${updates}` : ""}
+    `;
+    await db.query(sql, values);
+
+    return res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
+  } catch (err) {
+    return respondDbError(res, err);
+  }
+});
+
+/** PUT /api/ward-report/:id
+ *  อัปเดตรายงานตาม id (ไม่อนุญาต bed_remain) */
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "id required" });
+
+    const b = req.body || {};
+    const allowed = {};
+
+    // core (optional)
+    if (b.date !== undefined) allowed.date = toMysqlDate(b.date);
+    if (b.shift !== undefined) allowed.shift = String(b.shift);
+    if (b.wardname !== undefined) allowed.wardname = String(b.wardname);
+    if (b.username !== undefined) allowed.username = String(b.username);
+    if (b.subward !== undefined) {
+      allowed.subward = isNonEmpty(b.subward) ? String(b.subward).trim() : null;
+    }
+
+    // numeric/text
+    for (const [k, v] of Object.entries(b)) {
+      if (ALLOWED_INT.has(k)) allowed[k] = toInt(v);
+      else if (ALLOWED_TEXT.has(k)) allowed[k] = v ?? null;
+    }
+    delete allowed.bed_remain;
+
+    const fields = Object.keys(allowed);
+    if (fields.length === 0) {
+      return res.status(400).json({ message: "no fields to update" });
+    }
+
+    const setClause = fields.map((f) => `${f} = ?`).join(", ");
+    const values = fields.map((f) => allowed[f]);
+
+    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ?`;
+    await db.query(sql, [...values, id]);
+
+    return res.status(200).json({ message: "อัปเดตสำเร็จ" });
+  } catch (err) {
+    return respondDbError(res, err);
+  }
+});
 
 module.exports = router;

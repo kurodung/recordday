@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-
 import {
+  FiMenu,
+  FiX,
   FiSun,
   FiSunset,
   FiMoon,
@@ -11,127 +12,252 @@ import {
 } from "react-icons/fi";
 import "../styles/HospitalUI.css";
 
+// YYYY-MM-DD แบบ local (กัน -1 วัน)
+const localISODate = (d = new Date()) => {
+  const dt = new Date(d);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(0, 10);
+};
+
+// -------- subward priority helpers --------
+const norm = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .trim();
+const hasToken = (name, token) => {
+  const n = norm(name),
+    t = norm(token);
+  return n === t || n.startsWith(t) || n.includes(t);
+};
+
+// จัดลำดับ sub-ward ให้ "อายุรกรรม*" มาก่อน "semi icu"
+const sortSubwardsWithPriority = (list, ward) => {
+  const PRIORITY = {
+    อายุรกรรม: ["อายุรกรรม", "semi icu", "semi-icu", "semiicu"],
+  };
+  const wardKey = norm(ward);
+  const matchedKey =
+    Object.keys(PRIORITY).find((k) => wardKey.includes(norm(k))) || "";
+  const tokens = (PRIORITY[matchedKey] || []).map(norm);
+  const rankOf = (name) => {
+    for (let i = 0; i < tokens.length; i++)
+      if (hasToken(name, tokens[i])) return i;
+    return Infinity;
+  };
+  return [...(list || [])].filter(Boolean).sort((a, b) => {
+    const ra = rankOf(a),
+      rb = rankOf(b);
+    if (ra !== rb) return ra - rb;
+    return String(a).localeCompare(String(b), "th");
+  });
+};
+// -----------------------------------------
+
 export default function HospitalLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [activeShift, setActiveShift] = useState("morning");
-  const [selectedDate, setSelectedDate] = useState(
-    () => new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(() => localISODate());
   const [username, setUsername] = useState("");
   const [wardname, setWardname] = useState("");
   const [subward, setsubward] = useState("");
   const [subwardOptions, setsubwardOptions] = useState([]);
 
-  // อ่านข้อมูล user จาก token
+  // มือถือ/เดสก์ท็อป & เมนูด้านซ้าย
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ----- viewport watcher -----
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = (e) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    try {
+      mq.addEventListener("change", onChange);
+    } catch {
+      mq.addListener(onChange);
+    }
+    return () => {
+      try {
+        mq.removeEventListener("change", onChange);
+      } catch {
+        mq.removeListener(onChange);
+      }
+    };
+  }, []);
+
+  // ล็อกสกอร์ล body เมื่อเมนูเปิดบนมือถือ
+  useEffect(() => {
+    if (!isMobile) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobile, sidebarOpen]);
+
+  // ปิดเมนูด้วย ESC
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // อ่าน user จาก token
   useEffect(() => {
     const token = localStorage.getItem("token");
-
     if (!token || token.split(".").length !== 3) {
       navigate("/");
       return;
     }
-
     try {
       const decoded = jwtDecode(token);
-
-      // ✅ Logging ภายใน scope ที่ประกาศไว้
-
       if (decoded?.username) {
         setUsername(decoded.username);
         setWardname(decoded.wardname);
-      } else {
-        throw new Error("Username not found in token");
-      }
+      } else throw new Error("Username not found in token");
     } catch (error) {
       console.error("Invalid token:", error);
       localStorage.removeItem("token");
       navigate("/");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ดึงข้อมูล subward options
+  // sync shift/date จาก query
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const qShift = params.get("shift");
+    const qDate = params.get("date");
+    if (qShift) setActiveShift(qShift);
+    if (qDate) setSelectedDate(qDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ดึง sub-ward
   useEffect(() => {
     const fetchsubwards = async () => {
-      if (!username) return;
+      if (!username || !wardname) return;
       try {
-        const response = await fetch(
+        const token = localStorage.getItem("token") || "";
+        const res = await fetch(
           `http://localhost:5000/api/subwards?username=${encodeURIComponent(
             username
-          )}`
+          )}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        const data = await response.json();
-        setsubwardOptions(data.subwards || []);
+        const data = await res.json();
+        const list = Array.isArray(data?.subwards)
+          ? data.subwards
+          : Array.isArray(data)
+          ? data
+          : [];
+        const sorted = sortSubwardsWithPriority(list, wardname);
+        setsubwardOptions(sorted);
+
+        if (!subward) {
+          const preferred = sorted.find((s) => hasToken(s, "อายุรกรรม"));
+          setsubward(preferred || sorted[0] || "");
+        } else if (!sorted.includes(subward)) {
+          setsubward(sorted[0] || "");
+        }
       } catch (err) {
         console.error("Failed to fetch subward options", err);
       }
     };
     fetchsubwards();
-  }, [username]);
+  }, [username, wardname]); // ไม่ใส่ subward กันลูป
 
-  // กำหนดค่า default subward เมื่อยังไม่มี
+  // sync query
   useEffect(() => {
-    if (subwardOptions.length > 0 && !subward) {
-      setsubward((prev) => prev || subwardOptions[0]); // ป้องกัน re-set ซ้ำ
+    if (!username || !wardname) return;
+    const current = new URLSearchParams(location.search);
+    const want = new URLSearchParams(location.search);
+    want.set("shift", activeShift);
+    want.set("date", selectedDate);
+    if (subward) want.set("subward", subward);
+    else want.delete("subward");
+    if (current.toString() !== want.toString()) {
+      navigate(`${location.pathname}?${want.toString()}`, { replace: true });
     }
-  }, [subwardOptions, subward]);
-
-  // ทำ navigate ทุกครั้งที่ activeShift, selectedDate หรือ subward เปลี่ยน
-// อัปเดต query ของหน้า "ปัจจุบัน" ทุกครั้งที่ shift/date/subward เปลี่ยน
-useEffect(() => {
-  if (!username) return;
-
-  const params = new URLSearchParams(location.search);
-  params.set("shift", activeShift);
-  params.set("date", selectedDate);
-
-  // เพิ่ม subward เฉพาะเมื่อมีค่า; ถ้าไม่มีให้ลบออกเพื่อรองรับ ward ที่ไม่มี subward
-  if (subward) {
-    params.set("subward", subward);
-  } else {
-    params.delete("subward");
-  }
-
-  // อัปเดตเฉพาะ query บน path เดิม (ไม่บังคับย้ายหน้า)
-  navigate(`${location.pathname}?${params.toString()}`, { replace: true });
-}, [activeShift, selectedDate, subward, username, location.pathname, location.search, navigate]);
-
-
+  }, [
+    activeShift,
+    selectedDate,
+    subward,
+    username,
+    wardname,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   const isActiveTab = (paths) => {
-    if (Array.isArray(paths)) {
+    if (Array.isArray(paths))
       return paths.some((p) => location.pathname.includes(p));
-    }
     return location.pathname.includes(paths);
   };
 
   const handleGeneralClick = () => {
     const lowerUser = username?.trim().toLowerCase();
-    const path = lowerUser === "lr" ? "/lrpage" : "/main";
-    const queryParams = new URLSearchParams({
-      shift: activeShift,
-      date: selectedDate,
-    });
-    if (subward) {
-      queryParams.append("subward", subward);
-    }
-    navigate(`${path}?${queryParams.toString()}`);
+    const base = lowerUser === "lr" ? "/lrpage" : "/main";
+    const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
+    if (subward) qs.append("subward", subward);
+    navigate(`${base}?${qs.toString()}`);
+    if (isMobile) setSidebarOpen(false);
+  };
+
+  const buildQuery = () => {
+    const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
+    if (subward) qs.set("subward", subward);
+    return `?${qs.toString()}`;
+  };
+
+  const go = (path) => {
+    navigate(`${path}${buildQuery()}`);
+    if (isMobile) setSidebarOpen(false);
   };
 
   return (
     <div className="hospital-container">
-      <div className="sidebar custom-sidebar">
+      {/* Overlay มือถือ */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`sidebar custom-sidebar ${isMobile ? "mobile" : ""} ${
+          sidebarOpen ? "open" : ""
+        }`}
+        aria-hidden={isMobile && !sidebarOpen}
+      >
         <div className="sidebar-header">
           <div className="avatar-circle">
             {username?.charAt(0).toUpperCase()}
           </div>
           <div className="sidebar-title">{wardname || "Ward"}</div>
+          {isMobile && (
+            <button
+              className="icon-button close"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <FiX />
+            </button>
+          )}
         </div>
 
         <div className="sidebar-section">
           {username === "admin" && (
-            <div className="sidebar-item" onClick={() => navigate("/settings")}>
+            <div className="sidebar-item" onClick={() => go("/settings")}>
               <FiSettings className="sidebar-icon" /> Settings
             </div>
           )}
@@ -147,7 +273,6 @@ useEffect(() => {
           >
             <FiSun className="sidebar-icon" /> เวรเช้า
           </div>
-
           <div
             className={`sidebar-item input-group ${
               activeShift === "afternoon" ? "highlighted" : ""
@@ -156,7 +281,6 @@ useEffect(() => {
           >
             <FiSunset className="sidebar-icon" /> เวรบ่าย
           </div>
-
           <div
             className={`sidebar-item input-group ${
               activeShift === "night" ? "highlighted" : ""
@@ -167,10 +291,9 @@ useEffect(() => {
           </div>
         </div>
 
-        {subwardOptions.length > 1 ||
-        (subwardOptions.length === 1 && subwardOptions[0]) ? (
+        {subwardOptions.length > 0 && (
           <div className="sidebar-section">
-            <label className="sidebar-section-label">เลือกกลุ่ม Sup Ward</label>
+            <label className="sidebar-section-label">เลือกกลุ่ม Sub Ward</label>
             <select
               className="sidebar-item"
               style={{ backgroundColor: "#7e3cbd" }}
@@ -184,7 +307,7 @@ useEffect(() => {
               ))}
             </select>
           </div>
-        ) : null}
+        )}
 
         <div className="logout-container" style={{ marginTop: "auto" }}>
           <button
@@ -197,61 +320,52 @@ useEffect(() => {
             <i className="icon-logout" /> Log Out
           </button>
         </div>
-      </div>
+      </aside>
 
-      <div className="main-content">
+      {/* Main */}
+      <main className="main-content">
         <div className="top-nav">
-          <button
-            className={`nav-tab ${
-              isActiveTab(["/main", "/lrpage"]) ? "active" : ""
-            }`}
-            onClick={handleGeneralClick}
-          >
-            ทั่วไป
-          </button>
+          {/* ปุ่มเปิดเมนูในมือถือ */}
+          {isMobile && (
+            <button
+              className="icon-button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <FiMenu />
+            </button>
+          )}
 
-          <button
-            className={`nav-tab ${isActiveTab("/covid") ? "active" : ""}`}
-            onClick={() => {
-              if (subward) {
-                navigate(
-                  `/covid?subward=${encodeURIComponent(
-                    subward
-                  )}&shift=${activeShift}&date=${selectedDate}`
-                );
-              } else {
-                navigate("/covid");
-              }
-            }}
-          >
-            Covid-19
-          </button>
-
-          <button
-            className={`nav-tab ${isActiveTab("/dengue") ? "active" : ""}`}
-            onClick={() => {
-              if (subward) {
-                navigate(
-                  `/dengue?subward=${encodeURIComponent(
-                    subward
-                  )}&shift=${activeShift}&date=${selectedDate}`
-                );
-              } else {
-                navigate("/dengue");
-              }
-            }}
-          >
-            ไข้เลือดออก
-          </button>
-
-          <button
-            className={`nav-tab ${isActiveTab("/dashboard") ? "active" : ""}`}
-            style={{ display: "flex", alignItems: "center" }}
-            onClick={() => navigate("/dashboard")}
-          >
-            <FiBarChart className="sidebar-icon" />
-            Dashboard
-          </button>
+          <div className="tabs-scroll">
+            <button
+              className={`nav-tab ${
+                isActiveTab(["/main", "/lrpage"]) ? "active" : ""
+              }`}
+              onClick={handleGeneralClick}
+            >
+              ทั่วไป
+            </button>
+            <button
+              className={`nav-tab ${isActiveTab("/covid") ? "active" : ""}`}
+              onClick={() => go("/covid")}
+            >
+              Covid-19
+            </button>
+            <button
+              className={`nav-tab ${isActiveTab("/dengue") ? "active" : ""}`}
+              onClick={() => go("/dengue")}
+            >
+              ไข้เลือดออก
+            </button>
+            <button
+              className={`nav-tab ${isActiveTab("/dashboard") ? "active" : ""}`}
+              onClick={() => go("/dashboard")}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <FiBarChart className="sidebar-icon" />
+              Dashboard
+            </button>
+          </div>
 
           <div className="date-selector">
             <input
@@ -259,6 +373,13 @@ useEffect(() => {
               className="date-input"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              onPointerDown={(e) => {
+                const el = e.currentTarget;
+                if (typeof el.showPicker === "function") {
+                  e.preventDefault(); // กันโฟกัสเฉย ๆ
+                  el.showPicker(); // ✅ เปิดปฏิทินทันที (Chrome/Edge รองรับ)
+                }
+              }}
             />
           </div>
         </div>
@@ -272,7 +393,7 @@ useEffect(() => {
               shift: activeShift,
             })
           : null}
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,87 +1,179 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import styles from '../styles/Login.module.css';
-import { FaUser, FaLock } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom'; // ✅ เพิ่ม useNavigate
+import React, { useState } from "react";
+import axios from "axios";
+import styles from "../styles/Login.module.css";
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaHospital } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
-  const navigate = useNavigate(); // ✅ ใช้งาน navigate
-
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async e => {
-  e.preventDefault();
-  try {
-    const res = await axios.post('http://localhost:5000/api/login', form);
-    localStorage.setItem('token', res.data.token);
-    setError('');
-
-    const username = form.username.toLowerCase();
-
-    if (username === 'lr') {
-      navigate('/lrpage'); // ✅ ไปหน้า LR
-    } else {
-      // ✅ ดึง subwards ของ user จาก backend
-      const subRes = await axios.get('http://localhost:5000/api/subwards', {
-        params: { username },
-      });
-
-      const subwards = subRes.data.subwards || [];
-      const subward = subwards.length > 0 ? subwards[0] : '';
-
-      const shift = 'morning';
-      const date = new Date().toISOString().split('T')[0];
-
-      // ✅ ส่งไปพร้อม shift, date, subward
-      navigate(`/main?shift=${shift}&date=${date}&subward=${subward}`);
-    }
-  } catch (err) {
-    setError('Invalid username or password');
-    console.error('Login error:', err);
-  }
+// ✅ คืนค่า YYYY-MM-DD แบบ Local time (กัน -1 วัน)
+const localISODate = (d = new Date()) => {
+  const dt = new Date(d);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(0, 10);
 };
 
-  
+// ✅ ใช้ axios instance รองรับทั้ง dev/prod (ตั้งค่า VITE_API_BASE ได้)
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE || "http://localhost:5000", // ตัวอย่าง: "http://localhost:5000"
+  withCredentials: false,
+});
+
+const Login = () => {
+  const [form, setForm] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // ⚠️ ใช้ path แบบ relative ช่วยให้ทำงานได้ทั้ง proxy dev และ prod
+      const res = await api.post("/api/login", form);
+
+      // จำ token (ให้เลือกจำแบบ session ได้ในอนาคตถ้าต้องการ)
+      if (remember) {
+        localStorage.setItem("token", res.data.token);
+      } else {
+        sessionStorage.setItem("token", res.data.token);
+      }
+
+      const username = form.username.trim().toLowerCase();
+
+      if (username === "lr") {
+        navigate("/lrpage");
+      } else {
+        // ดึง subwards ของ user
+        const subRes = await api.get("/api/subwards", { params: { username } });
+        const subwards = Array.isArray(subRes.data?.subwards)
+          ? subRes.data.subwards
+          : [];
+        const subward = subwards[0] || "";
+
+        const shift = "morning";
+        const date = localISODate();
+
+        navigate(
+          `/main?shift=${encodeURIComponent(shift)}&date=${encodeURIComponent(
+            date
+          )}&subward=${encodeURIComponent(subward)}`
+        );
+      }
+    } catch (err) {
+      // แสดงข้อความจาก backend ถ้ามี ไม่งั้นใช้ default
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Invalid username or password";
+      setError(msg);
+      console.error("Login error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={styles.loginPage}>
       <div className={styles.loginBox}>
-        <div className={styles.loginLeft}>{/* ภาพพื้นหลัง */}</div>
+        {/* แผงซ้าย: ภาพ/แบรนดิ้ง */}
+        <div className={styles.loginLeft}>
+          <div className={styles.brandWrap}>
+            <div className={styles.brandIcon}></div>
+          </div>
+        </div>
+
+        {/* แผงขวา: ฟอร์ม */}
         <div className={styles.loginRight}>
           <div className={styles.loginHeader}>
             <h2>ระบบรายงานประจำวัน</h2>
             <p>โรงพยาบาลมหาราชนครศรีธรรมราช</p>
           </div>
-          <form onSubmit={handleSubmit}>
+
+          <form onSubmit={handleSubmit} className={styles.form} noValidate>
+            <label htmlFor="username" className={styles.srOnly}>
+              Username
+            </label>
             <div className={styles.inputGroup}>
               <FaUser className={styles.icon} />
               <input
+                id="username"
                 name="username"
                 type="text"
                 placeholder="Username"
                 value={form.username}
                 onChange={handleChange}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoFocus
                 required
               />
             </div>
+
+            <label htmlFor="password" className={styles.srOnly}>
+              Password
+            </label>
             <div className={styles.inputGroup}>
               <FaLock className={styles.icon} />
               <input
+                id="password"
                 name="password"
-                type="password"
+                type={showPwd ? "text" : "password"}
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
+                autoComplete="current-password"
                 required
               />
+              <button
+                type="button"
+                className={styles.togglePwd}
+                onClick={() => setShowPwd((s) => !s)}
+                aria-label={showPwd ? "Hide password" : "Show password"}
+              >
+                {showPwd ? <FaEyeSlash /> : <FaEye />}
+              </button>
             </div>
-            <button type="submit" className={styles.loginBtn}>Log in</button>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+
+            <div className={styles.formRow}>
+              <label className={styles.rememberMe}>
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                จดจำการเข้าสู่ระบบ
+              </label>
+              {/* พื้นที่ลิงก์เสริม (ถ้ามี) */}
+              {/* <a className={styles.link} href="/forgot">ลืมรหัสผ่าน?</a> */}
+            </div>
+
+            <button
+              type="submit"
+              className={styles.loginBtn}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className={styles.spinner} aria-hidden="true" />
+              ) : (
+                "Log in"
+              )}
+            </button>
+
+            {error && (
+              <p className={styles.error} role="alert" aria-live="assertive">
+                {error}
+              </p>
+            )}
           </form>
+
         </div>
       </div>
     </div>

@@ -1,6 +1,65 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+
+const API_BASE = "http://localhost:5000";
+
+const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
+
+// แปลงค่าว่าง/undefined/null ให้เป็น 0
+const toInt = (v) =>
+  v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
+
+// ฟิลด์ตัวเลขที่อนุญาตให้ส่งเข้า DB (ปรับให้ตรง schema ของคุณได้)
+const NUMERIC_FIELDS = [
+  "bed_carry",
+  "bed_new",
+  "bed_transfer_in",
+
+  "discharge_home",
+  "discharge_transfer_out",
+  "discharge_refer_out",
+  "discharge_refer_back",
+  "discharge_died",
+
+  "bed_remain",
+
+  "type1",
+  "type2",
+  "type3",
+  "type4",
+  "type5",
+
+  "vent_invasive",
+  "vent_noninvasive",
+  "hfnc",
+  "oxygen",
+
+  "extra_bed",
+  "pas",
+  "cpr",
+  "infection",
+  "gcs",
+  "stroke",
+  "psych",
+  "prisoner",
+
+  "pre_op",
+  "post_op",
+
+  "rn",
+  "pn",
+  "na",
+  "other_staff",
+  "rn_extra",
+  "rn_down",
+];
+
+// ฟิลด์ข้อความที่อนุญาต
+const TEXT_FIELDS = ["incident", "head_nurse"];
+
+// ฟิลด์หลักที่ต้องมีเสมอ
+const CORE_FIELDS = ["username", "wardname", "date", "shift", "subward"];
 
 export default function HospitalUI({
   username,
@@ -15,10 +74,21 @@ export default function HospitalUI({
 
   const [bedTotal, setBedTotal] = useState(null);
 
-  // ดึงข้อมูลรายงานเดิม (ถ้ามี) ตามเงื่อนไข username, wardname, date, shift, subward
+  // ---------- โหลดข้อมูลเดิม ----------
   useEffect(() => {
     const fetchExistingData = async () => {
       if (!username || !wardname || !selectedDate || !shift) return;
+      if (wardname.toLowerCase() === "admin") {
+        // admin ไม่ใช่ ward จริง — เซ็ตค่าเริ่มต้นเฉย ๆ
+        setFormData({
+          username,
+          wardname,
+          date: selectedDate,
+          shift,
+          ...(subward && { subward }),
+        });
+        return;
+      }
 
       try {
         const token = localStorage.getItem("token");
@@ -28,13 +98,10 @@ export default function HospitalUI({
           wardname,
           username,
         });
-
-        if (subward) {
-          queryParams.append("subward", subward);
-        }
+        if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `http://localhost:5000/api/ward-report?${queryParams.toString()}`,
+          `${API_BASE}/api/ward-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -51,33 +118,42 @@ export default function HospitalUI({
           return;
         }
 
-        if (res.ok) {
-          const text = await res.text();
-          const data = text ? JSON.parse(text) : {};
-
-          // ตรวจสอบ shift ว่าตรงกับที่ request หรือไม่
-          if (data.shift !== shift) {
-            setFormData({
-              username,
-              wardname,
-              date: selectedDate,
-              shift,
-              ...(subward && { subward }),
-            });
-            return;
-          }
-
+        const ct = res.headers.get("content-type") || "";
+        const text = await res.text();
+        if (!res.ok) {
+          console.warn("โหลดข้อมูลล้มเหลว", res.status, text.slice(0, 200));
           setFormData({
-            ...data,
             username,
             wardname,
             date: selectedDate,
             shift,
             ...(subward && { subward }),
           });
-        } else {
-          console.warn("โหลดข้อมูลล้มเหลว", res.status);
+          return;
         }
+        const data =
+          ct.includes("application/json") && text ? JSON.parse(text) : {};
+
+        // ถ้าแถวใน DB เป็นคนละเวร/วันกับที่ขอมา ให้เริ่มเปล่า
+        if (data.shift && data.shift !== shift) {
+          setFormData({
+            username,
+            wardname,
+            date: selectedDate,
+            shift,
+            ...(subward && { subward }),
+          });
+          return;
+        }
+
+        setFormData({
+          ...data,
+          username,
+          wardname,
+          date: selectedDate,
+          shift,
+          ...(subward && { subward }),
+        });
       } catch (err) {
         console.error("โหลดข้อมูลเดิมล้มเหลว", err);
       }
@@ -86,92 +162,122 @@ export default function HospitalUI({
     fetchExistingData();
   }, [username, wardname, selectedDate, shift, subward]);
 
-  // ดึงจำนวนเตียงทั้งหมดจาก ward และ subward (ถ้ามี)
+  // ---------- จำนวนเตียงทั้งหมด ----------
   useEffect(() => {
-    if (!wardname) return;
+    if (!wardname || wardname.toLowerCase() === "admin") {
+      setBedTotal(0);
+      return;
+    }
 
-    const subwardQuery = subward
-      ? `&subward=${encodeURIComponent(subward)}`
-      : "";
-    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
-      wardname
-    )}${subwardQuery}`;
+    const params = new URLSearchParams({ wardname });
+    if (subward) params.append("subward", subward);
 
-    fetch(url)
+    fetch(`${API_BASE}/api/ward-report/bed-total?${params.toString()}`)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then((data) => {
-        setBedTotal(data.bed_total || 0);
-      })
+      .then((data) => setBedTotal(data.bed_total ?? 0))
       .catch((err) => {
         console.error("Failed to fetch bed total:", err);
-        setBedTotal(null);
+        setBedTotal(0);
       });
   }, [wardname, subward]);
 
-  // เพิ่ม event listener สำหรับกดลูกศรซ้ายขวา เพื่อขยับโฟกัส input
+  // ---------- คำนวณ bed_remain อัตโนมัติ ----------
+  const computedRemain = useMemo(() => {
+    const carry = toInt(formData.bed_carry);
+    const newIn = toInt(formData.bed_new);
+    const trIn = toInt(formData.bed_transfer_in);
+
+    const out =
+      toInt(formData.discharge_home) +
+      toInt(formData.discharge_transfer_out) +
+      toInt(formData.discharge_refer_out) +
+      toInt(formData.discharge_refer_back) +
+      toInt(formData.discharge_died);
+
+    let remain = carry + newIn + trIn - out;
+    if (remain < 0) remain = 0;
+    if (bedTotal !== null) remain = Math.min(remain, bedTotal);
+    return remain;
+  }, [
+    formData.bed_carry,
+    formData.bed_new,
+    formData.bed_transfer_in,
+    formData.discharge_home,
+    formData.discharge_transfer_out,
+    formData.discharge_refer_out,
+    formData.discharge_refer_back,
+    formData.discharge_died,
+    bedTotal,
+  ]);
+
+  // sync ค่า remain ใส่ state (เพื่อให้โชว์ใน input readOnly)
   useEffect(() => {
-    const handleArrowNavigation = (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        const inputs = formRef.current.querySelectorAll("input");
-        const inputsArray = Array.from(inputs);
-        const currentIndex = inputsArray.indexOf(document.activeElement);
+    setFormData((prev) =>
+      prev.bed_remain === computedRemain
+        ? prev
+        : { ...prev, bed_remain: computedRemain }
+    );
+  }, [computedRemain]);
 
-        if (currentIndex === -1) return;
-
-        let nextIndex = currentIndex + (e.key === "ArrowRight" ? 1 : -1);
-
-        if (nextIndex >= 0 && nextIndex < inputsArray.length) {
-          inputsArray[nextIndex].focus();
-          e.preventDefault();
-        }
-      }
-    };
-
-    const formEl = formRef.current;
-    if (formEl) {
-      formEl.addEventListener("keydown", handleArrowNavigation);
-      return () => formEl.removeEventListener("keydown", handleArrowNavigation);
-    }
-  }, []);
-
+  // ---------- เปลี่ยนค่า input ----------
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ---------- เตรียม payload แบบ whitelist + แปลงชนิด ----------
+  const buildPayload = () => {
+    const base = {
+      username,
+      wardname,
+      date:
+        formData.date instanceof Date
+          ? formData.date.toISOString().split("T")[0]
+          : formData.date || selectedDate,
+      shift,
+      subward: subward && String(subward).trim() !== "" ? subward : null,
+    };
+
+    const numeric = {};
+    for (const k of NUMERIC_FIELDS) {
+      numeric[k] = toInt(formData[k]);
+    }
+
+    const text = {};
+    for (const k of TEXT_FIELDS) {
+      const v = formData[k];
+      if (v !== undefined) text[k] = v;
+    }
+
+    // productivity ให้ backend คำนวณเอง (ไม่ส่ง) — ถ้าคอลัมน์ NOT NULL ค่อยเพิ่มสูตรฝั่ง FE
+    return { ...base, ...numeric, ...text };
+  };
+
+  // ---------- ส่งข้อมูล ----------
   const handleSubmit = async () => {
     try {
-      const token = localStorage.getItem("token");
-
-      const payload = {
-        ...formData,
-        date:
-          formData.date instanceof Date
-            ? formData.date.toISOString().split("T")[0]
-            : formData.date,
-      };
-
-      // ส่ง subward เฉพาะถ้ามี
-      if (subward) {
-        payload.subward = subward;
-      } else {
-        delete payload.subward;
+      if (!username || !wardname || !selectedDate || !shift) {
+        alert("ข้อมูลหลักไม่ครบ (username/wardname/date/shift)");
+        return;
+      }
+      if (wardname.toLowerCase() === "admin") {
+        alert("Admin ไม่สามารถบันทึก ward report ได้");
+        return;
       }
 
-      // ลบข้อมูลที่ไม่ต้องการส่ง
-      delete payload.productivity;
-      delete payload.type;
-      delete payload.bed_remain;
+      const token = localStorage.getItem("token");
+      const payload = buildPayload();
 
+      // ID จะมาจากแถวเดิมที่โหลดได้ (ถ้ามี)
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/ward-report/${formData.id}`
-        : "http://localhost:5000/api/ward-report";
+        ? `${API_BASE}/api/ward-report/${formData.id}`
+        : `${API_BASE}/api/ward-report`;
 
-      const response = await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -180,13 +286,23 @@ export default function HospitalUI({
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-      if (response.ok) {
-        alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
-        window.location.reload();
-      } else {
-        alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่ทราบสาเหตุ"));
+      const ct = res.headers.get("content-type") || "";
+      const text = await res.text();
+      const json =
+        ct.includes("application/json") && text ? JSON.parse(text) : {};
+
+      if (!res.ok) {
+        console.error(
+          "POST/PUT /ward-report failed:",
+          res.status,
+          json || text
+        );
+        alert(json.message || `HTTP ${res.status}`);
+        return;
       }
+
+      alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
+      window.location.reload();
     } catch (error) {
       console.error("Error:", error);
       alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
@@ -199,21 +315,25 @@ export default function HospitalUI({
     type = "number",
     width = null,
     isReadOnly = false
-  ) => (
-    <div className="input-group" key={name}>
-      <label className="input-label">{label}</label>
-      <input
-        type={type}
-        name={name}
-        min={type === "number" ? "0" : undefined}
-        className="input-field"
-        value={formData[name] || ""}
-        onChange={handleChange}
-        style={width ? { width } : {}}
-        readOnly={isReadOnly}
-      />
-    </div>
-  );
+  ) => {
+    const raw = formData[name];
+    const display = displayZeroAsBlank(raw); // 👉 0 จะกลายเป็น ""
+    return (
+      <div className="input-group" key={name}>
+        {label ? <label className="input-label">{label}</label> : null}
+        <input
+          type={type}
+          name={name}
+          min={type === "number" ? "0" : undefined}
+          className="input-field"
+          value={display}
+          onChange={handleChange}
+          style={width ? { width } : {}}
+          readOnly={isReadOnly}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="form-container" ref={formRef}>
@@ -222,6 +342,7 @@ export default function HospitalUI({
       >
         กลุ่ม: {subward || "-"}
       </h2>
+
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
@@ -230,16 +351,18 @@ export default function HospitalUI({
               <label className="input-label">จำนวนเตียง:</label>
               <input
                 type="number"
-                value={bedTotal !== null ? bedTotal : ""}
+                value={bedTotal ?? ""}
                 className="input-field"
                 readOnly
               />
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header">ยอดยกมา</div>
             {renderInput("", "bed_carry")}
           </div>
+
           <div className="form-column">
             <div className="section-header">ยอดรับ</div>
             <div className="horizontal-inputs">
@@ -247,6 +370,7 @@ export default function HospitalUI({
               {renderInput("รับย้าย:", "bed_transfer_in")}
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header">ยอดจำหน่าย</div>
             <div className="horizontal-inputs">
@@ -257,6 +381,7 @@ export default function HospitalUI({
               {renderInput("เสียชีวิต:", "discharge_died")}
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-label">คงพยาบาล</div>
             {renderInput("", "bed_remain", "number", null, true)}
@@ -270,10 +395,11 @@ export default function HospitalUI({
             <div className="section-header">ประเภทผู้ป่วย</div>
             <div className="horizontal-inputs">
               {["5", "4", "3", "2", "1"].map((n) =>
-                renderInput(`ประเภท ${n}:`, `type${n}`, "number", null, false)
+                renderInput(`ประเภท ${n}:`, `type${n}`, "number")
               )}
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header">Ventilator</div>
             <div className="horizontal-inputs">
@@ -281,6 +407,7 @@ export default function HospitalUI({
               {renderInput("Non invasive:", "vent_noninvasive")}
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
             <div className="horizontal-inputs">
@@ -305,7 +432,7 @@ export default function HospitalUI({
             <div className="section-header">CPR</div>
             {renderInput("", "cpr")}
           </div>
-          <div className="form-column" style={{}}>
+          <div className="form-column">
             <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
             {renderInput("", "infection", "number", "180px")}
           </div>
@@ -346,6 +473,7 @@ export default function HospitalUI({
               {renderInput("พนักงาน:", "other_staff")}
               {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
               {renderInput("RN ปรับลด:", "rn_down")}
+              {/* productivity ให้ backend คำนวณเอง */}
               <div className="input-group highlighted">
                 {renderInput(
                   "productivity:",
@@ -357,12 +485,14 @@ export default function HospitalUI({
               </div>
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
             <div className="horizontal-inputs">
               {renderInput("", "incident", "text", 200)}
             </div>
           </div>
+
           <div className="form-column">
             <div className="section-header" style={{ color: "green" }}>
               พยาบาลหัวหน้าเวร

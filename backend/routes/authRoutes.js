@@ -32,10 +32,10 @@ router.post("/login", async (req, res) => {
       username,
     ]);
     const user = rows[0];
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) return res.status(401).json({ message: "คุณกรอก user หรือ password ไม่ถูกต้อง" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+    if (!match) return res.status(401).json({ message: "คุณกรอก user หรือ password ไม่ถูกต้อง" });
 
     const token = jwt.sign(
       {
