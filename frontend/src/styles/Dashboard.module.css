@@ -213,7 +213,6 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
-  margin-bottom: 32px;
 }
 
 .chartContainer {
@@ -222,6 +221,7 @@
   padding: 24px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(126, 60, 189, 0.1);
+  margin-bottom: 30px;
 }
 
 .chartTitle {
@@ -263,6 +263,65 @@
   color: #7e3cbd;
   animation: spin 1s linear infinite;
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pageBtn {
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.pageBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  border-color: #d1d5db;
+}
+.pageBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 6px;
+}
+
+/* ตารางรายการตามเวลา — ให้กว้างเต็มการ์ด */
+.logTable {
+  width: 100% !important;
+  max-width: none !important;   /* ยกเลิก 1200px */
+  margin: 0 !important;         /* ไม่ต้อง center ด้วย margin auto */
+  border-collapse: collapse;
+  table-layout: fixed;           /* ช่วยให้คอลัมน์แบ่งเนียน ๆ */
+}
+
+.logTable th,
+.logTable td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* (ไม่บังคับ) เผื่อหัวคอลัมน์ 'วันที่' ให้กว้างนิดนึง */
+.logTable th:first-child,
+.logTable td:first-child {
+  width: 120px;
+}
+
 
 @keyframes spin {
   from {

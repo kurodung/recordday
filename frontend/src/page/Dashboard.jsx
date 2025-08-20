@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx 
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -25,6 +26,8 @@ import {
 } from "lucide-react";
 import styles from "../styles/Dashboard.module.css";
 
+/** ---------------- Utils ---------------- **/
+
 // คืนค่าเป็นวันตาม local time เช่น "2025-08-15"
 const dateKey = (v) => {
   const dt = new Date(v);
@@ -50,6 +53,32 @@ const sortSubwardsWithPriority = (list, ward) => {
   });
 };
 
+// อ่านตัวเลขจากหลายคีย์ (กันกรณีชื่อคอลัมน์ไม่ตรงกัน)
+const numFromKeys = (row, keys) => {
+  for (const k of keys) {
+    const v = parseFloat(row?.[k]);
+    if (Number.isFinite(v)) return v;
+  }
+  return 0;
+};
+
+// แสดงเลขไทยสวย ๆ
+const fmt = (n) => (Number.isFinite(+n) ? +n : 0).toLocaleString("th-TH");
+
+// ป้ายชื่อเวร
+const shiftLabel = (sh) =>
+  sh === "morning"
+    ? "เวรเช้า"
+    : sh === "afternoon"
+    ? "เวรบ่าย"
+    : sh === "night"
+    ? "เวรดึก"
+    : "";
+
+// จำนวนรายการ log ต่อหน้า
+const LOG_PAGE_SIZE = 10;
+
+/** --------------- Component --------------- **/
 export default function Dashboard({ username, wardname }) {
   const isAdmin = String(username || "").toLowerCase() === "admin";
   const [searchParams] = useSearchParams();
@@ -61,6 +90,7 @@ export default function Dashboard({ username, wardname }) {
   const [wardOptions, setWardOptions] = useState([]); // รายชื่อ ward ตาม department ที่เลือก
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [logPage, setLogPage] = useState(1); // <-- state แบ่งหน้า log
 
   // ฟิลเตอร์มี department เพิ่ม
   const [filters, setFilters] = useState({
@@ -102,7 +132,6 @@ export default function Dashboard({ username, wardname }) {
         const rows = await res.json();
         setDepartments(rows.map((r) => r.department));
       } catch (e) {
-        // ไม่ฟ้องแรง ปล่อยให้ user ใช้งานส่วนอื่นได้
         console.warn(e);
       }
     };
@@ -147,6 +176,7 @@ export default function Dashboard({ username, wardname }) {
         const qs = new URLSearchParams();
         if (isAdmin && filters.ward) qs.set("ward", filters.ward);
         if (filters.department) qs.set("department", filters.department); // ★ เพิ่มกรองตามแผนก
+        if (filters.subward) qs.set("subward", filters.subward);
         const url = `http://localhost:5000/api/dashboard${qs.toString() ? `?${qs}` : ""}`;
 
         const response = await fetch(url, {
@@ -162,7 +192,7 @@ export default function Dashboard({ username, wardname }) {
       }
     };
     fetchData();
-  }, [isAdmin, filters.ward, filters.department]);
+  }, [isAdmin, filters.ward, filters.department, filters.subward]);
 
   // ตัวเลือกในแผงฟิลเตอร์
   const filterOptions = useMemo(() => {
@@ -237,10 +267,7 @@ export default function Dashboard({ username, wardname }) {
   // ★ ถ้าไม่ได้เลือก department → รวมข้อมูลตาม department เดียวกัน (เพื่อให้ชื่อแผนกเดียวกันถูกรวม)
   // ใช้รวมสำหรับพายชาร์ต (แทนที่จะรวมตาม ward)
   const departmentDistribution = useMemo(() => {
-    if (filters.department) return []; // ถ้าเลือกแล้ว ให้แสดงตาม ward แทน
-    // ต้องอาศัย mapping ฝั่งเซิร์ฟเวอร์ใน /api/dashboard (เราไม่ได้ส่ง department มาด้วยทุกแถว)
-    // ดังนั้นจะ fallback เป็นการรวมแบบ "ตาม ward" ถ้าไม่มีฟิลด์ department ใน row
-    // ถ้าคุณแก้ backend ให้ใส่ department มาทุกแถว ก็เปลี่ยนตรงนี้เป็น d.department ได้ทันที
+    if (filters.department) return [];
     const byWard = {};
     filteredData.forEach((d) => {
       const key = d.department || d.wardname; // ถ้า backend เติม department มา จะรวมตาม department อัตโนมัติ
@@ -259,7 +286,7 @@ export default function Dashboard({ username, wardname }) {
     return Object.entries(wardCounts).map(([name, value]) => ({ name, value }));
   }, [filteredData, filters.department, departmentDistribution]);
 
-  // สรุปสถิติ
+  // สรุปสถิติการ์ดบนสุด
   const summaryStats = useMemo(() => {
     const totalAdmissions = filteredData.reduce(
       (sum, row) => sum + (row.bed_new || 0),
@@ -284,6 +311,196 @@ export default function Dashboard({ username, wardname }) {
       avgProductivity: avgProductivity.toFixed(2),
     };
   }, [filteredData]);
+
+  /** ---------------- สรุปเคลื่อนไหวผู้ป่วย (คำนวณฝั่งหน้า) ---------------- **/
+  const movement = useMemo(() => {
+    const carryForward = filteredData.reduce(
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "carry_forward",
+          "brought_forward",
+          "opening_census",
+          "begin_balance",
+        ]),
+      0
+    );
+    const admitNew = filteredData.reduce((s, r) => s + (r.bed_new || 0), 0);
+    const admitTransferIn = filteredData.reduce(
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "admit_transfer_in",
+          "transfer_in",
+          "receive_transfer_in",
+        ]),
+      0
+    );
+    const disHome = filteredData.reduce(
+      (s, r) => s + (r.discharge_home || 0),
+      0
+    );
+    const disMoveWard = filteredData.reduce(
+      (s, r) =>
+        s +
+        numFromKeys(r, ["discharge_move_ward", "move_ward", "transfer_intra"]),
+      0
+    );
+    const disReferOut = filteredData.reduce(
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "discharge_transfer_out",
+          "discharge_refer_out",
+          "refer_out",
+        ]),
+      0
+    );
+    const disReferBack = filteredData.reduce(
+      (s, r) => s + numFromKeys(r, ["discharge_refer_back", "refer_back"]),
+      0
+    );
+    const disDeath = filteredData.reduce(
+      (s, r) => s + numFromKeys(r, ["discharge_death", "death"]),
+      0
+    );
+
+    const admitAll = admitNew + admitTransferIn;
+    const dischargeAll =
+      disHome + disMoveWard + disReferOut + disReferBack + disDeath;
+    const remain = carryForward + admitAll - dischargeAll;
+
+    return {
+      carryForward,
+      admitNew,
+      admitTransferIn,
+      admitAll,
+      disHome,
+      disMoveWard,
+      disReferOut,
+      disReferBack,
+      disDeath,
+      dischargeAll,
+      remain,
+    };
+  }, [filteredData]);
+
+  /** ---------------- รายการตามเวลา (Log view) ---------------- **/
+  const logItems = useMemo(() => {
+    const shiftStart = { morning: "07:00", afternoon: "15:00", night: "23:00" };
+    const dtCandidates = ["datetime", "date_time", "created_at", "updated_at", "time"];
+
+    const toDisplayDateTime = (row) => {
+      // 1) ถ้ามีฟิลด์วัน/เวลา ใช้สำหรับ ts แต่แสดงผลเป็น "วันที่" อย่างเดียว
+      for (const k of dtCandidates) {
+        if (row?.[k]) {
+          const d = new Date(row[k]);
+          if (!Number.isNaN(d)) {
+            return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
+          }
+        }
+      }
+      // 2) ถ้าไม่มี datetime ให้ผูกเวลาเริ่มเวรไว้สำหรับการ sort แต่ text แสดง "วันที่" เท่านั้น
+      if (row?.date) {
+        const time = shiftStart[row?.shift] || "00:00";
+        const dSort = new Date(`${dateKey(row.date)}T${time}:00`);
+        const dText = new Date(dateKey(row.date));
+        if (!Number.isNaN(dSort) && !Number.isNaN(dText)) {
+          return { ts: dSort.getTime(), text: dText.toLocaleDateString("th-TH") };
+        }
+      }
+      // 3) สุดท้าย แสดงเฉพาะวันที่
+      if (row?.date) {
+        const d = new Date(dateKey(row.date));
+        if (!Number.isNaN(d)) {
+          return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
+        }
+      }
+      return { ts: 0, text: "-" };
+    };
+
+    return [...filteredData]
+      .map((r) => {
+        const dt = toDisplayDateTime(r);
+        const carry = numFromKeys(r, [
+          "carry_forward",
+          "brought_forward",
+          "opening_census",
+          "begin_balance",
+        ]);
+        const tIn = numFromKeys(r, [
+          "admit_transfer_in",
+          "transfer_in",
+          "receive_transfer_in",
+        ]);
+        const moveWard = numFromKeys(r, [
+          "discharge_move_ward",
+          "move_ward",
+          "transfer_intra",
+        ]);
+        const refOut = numFromKeys(r, [
+          "discharge_transfer_out",
+          "discharge_refer_out",
+          "refer_out",
+        ]);
+        const refBack = numFromKeys(r, ["discharge_refer_back", "refer_back"]);
+        const death = numFromKeys(r, ["discharge_death", "death"]);
+        const admitNew = r.bed_new || 0;
+        const disHome = r.discharge_home || 0;
+        const admitAll = admitNew + tIn;
+        const dischargeAll = disHome + moveWard + refOut + refBack + death;
+        const remain = carry + admitAll - dischargeAll;
+
+        return {
+          ts: dt.ts,
+          timeText: dt.text,
+          shift: r.shift || "",
+          department: r.department || "",
+          ward: r.wardname || "",
+          subward: r.subward || "",
+          admitNew,
+          transferIn: tIn,
+          disHome,
+          moveWard,
+          referOut: refOut,
+          referBack: refBack,
+          death,
+          remain,
+          productivity: r.productivity,
+        };
+      })
+      .sort((a, b) => b.ts - a.ts || b.ward.localeCompare(a.ward, "th"));
+  }, [filteredData]);
+
+  // ---------------- Pagination for logItems ----------------
+  const totalLogPages = useMemo(
+    () => Math.max(1, Math.ceil(logItems.length / LOG_PAGE_SIZE)),
+    [logItems.length]
+  );
+
+  const pageLogItems = useMemo(
+    () => logItems.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE),
+    [logItems, logPage]
+  );
+
+  // เมื่อกรองข้อมูลใหม่/จำนวนรายการเปลี่ยน ให้เด้งกลับหน้า 1
+  useEffect(() => {
+    setLogPage(1);
+  }, [
+    filteredData.length,
+    filters.date,
+    filters.shift,
+    filters.department,
+    filters.ward,
+    filters.subward,
+    filters.month,
+    filters.year,
+  ]);
+
+  // ถ้าจำนวนหน้าลดลง ให้ปรับหน้าปัจจุบันไม่ให้เกิน totalLogPages
+  useEffect(() => {
+    if (logPage > totalLogPages) setLogPage(totalLogPages);
+  }, [totalLogPages, logPage]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -327,6 +544,7 @@ export default function Dashboard({ username, wardname }) {
         </div>
       </div>
 
+      {/* การ์ดสรุป */}
       <div className={styles.summaryCardsGrid}>
         {[
           { label: "จำนวนรายการทั้งหมด", value: summaryStats.recordCount, icon: <Users size={24} />, colorClass: "blue" },
@@ -346,6 +564,7 @@ export default function Dashboard({ username, wardname }) {
         ))}
       </div>
 
+      {/* ฟิลเตอร์ */}
       <div className={styles.filterSection}>
         <div className={styles.filterHeader}>
           <Filter size={20} style={{ color: "#7e3cbd" }} />
@@ -452,6 +671,7 @@ export default function Dashboard({ username, wardname }) {
         </div>
       </div>
 
+      {/* กราฟเดิม */}
       <div className={styles.chartsGrid}>
         <div className={styles.chartContainer}>
           <h3 className={styles.chartTitle}>
@@ -537,6 +757,147 @@ export default function Dashboard({ username, wardname }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* ✅ สรุปเคลื่อนไหวผู้ป่วย (คำนวณฝั่งหน้า) */}
+      <div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
+        <h3 className={styles.chartTitle}>สรุปเคลื่อนไหวผู้ป่วย</h3>
+        {!filteredData.length ? (
+          <div className={styles.loadingContainer} style={{ height: 80 }}>
+            <span className={styles.loadingText}>ไม่มีข้อมูลตามตัวกรอง</span>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th rowSpan={2} style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>ยอดยกมา</th>
+                  <th colSpan={2} style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>ยอดรับ</th>
+                  <th colSpan={5} style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>ยอดจำหน่าย</th>
+                  <th rowSpan={2} style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>คงพยาบาล</th>
+                </tr>
+                <tr>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>รับใหม่</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>รับย้าย</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>กลับบ้าน</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>ย้ายตึก</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>Refer out</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>Refer back</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>เสียชีวิต</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.carryForward)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.admitNew)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.admitTransferIn)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.disHome)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.disMoveWard)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.disReferOut)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.disReferBack)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.disDeath)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>{fmt(movement.remain)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
+              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+                <strong>ยอดรับรวม:</strong> {fmt(movement.admitAll)}
+              </div>
+              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+                <strong>ยอดจำหน่ายรวม:</strong> {fmt(movement.dischargeAll)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ✅ รายการตามเวลา (Log view) + แบ่งหน้า */}
+<div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
+  <h3 className={styles.chartTitle}>รายการตามเวลา</h3>
+  {!logItems.length ? (
+    <div className={styles.loadingContainer} style={{ height: 80 }}>
+      <span className={styles.loadingText}>ไม่มีข้อมูลตามตัวกรอง</span>
+    </div>
+  ) : (
+    <div style={{ overflowX: "auto" }}>
+      <table className={styles.logTable}>
+        <thead>
+          <tr>
+            <th>วันที่</th>
+            <th>เวร</th>
+            <th>กลุ่มงาน</th>
+            <th>Ward</th>
+            <th>Sub-ward</th>
+            <th>รับใหม่</th>
+            <th>รับย้าย</th>
+            <th>กลับบ้าน</th>
+            <th>ย้ายตึก</th>
+            <th>Refer out</th>
+            <th>Refer back</th>
+            <th>เสียชีวิต</th>
+            <th>คงพยาบาล</th>
+            <th>Prod. (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pageLogItems.map((r, idx) => (
+            <tr key={`${r.ts}-${idx}`}>
+              <td>{r.timeText}</td>
+              <td>{shiftLabel(r.shift)}</td>
+              <td>{r.department || "-"}</td>
+              <td>{r.ward || "-"}</td>
+              <td>{r.subward || "-"}</td>
+              <td>{fmt(r.admitNew)}</td>
+              <td>{fmt(r.transferIn)}</td>
+              <td>{fmt(r.disHome)}</td>
+              <td>{fmt(r.moveWard)}</td>
+              <td>{fmt(r.referOut)}</td>
+              <td>{fmt(r.referBack)}</td>
+              <td>{fmt(r.death)}</td>
+              <td>{fmt(r.remain)}</td>
+              <td>{Number.isFinite(+r.productivity) ? Number(r.productivity).toFixed(2) : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* ตัวควบคุมแบ่งหน้า */}
+      <div className={styles.pagination}>
+        <button className={styles.pageBtn} onClick={() => setLogPage(1)} disabled={logPage === 1}>
+          « หน้าแรก
+        </button>
+        <button
+          className={styles.pageBtn}
+          onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+          disabled={logPage === 1}
+        >
+          ‹ ก่อนหน้า
+        </button>
+
+        <span className={styles.pageInfo}>
+          หน้า {logPage} / {totalLogPages} • ทั้งหมด {logItems.length.toLocaleString("th-TH")} รายการ
+        </span>
+
+        <button
+          className={styles.pageBtn}
+          onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))}
+          disabled={logPage === totalLogPages}
+        >
+          ถัดไป ›
+        </button>
+        <button
+          className={styles.pageBtn}
+          onClick={() => setLogPage(totalLogPages)}
+          disabled={logPage === totalLogPages}
+        >
+          หน้าสุดท้าย »
+        </button>
+      </div>
+    </div>
+  )}
+</div>
+
     </div>
   );
 }
