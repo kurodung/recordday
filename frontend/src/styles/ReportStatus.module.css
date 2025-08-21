@@ -1,38 +1,23 @@
 /* src/styles/ReportStatus.module.css */
-.container {
-  padding: 16px;
-}
-.title {
-  margin: 0 0 12px 0;
-  font-size: 20px;
-  font-weight: 700;
-}
+
+/* ========== Header / Controls / Summary (ของเดิม) ========== */
+.container { padding: 16px; }
+.title { margin: 0 0 12px 0; font-size: 20px; font-weight: 700; }
+
 .controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
   margin-bottom: 12px;
 }
-.field {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.field label {
-  min-width: 44px;
-  font-size: 14px;
-}
-.checkbox {
-  display: flex; align-items: center; gap: 8px;
-}
+.field { display: flex; gap: 8px; align-items: center; }
+.field label { min-width: 44px; font-size: 14px; }
+.checkbox { display: flex; align-items: center; gap: 8px; }
 .refreshBtn {
-  padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; background: #fff;
+  padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+  cursor: pointer; background: #fff;
 }
 
 .summaryBar {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 8px; margin-bottom: 12px;
 }
 .summaryItem {
@@ -43,44 +28,117 @@
 .summaryPct { font-weight: 700; }
 .summaryDetail { grid-column: 1 / -1; color: #6b7280; font-size: 12px; }
 
-.matrix {
-  display: grid;
-  grid-template-columns: 200px repeat(auto-fill, minmax(110px, 1fr));
-  overflow: auto;
-  border: 1px solid #e5e7eb; border-radius: 12px;
+/* ============================================================
+   ✅ Matrix แบบ TABLE - เสถียรทั้งจอกว้าง/แคบ
+   ใช้ร่วมกับ JSX เวอร์ชัน table:
+   <div className={styles.tableWrap}><table className={styles.tableMatrix}>...</table></div>
+   ============================================================ */
+
+.tableWrap {
+  overflow: auto;               /* สกรอลล์เฉพาะตาราง */
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: transparent;
 }
-.cell {
-  border-bottom: 1px solid #f0f2f5;
+
+.tableMatrix {
+  width: 100%;
+  border-collapse: separate;    /* ให้ sticky ทำงานดี */
+  border-spacing: 0;
+  table-layout: fixed;          /* ความกว้างคอลัมน์คงที่ */
+  font-size: 14px;
+  background: transparent;
+}
+
+.tableMatrix th,
+.tableMatrix td {
+  box-sizing: border-box;
   border-right: 1px solid #f0f2f5;
-  min-height: 44px; display: flex; align-items: center; justify-content: center;
-  padding: 6px;
+  border-bottom: 1px solid #f0f2f5;
+  padding: 10px 8px;
   background: #fff;
 }
-.cell:last-child { border-right: none; }
-.stickyTop {
-  position: sticky; top: 0; z-index: 2; background: #fafafa; font-weight: 600;
-}
-.sticky {
-  position: sticky; left: 0; z-index: 3; background: #fafafa; font-weight: 600;
-}
-.headerLeft { border-right: 2px solid #e5e7eb; }
-.wardCell { text-align: left; justify-content: flex-start; padding-left: 10px; }
-.okCell { background: #f0fdf4; }        /* เขียวอ่อนเมื่อครบ 3 เวร */
-.missingCell { background: #fff7ed; }   /* ส้มอ่อนเมื่อยังขาด */
 
+/* ความกว้างคงที่ของคอลัมน์ชื่อ ward และคอลัมน์วัน */
+.tableMatrix thead th:first-child,
+.tableMatrix tbody th:first-child { width: 220px; }
+.tableMatrix thead th { min-width: 120px; }
+
+/* Sticky header + left column */
+.stickyTop {
+  position: sticky; top: 0; z-index: 3;
+  background: #fafafa; font-weight: 600;
+}
+.stickyCol {
+  position: sticky; left: 0; z-index: 2;
+  background: #fafafa; font-weight: 600;
+}
+.headLeft { z-index: 4; }      /* มุมซ้ายบนให้ทับทุกตัว */
+
+/* ชื่อ ward */
+.wardName {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-weight: 600; text-align: left;
+}
+
+/* จุดสถานะ 3 จุดอยู่กึ่งกลาง cell */
+.centerCell { text-align: center; vertical-align: middle; }
 .dot {
-  width: 8px; height: 8px; border-radius: 999px; margin: 0 3px; display: inline-block;
-  border: 1px solid #d1d5db;
+  width: 8px; height: 8px; border-radius: 999px;
+  margin: 0 3px; display: inline-block; border: 1px solid #d1d5db;
 }
 .on { background: #16a34a; }   /* เขียว */
 .off { background: #e5e7eb; }  /* เทา */
 
-.centeredCell {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.rangeHintSmall { font-size: 12px; opacity: .8; margin-top: 2px; }
+
+/* (ถ้าอยากปรับสกอลล์บาร์แนวนอนให้สวยขึ้น) */
+.tableWrap::-webkit-scrollbar { height: 10px; }
+.tableWrap::-webkit-scrollbar-thumb { background: #d2b8ff; border-radius: 10px; }
+
+/* ===== (คงไว้เผื่อหน้าอื่นใช้—ไม่ใช้กับ table ใหม่) ===== */
+.okCell { background: #f0fdf4; }
+.missingCell { background: #fff7ed; }
+.centeredCell { display: flex; justify-content: center; align-items: center; }
+.dotGroup { display: flex; gap: 4px; }
+
+/* Weekend highlighting */
+.weekendHead {
+  background: #eef2f7 !important;  /* เทาอ่อนกว่าหัวคอลัมน์ปกติเล็กน้อย */
+  color: #374151;
 }
-.dotGroup {
+.weekendCell {
+  background: #fafafa;             /* เทาอ่อนในเซลล์ของเสาร์/อาทิตย์ */
+}
+
+.pager {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pageBtn {
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.pageBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  border-color: #d1d5db;
+}
+.pageBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.pageInfo {
+  color: #6b7280;
+  font-size: 14px;
 }
