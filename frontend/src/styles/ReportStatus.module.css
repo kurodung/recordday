@@ -1,0 +1,86 @@
+/* src/styles/ReportStatus.module.css */
+.container {
+  padding: 16px;
+}
+.title {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+.field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.field label {
+  min-width: 44px;
+  font-size: 14px;
+}
+.checkbox {
+  display: flex; align-items: center; gap: 8px;
+}
+.refreshBtn {
+  padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; background: #fff;
+}
+
+.summaryBar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px; margin-bottom: 12px;
+}
+.summaryItem {
+  border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
+}
+.summaryWard { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summaryPct { font-weight: 700; }
+.summaryDetail { grid-column: 1 / -1; color: #6b7280; font-size: 12px; }
+
+.matrix {
+  display: grid;
+  grid-template-columns: 200px repeat(auto-fill, minmax(110px, 1fr));
+  overflow: auto;
+  border: 1px solid #e5e7eb; border-radius: 12px;
+}
+.cell {
+  border-bottom: 1px solid #f0f2f5;
+  border-right: 1px solid #f0f2f5;
+  min-height: 44px; display: flex; align-items: center; justify-content: center;
+  padding: 6px;
+  background: #fff;
+}
+.cell:last-child { border-right: none; }
+.stickyTop {
+  position: sticky; top: 0; z-index: 2; background: #fafafa; font-weight: 600;
+}
+.sticky {
+  position: sticky; left: 0; z-index: 3; background: #fafafa; font-weight: 600;
+}
+.headerLeft { border-right: 2px solid #e5e7eb; }
+.wardCell { text-align: left; justify-content: flex-start; padding-left: 10px; }
+.okCell { background: #f0fdf4; }        /* เขียวอ่อนเมื่อครบ 3 เวร */
+.missingCell { background: #fff7ed; }   /* ส้มอ่อนเมื่อยังขาด */
+
+.dot {
+  width: 8px; height: 8px; border-radius: 999px; margin: 0 3px; display: inline-block;
+  border: 1px solid #d1d5db;
+}
+.on { background: #16a34a; }   /* เขียว */
+.off { background: #e5e7eb; }  /* เทา */
+
+.centeredCell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.dotGroup {
+  display: flex;
+  gap: 4px;
+}

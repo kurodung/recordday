@@ -8,6 +8,7 @@ import LoginPage from "./page/Login";
 import LRpage from "./page/LRpage";
 import Dashboard from "./page/Dashboard";
 import HospitalLayout from "./components/HospitalLayout";
+import MultiDayReportStatus from "./page/MultiDayReportStatus";
 
 const App = () => {
   return (
@@ -43,6 +44,14 @@ const App = () => {
           element={
             <HospitalLayout>
               <LRpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/multi-day"
+          element={
+            <HospitalLayout>
+              <MultiDayReportStatus />
             </HospitalLayout>
           }
         />

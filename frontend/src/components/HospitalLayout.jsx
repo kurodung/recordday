@@ -9,6 +9,7 @@ import {
   FiMoon,
   FiBarChart,
   FiSettings,
+  FiCalendar,
 } from "react-icons/fi";
 import "../styles/HospitalUI.css";
 
@@ -356,6 +357,14 @@ export default function HospitalLayout({ children }) {
               onClick={() => go("/dengue")}
             >
               ไข้เลือดออก
+            </button>
+            <button
+              className={`nav-tab ${isActiveTab("/multi-day") ? "active" : ""}`}
+              onClick={() => go("/multi-day")}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <FiCalendar className="sidebar-icon" />
+              MultiDay
             </button>
             <button
               className={`nav-tab ${isActiveTab("/dashboard") ? "active" : ""}`}

@@ -14,6 +14,7 @@ const dengueRoutes = require("./routes/dengueRoutes");
 const dashboardRoute = require("./routes/dashboard");
 const lrReportRoutes = require("./routes/lrReportRoutes");
 const subwardsRoute = require("./routes/subwards");
+const reportStatusRoutes = require("./routes/reportStatusRoutes");
 
 // Register Routes
 app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
@@ -23,7 +24,8 @@ app.use("/api/dengue-report", dengueRoutes);
 app.use("/api/subwards", subwardsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/lr-report", lrReportRoutes);
-
+app.use("/api", reportStatusRoutes);           // -> /api/report-status-range
+app.use("/api/reportStatus", reportStatusRoutes); // -> /api/reportStatus/report-status-range
 // Database
 const db = require("./db");
 
