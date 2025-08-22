@@ -462,6 +462,28 @@
   animation: fadeIn 0.5s ease-in;
 }
 
+/* ===== Log table: full width, equal columns, centered text ===== */
+.logTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* ทำให้คอลัมน์กว้างเท่ากันและใช้พื้นที่เต็ม */
+}
+
+.logTable th,
+.logTable td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: center;          /* จัดกึ่งกลางทุกช่อง */
+  vertical-align: middle;
+  word-break: break-word;      /* ป้องกันข้อความยาวล้น */
+}
+
+.logTable thead th {
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;         /* หัวข้อไม่ตัดบรรทัด */
+}
+
+
 @keyframes fadeIn {
   from {
     opacity: 0;

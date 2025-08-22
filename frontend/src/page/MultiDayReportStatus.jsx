@@ -1,4 +1,3 @@
-// src/pages/MultiDayReportStatus.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import styles from "../styles/ReportStatus.module.css";
@@ -34,6 +33,13 @@ const isWeekend = (ymd) => {
   const wd = new Date(y, m - 1, d).getDay(); // 0=Sun ... 6=Sat
   return wd === 0 || wd === 6;
 };
+
+// แยก label "Ward / Subward" -> [ward, subward]
+const splitGroup = (label) => {
+  const i = label.indexOf(" / ");
+  if (i === -1) return [label, ""];
+  return [label.slice(0, i), label.slice(i + 3)];
+};
 /* ----------------------------------------------------- */
 
 // ใช้ ENV ได้ ถ้าไม่ตั้งจะ fallback เป็น localhost:5000
@@ -41,7 +47,7 @@ const API_BASE =
   (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) ||
   "http://localhost:5000/api";
 
-// จำนวนวอร์ดต่อหน้า
+// จำนวนรายการต่อหน้า
 const PAGE_SIZE = 15;
 
 export default function MultiDayReportStatus() {
@@ -55,11 +61,12 @@ export default function MultiDayReportStatus() {
   const [wardFilter, setWardFilter] = useState("");
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [departments, setDepartments] = useState([]); // ["อายุรกรรม", "ศัลยกรรม", ...]
-  const [department, setDepartment] = useState("");   // "" = ทั้งหมด
+  const [department, setDepartment] = useState(""); // "" = ทั้งหมด
+  const [includeSubward, setIncludeSubward] = useState(true); // ✅ รวม Subward
 
   // data
-  const [dataByWard, setDataByWard] = useState({}); // { wardname: [ {date, morning, afternoon, night} ] }
-  const [summary, setSummary] = useState([]);       // [{wardname, sent, totalShifts, percent}]
+  // หมายเหตุ: dataByWard = dataByGroup (key คือ "WARD" หรือ "WARD / SUBWARD")
+  const [dataByWard, setDataByWard] = useState({});
 
   // pagination
   const [page, setPage] = useState(1);
@@ -80,7 +87,9 @@ export default function MultiDayReportStatus() {
   const fetchDepartments = async () => {
     try {
       const res = await axios.get(`${API_BASE}/report-status-departments`);
-      setDepartments(Array.isArray(res.data?.departments) ? res.data.departments : []);
+      setDepartments(
+        Array.isArray(res.data?.departments) ? res.data.departments : []
+      );
     } catch {
       setDepartments([]); // ไม่มี route ก็ซ่อน dropdown
     }
@@ -90,31 +99,33 @@ export default function MultiDayReportStatus() {
   const fetchData = async () => {
     if (!isYMD(startDate) || !isYMD(endDate)) {
       setDataByWard({});
-      setSummary([]);
       return;
     }
+
+    const controller = new AbortController();
     const params = new URLSearchParams({ start: startDate, end: endDate });
     if (wardFilter) params.append("wardname", wardFilter);
     if (department) params.append("department", department);
+    if (includeSubward) params.append("includeSubward", "1");
 
     try {
       const token = localStorage.getItem("token") || "";
       const res = await axios.get(
         `${API_BASE}/report-status-range?${params.toString()}`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: controller.signal, // ⬅️ สำคัญ
+        }
       );
-      if (res.data?.ok) {
-        setDataByWard(res.data.data || {});
-        setSummary(res.data.summary || []);
-      } else {
-        setDataByWard({});
-        setSummary([]);
-      }
+      setDataByWard(res.data?.ok ? res.data.data || {} : {});
     } catch (err) {
-      console.error("fetch report-status-range error:", err);
-      setDataByWard({});
-      setSummary([]);
+      if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
+        console.error("fetch report-status-range error:", err);
+        setDataByWard({});
+      }
     }
+
+    return () => controller.abort();
   };
 
   useEffect(() => {
@@ -123,38 +134,48 @@ export default function MultiDayReportStatus() {
   useEffect(() => {
     fetchData().catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, wardFilter, department]);
+  }, [startDate, endDate, wardFilter, department, includeSubward]);
 
-  // เรียงชื่อ ward แบบไทย/อังกฤษ
+  // เรียงชื่อ: ให้บรรทัด "Ward รวม" มาก่อน ตามด้วย "Ward / Subward" ของ ward เดียวกัน
   const collator = useMemo(() => new Intl.Collator("th"), []);
-  const wardNames = useMemo(
-    () => Object.keys(dataByWard).sort(collator.compare),
-    [dataByWard, collator]
-  );
+  const groupNames = useMemo(() => {
+    const keys = Object.keys(dataByWard);
+    keys.sort((a, b) => {
+      const [wa, sa] = splitGroup(a);
+      const [wb, sb] = splitGroup(b);
+      const c = collator.compare(wa, wb);
+      if (c !== 0) return c;
+      // ว่าง (บรรทัดรวม ward) มาก่อน
+      if (!sa && sb) return -1;
+      if (sa && !sb) return 1;
+      return collator.compare(sa, sb);
+    });
+    return keys;
+  }, [dataByWard, collator]);
 
   // กรองตาม onlyMissing
-  const filteredWardNames = useMemo(() => {
-    if (!onlyMissing) return wardNames;
-    return wardNames.filter((w) => {
-      const days = dataByWard[w] || [];
+  const filteredNames = useMemo(() => {
+    if (!onlyMissing) return groupNames;
+    return groupNames.filter((g) => {
+      const days = dataByWard[g] || [];
       return days.some((d) => !(d.morning && d.afternoon && d.night));
     });
-  }, [onlyMissing, wardNames, dataByWard]);
+  }, [onlyMissing, groupNames, dataByWard]);
 
   // รีเซ็ตหน้าให้เป็น 1 เมื่อมีการเปลี่ยนเงื่อนไข
   useEffect(() => {
     setPage(1);
-  }, [onlyMissing, wardFilter, department, startDate, endDate]);
+  }, [onlyMissing, wardFilter, department, includeSubward, startDate, endDate]);
 
-  // คำนวณหน้าและวอร์ดที่จะแสดง
-  const totalPages = Math.max(1, Math.ceil(filteredWardNames.length / PAGE_SIZE));
+  // คำนวณหน้าและรายการที่จะแสดง
+  const totalPages = Math.max(1, Math.ceil(filteredNames.length / PAGE_SIZE));
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const startIdx = (page - 1) * PAGE_SIZE;
-  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredWardNames.length);
-  const pageWardNames = filteredWardNames.slice(startIdx, endIdx);
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredNames.length);
+  const pageNames = filteredNames.slice(startIdx, endIdx);
 
   // controls
   const goPrevWeek = () => setEndDate(addDays(endDate, -7));
@@ -215,6 +236,15 @@ export default function MultiDayReportStatus() {
         <label className={styles.checkbox}>
           <input
             type="checkbox"
+            checked={includeSubward}
+            onChange={(e) => setIncludeSubward(e.target.checked)}
+          />
+          รวม Subward
+        </label>
+
+        <label className={styles.checkbox}>
+          <input
+            type="checkbox"
             checked={onlyMissing}
             onChange={(e) => setOnlyMissing(e.target.checked)}
           />
@@ -226,26 +256,11 @@ export default function MultiDayReportStatus() {
         </button>
       </div>
 
-      {/* summary */}
-      {/* {!!summary.length && (
-        <div className={styles.summaryBar}>
-          {summary.map((s) => (
-            <div key={s.wardname} className={styles.summaryItem}>
-              <div className={styles.summaryWard}>{s.wardname}</div>
-              <div className={styles.summaryPct}>{s.percent}%</div>
-              <div className={styles.summaryDetail}>
-                {s.sent}/{s.totalShifts} เวร
-              </div>
-            </div>
-          ))}
-        </div>
-      )} */}
-
-      {/* matrix (table เสถียร + แสดง 15 วอร์ดต่อหน้า) */}
+      {/* matrix (table เสถียร + 15 รายการต่อหน้า) */}
       {dates.length !== 7 ? (
         <div className={styles.summaryDetail}>กรุณาเลือกวันสิ้นสุด</div>
-      ) : filteredWardNames.length === 0 ? (
-        <div className={styles.summaryDetail}>ไม่พบ ward ตามเงื่อนไข</div>
+      ) : filteredNames.length === 0 ? (
+        <div className={styles.summaryDetail}>ไม่พบข้อมูลตามเงื่อนไข</div>
       ) : (
         <>
           <div className={styles.tableWrap}>
@@ -255,7 +270,7 @@ export default function MultiDayReportStatus() {
                   <th
                     className={`${styles.stickyCol} ${styles.stickyTop} ${styles.headLeft}`}
                   >
-                    Ward / Date
+                    Ward / Subward / Date
                     <div className={styles.rangeHintSmall}>
                       {dmy(dates[0])} → {dmy(dates[6])}
                     </div>
@@ -273,34 +288,31 @@ export default function MultiDayReportStatus() {
                 </tr>
               </thead>
               <tbody>
-                {pageWardNames.map((ward) => {
-                  const days = dataByWard[ward] || [];
+                {pageNames.map((label) => {
+                  const days = dataByWard[label] || [];
                   const byDate = Object.fromEntries(
                     days.map((d) => [d.date, d])
                   );
                   return (
-                    <tr key={ward}>
+                    <tr key={label}>
                       <th className={`${styles.stickyCol} ${styles.wardName}`}>
-                        {ward}
+                        {label}
                       </th>
                       {dates.map((d) => {
-                        const rec =
-                          byDate[d] || {
-                            morning: false,
-                            afternoon: false,
-                            night: false,
-                          };
+                        const rec = byDate[d] || {
+                          morning: false,
+                          afternoon: false,
+                          night: false,
+                        };
                         return (
                           <td
                             key={d}
                             className={`${styles.centerCell} ${
                               isWeekend(d) ? styles.weekendCell : ""
                             }`}
-                            title={`เช้า: ${
-                              rec.morning ? "✓" : "×"
-                            } | บ่าย: ${rec.afternoon ? "✓" : "×"} | ดึก: ${
-                              rec.night ? "✓" : "×"
-                            }`}
+                            title={`เช้า: ${rec.morning ? "✓" : "×"} | บ่าย: ${
+                              rec.afternoon ? "✓" : "×"
+                            } | ดึก: ${rec.night ? "✓" : "×"}`}
                           >
                             <span
                               className={`${styles.dot} ${
@@ -340,7 +352,8 @@ export default function MultiDayReportStatus() {
               ◀︎ ก่อนหน้า
             </button>
             <span className={styles.pageInfo}>
-              หน้า {page} / {totalPages} &nbsp;•&nbsp; แสดง {startIdx + 1}–{endIdx} จาก {filteredWardNames.length} ward
+              หน้า {page} / {totalPages} &nbsp;•&nbsp; แสดง {startIdx + 1}–
+              {endIdx} จาก {filteredNames.length} แถว
             </span>
             <button
               className={styles.pageBtn}

@@ -25,7 +25,6 @@ app.use("/api/subwards", subwardsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/lr-report", lrReportRoutes);
 app.use("/api", reportStatusRoutes);           // -> /api/report-status-range
-app.use("/api/reportStatus", reportStatusRoutes); // -> /api/reportStatus/report-status-range
 // Database
 const db = require("./db");
 
