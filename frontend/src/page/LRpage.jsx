@@ -266,6 +266,20 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
               {renderInput("ให้ออกซิเจน:", "oxygen")}
             </div>
           </div>
+
+          <div className="form-column">
+            <div className="section-header">Ventilator</div>
+            <div className="horizontal-inputs">
+              {renderInput("Invasive:", "vent_invasive")}
+              {renderInput("Non invasive:", "vent_noninvasive")}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="form-section">
+        <div className="flex-grid">
           <div className="form-column">
             <div className="section-header">เปลเสริม</div>
             {renderInput("", "extra_bed")}
@@ -278,11 +292,6 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             <div className="section-header">CPR</div>
             {renderInput("", "cpr")}
           </div>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <div className="flex-grid">
           <div className="form-column" style={{}}>
             <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
             {renderInput("", "infection", "number", "180px")}
