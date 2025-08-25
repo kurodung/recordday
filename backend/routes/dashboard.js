@@ -142,7 +142,7 @@ router.get("/", requireBearer, async (req, res) => {
       from.join(" ") +
       ` WHERE ` +
       where.join(" AND ") +
-      ` ORDER BY wr.date DESC, COALESCE(wr.created_at, '1970-01-01') DESC`;
+      ` ORDER BY wr.date DESC, wr.id DESC `;
 
     // (ถ้าบาง environment ไม่มี created_at ก็เปลี่ยนเป็น ORDER BY wr.date DESC เฉยๆ ได้)
     const [rows] = await db.query(sql, params);
@@ -221,7 +221,7 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
       SELECT wr.*
       ${from.join(" ")}
       WHERE ${where.join(" AND ")}
-      ORDER BY wr.date DESC, COALESCE(wr.created_at, '1970-01-01') DESC
+      ORDER BY wr.date DESC, wr.id DESC
     `;
     logQuery("summary/movement", sql, params);
 

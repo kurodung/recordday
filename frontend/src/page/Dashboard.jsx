@@ -2,10 +2,28 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
-import { Filter, Users, Activity, TrendingUp, Award, RefreshCw, X } from "lucide-react";
+import {
+  Filter,
+  Users,
+  Activity,
+  TrendingUp,
+  Award,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import styles from "../styles/Dashboard.module.css";
 
 /** ---------------- Utils ---------------- **/
@@ -46,7 +64,8 @@ const numFromKeys = (row, keys) => {
 const strFromKeys = (row, keys) => {
   for (const k of keys) {
     const v = row?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return String(v);
+    if (v !== undefined && v !== null && String(v).trim() !== "")
+      return String(v);
   }
   return "";
 };
@@ -56,12 +75,42 @@ const fmt = (n) => (Number.isFinite(+n) ? +n : 0).toLocaleString("th-TH");
 
 // ป้ายชื่อเวร
 const shiftLabel = (sh) =>
-  sh === "morning" ? "เวรเช้า" :
-  sh === "afternoon" ? "เวรบ่าย" :
-  sh === "night" ? "เวรดึก" : "";
+  sh === "morning"
+    ? "เวรเช้า"
+    : sh === "afternoon"
+    ? "เวรบ่าย"
+    : sh === "night"
+    ? "เวรดึก"
+    : "";
 
 // จำนวนรายการ log ต่อหน้า
 const LOG_PAGE_SIZE = 10;
+
+// helper
+const pad2 = (n) => String(n).padStart(2, "0");
+
+// คำนวณช่วงวันสำหรับ summary view (ถ้าไม่เลือกอะไรเลย → ใช้วันนี้)
+// default = เดือนปัจจุบัน
+const calcStartEnd = (filters) => {
+  if (filters.date) return { start: filters.date, end: filters.date };
+  if (filters.year && filters.month) {
+    const y = +filters.year, m = +filters.month;
+    const start = `${y}-${String(m).padStart(2,"0")}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const end = `${y}-${String(m).padStart(2,"0")}-${String(lastDay).padStart(2,"0")}`;
+    return { start, end };
+  }
+  if (filters.year) return { start: `${filters.year}-01-01`, end: `${filters.year}-12-31` };
+
+  // ✅ เปลี่ยนจาก “วันนี้” เป็น “เดือนนี้”
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  const start = `${y}-${String(m).padStart(2,"0")}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const end = `${y}-${String(m).padStart(2,"0")}-${String(lastDay).padStart(2,"0")}`;
+  return { start, end };
+};
+
 
 /** --------------- Component --------------- **/
 export default function Dashboard({ username, wardname }) {
@@ -71,15 +120,26 @@ export default function Dashboard({ username, wardname }) {
   const qpShift = searchParams.get("shift") || "";
 
   const [data, setData] = useState([]);
-  const [departments, setDepartments] = useState([]);     // รายชื่อ department สำหรับ dropdown
-  const [wardOptions, setWardOptions] = useState([]);     // รายชื่อ ward ตาม department ที่เลือก
+  const [departments, setDepartments] = useState([]); // รายชื่อ department สำหรับ dropdown
+  const [wardOptions, setWardOptions] = useState([]); // รายชื่อ ward ตาม department ที่เลือก
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [logPage, setLogPage] = useState(1);              // แบ่งหน้า log
+  const [logPage, setLogPage] = useState(1); // แบ่งหน้า log
+
+  // ✅ state สำหรับ "ตารางจาก view ใหม่"
+  const [unifiedRows, setUnifiedRows] = useState([]);
+  const [unifiedLoading, setUnifiedLoading] = useState(false);
+  const [unifiedError, setUnifiedError] = useState(null);
 
   // ฟิลเตอร์
   const [filters, setFilters] = useState({
-    date: "", shift: "", department: "", ward: "", subward: "", month: "", year: "",
+    date: "",
+    shift: "",
+    department: "",
+    ward: "",
+    subward: "",
+    month: "",
+    year: "",
   });
 
   // non-admin: ล็อก ward = wardname ของตัวเอง
@@ -89,7 +149,11 @@ export default function Dashboard({ username, wardname }) {
 
   // sync ค่าเริ่มจาก URL (?date=...&shift=...)
   useEffect(() => {
-    setFilters((f) => ({ ...f, date: qpDate || f.date, shift: qpShift || f.shift }));
+    setFilters((f) => ({
+      ...f,
+      date: qpDate || f.date,
+      shift: qpShift || f.shift,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qpDate, qpShift]);
 
@@ -98,13 +162,18 @@ export default function Dashboard({ username, wardname }) {
     const run = async () => {
       try {
         const token = localStorage.getItem("token") || "";
-        const res = await fetch("http://localhost:5000/api/dashboard/departments", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          "http://localhost:5000/api/dashboard/departments",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         if (!res.ok) throw new Error("โหลดรายชื่อแผนกไม่สำเร็จ");
         const rows = await res.json();
         setDepartments(rows.map((r) => r.department));
-      } catch (e) { console.warn(e); }
+      } catch (e) {
+        console.warn(e);
+      }
     };
     run();
   }, []);
@@ -113,16 +182,25 @@ export default function Dashboard({ username, wardname }) {
   useEffect(() => {
     const run = async () => {
       try {
-        if (!filters.department) { setWardOptions([]); return; }
+        if (!filters.department) {
+          setWardOptions([]);
+          return;
+        }
         const token = localStorage.getItem("token") || "";
         const qs = new URLSearchParams({ department: filters.department });
-        const res = await fetch(`http://localhost:5000/api/dashboard/wards-by-department?${qs}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `http://localhost:5000/api/dashboard/wards-by-department?${qs}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         if (!res.ok) throw new Error("โหลดรายชื่อวอร์ดในแผนกไม่สำเร็จ");
         const rows = await res.json();
         setWardOptions(rows.map((r) => r.wardname));
-      } catch (e) { console.warn(e); setWardOptions([]); }
+      } catch (e) {
+        console.warn(e);
+        setWardOptions([]);
+      }
     };
     run();
     // เคลียร์เมื่อเปลี่ยนแผนก
@@ -130,7 +208,7 @@ export default function Dashboard({ username, wardname }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.department]);
 
-  // โหลดข้อมูลรายงาน (รองรับกรองตาม ward + department ฝั่งเซิร์ฟเวอร์)
+  // โหลดข้อมูลรายงาน (เดิม)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -149,10 +227,14 @@ export default function Dashboard({ username, wardname }) {
           /ห้องคลอด|หลังคลอด|^lr$/i.test(String(filters.ward || "").trim());
         if (useLr) qs.set("source", "lr");
 
-        const url = `http://localhost:5000/api/dashboard${qs.toString() ? `?${qs}` : ""}`;
-        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const url = `http://localhost:5000/api/dashboard${
+          qs.toString() ? `?${qs}` : ""
+        }`;
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        const dataJson = await response.json(); // ✅ ใช้ response.json()
+        const dataJson = await response.json();
         if (!response.ok) {
           throw new Error(dataJson?.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
         }
@@ -168,16 +250,74 @@ export default function Dashboard({ username, wardname }) {
     fetchData();
   }, [isAdmin, username, filters.ward, filters.department, filters.subward]);
 
+  // ✅ โหลดข้อมูลสรุปจาก v_reports_unified (มีแถว 'รวม')
+  useEffect(() => {
+    const fetchUnified = async () => {
+      setUnifiedLoading(true);
+      setUnifiedError(null);
+      try {
+        const token = localStorage.getItem("token") || "";
+        const { start, end } = calcStartEnd(filters);
+
+        const qs = new URLSearchParams();
+        qs.set("start", start);
+        qs.set("end", end);
+        if (filters.shift) qs.set("shift", filters.shift);
+
+        const wardParam = isAdmin ? filters.ward || "" : wardname || "";
+        if (wardParam) qs.set("wardname", wardParam);
+        if (filters.subward) qs.set("subward", filters.subward);
+
+        const url = `http://localhost:5000/api/dashboard/summary?${qs.toString()}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.message || "โหลดสรุปจาก View ไม่สำเร็จ");
+        }
+        const rows = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+          ? json
+          : [];
+        setUnifiedRows(rows);
+      } catch (e) {
+        setUnifiedError(e.message || "ไม่สามารถโหลดสรุปจาก View ได้");
+        setUnifiedRows([]);
+      } finally {
+        setUnifiedLoading(false);
+      }
+    };
+
+    fetchUnified();
+  }, [
+    filters.date,
+    filters.month,
+    filters.year,
+    filters.shift,
+    filters.subward,
+    filters.ward,
+    isAdmin,
+    wardname,
+  ]);
+
   // ตัวเลือกในแผงฟิลเตอร์
   const filterOptions = useMemo(() => {
     const wardsFromDept = filters.department ? wardOptions : null;
     const uniqueWards = wardsFromDept
       ? [...wardsFromDept].sort()
-      : [...new Set(data.map((d) => strFromKeys(d, ["wardname", "ward"])))].sort();
+      : [
+          ...new Set(data.map((d) => strFromKeys(d, ["wardname", "ward"]))),
+        ].sort();
 
     const uniqueYears = [
       ...new Set(
-        data.map((d) => dateKey(d.date)).filter(Boolean).map((s) => Number(s.slice(0, 4)))
+        data
+          .map((d) => dateKey(d.date))
+          .filter(Boolean)
+          .map((s) => Number(s.slice(0, 4)))
       ),
     ].sort((a, b) => b - a);
 
@@ -186,9 +326,10 @@ export default function Dashboard({ username, wardname }) {
       ? [
           ...new Set(
             data
-              .filter((d) =>
-                strFromKeys(d, ["wardname", "ward"]) === selectedWard &&
-                strFromKeys(d, ["subward", "sub_ward", "subWard"])
+              .filter(
+                (d) =>
+                  strFromKeys(d, ["wardname", "ward"]) === selectedWard &&
+                  strFromKeys(d, ["subward", "sub_ward", "subWard"])
               )
               .map((d) => strFromKeys(d, ["subward", "sub_ward", "subWard"]))
           ),
@@ -196,17 +337,24 @@ export default function Dashboard({ username, wardname }) {
       : [];
     const uniqueSubwards = sortSubwardsWithPriority(subFromData, selectedWard);
 
-    return { departments, wards: uniqueWards, years: uniqueYears, subwards: uniqueSubwards };
+    return {
+      departments,
+      wards: uniqueWards,
+      years: uniqueYears,
+      subwards: uniqueSubwards,
+    };
   }, [data, filters.ward, filters.department, departments, wardOptions]);
 
   // เปลี่ยน ward แล้วเคลียร์ subward
-  useEffect(() => { setFilters((f) => ({ ...f, subward: "" })); }, [filters.ward]);
+  useEffect(() => {
+    setFilters((f) => ({ ...f, subward: "" }));
+  }, [filters.ward]);
 
-  // กรองข้อมูล
+  // กรองข้อมูล (เดิม)
   const filteredData = useMemo(() => {
     return data.filter((d) => {
       const dWard = strFromKeys(d, ["wardname", "ward"]);
-      const dSub  = strFromKeys(d, ["subward", "sub_ward", "subWard"]);
+      const dSub = strFromKeys(d, ["subward", "sub_ward", "subWard"]);
       const key = dateKey(d.date);
       const matchesDate = !filters.date || key === filters.date;
 
@@ -220,8 +368,15 @@ export default function Dashboard({ username, wardname }) {
       const matchesShift = !filters.shift || d.shift === filters.shift;
       const matchesOwnWard = isAdmin || dWard === wardname;
 
-      return (matchesDate && matchesWard && matchesSubward && matchesMonth &&
-              matchesYear && matchesShift && matchesOwnWard);
+      return (
+        matchesDate &&
+        matchesWard &&
+        matchesSubward &&
+        matchesMonth &&
+        matchesYear &&
+        matchesShift &&
+        matchesOwnWard
+      );
     });
   }, [data, filters, isAdmin, wardname]);
 
@@ -249,14 +404,21 @@ export default function Dashboard({ username, wardname }) {
 
   // สรุปการ์ดบนสุด
   const summaryStats = useMemo(() => {
-    const totalAdmissions = filteredData.reduce((s, r) => s + (r.bed_new || 0), 0);
+    const totalAdmissions = filteredData.reduce(
+      (s, r) => s + (r.bed_new || 0),
+      0
+    );
     const totalDischarges = filteredData.reduce(
-      (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0), 0
+      (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
+      0
     );
     const totalProductivity = filteredData.reduce(
-      (s, r) => s + (parseFloat(r.productivity) || 0), 0
+      (s, r) => s + (parseFloat(r.productivity) || 0),
+      0
     );
-    const avgProductivity = filteredData.length ? totalProductivity / filteredData.length : 0;
+    const avgProductivity = filteredData.length
+      ? totalProductivity / filteredData.length
+      : 0;
     return {
       recordCount: filteredData.length,
       totalAdmissions,
@@ -268,44 +430,190 @@ export default function Dashboard({ username, wardname }) {
   /** ---------------- สรุปเคลื่อนไหวผู้ป่วย ---------------- **/
   const movement = useMemo(() => {
     const carryForward = filteredData.reduce(
-      (s, r) => s + numFromKeys(r, ["carry_forward","brought_forward","opening_census","begin_balance","bed_carry"]), 0
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "carry_forward",
+          "brought_forward",
+          "opening_census",
+          "begin_balance",
+          "bed_carry",
+        ]),
+      0
     );
     const admitNew = filteredData.reduce((s, r) => s + (r.bed_new || 0), 0);
     const admitTransferIn = filteredData.reduce(
-      (s, r) => s + numFromKeys(r, ["admit_transfer_in","bed_transfer_in","transfer_in","receive_transfer_in"]), 0
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "admit_transfer_in",
+          "bed_transfer_in",
+          "transfer_in",
+          "receive_transfer_in",
+        ]),
+      0
     );
-    const disHome = filteredData.reduce((s, r) => s + (r.discharge_home || 0), 0);
+    const disHome = filteredData.reduce(
+      (s, r) => s + (r.discharge_home || 0),
+      0
+    );
     const disMoveWard = filteredData.reduce(
-      (s, r) => s + numFromKeys(r, ["discharge_move_ward","move_ward","transfer_intra"]), 0
+      (s, r) =>
+        s +
+        numFromKeys(r, ["discharge_move_ward", "move_ward", "transfer_intra"]),
+      0
     );
     const disReferOut = filteredData.reduce(
-      (s, r) => s + numFromKeys(r, ["discharge_refer_out","discharge_transfer_out","refer_out"]), 0
+      (s, r) =>
+        s +
+        numFromKeys(r, [
+          "discharge_refer_out",
+          "discharge_transfer_out",
+          "refer_out",
+        ]),
+      0
     );
     const disReferBack = filteredData.reduce(
-      (s, r) => s + numFromKeys(r, ["discharge_refer_back","refer_back"]), 0
+      (s, r) => s + numFromKeys(r, ["discharge_refer_back", "refer_back"]),
+      0
     );
-    const disDeath = filteredData.reduce((s, r) => s + numFromKeys(r, ["discharge_death","discharge_died","death"]), 0);
+    const disDeath = filteredData.reduce(
+      (s, r) =>
+        s + numFromKeys(r, ["discharge_death", "discharge_died", "death"]),
+      0
+    );
 
     const admitAll = admitNew + admitTransferIn;
-    const dischargeAll = disHome + disMoveWard + disReferOut + disReferBack + disDeath;
+    const dischargeAll =
+      disHome + disMoveWard + disReferOut + disReferBack + disDeath;
     const remain = carryForward + admitAll - dischargeAll;
 
-    return { carryForward, admitNew, admitTransferIn, admitAll,
-             disHome, disMoveWard, disReferOut, disReferBack, disDeath,
-             dischargeAll, remain };
+    return {
+      carryForward,
+      admitNew,
+      admitTransferIn,
+      admitAll,
+      disHome,
+      disMoveWard,
+      disReferOut,
+      disReferBack,
+      disDeath,
+      dischargeAll,
+      remain,
+    };
   }, [filteredData]);
+
+  // ===== Helper: รวมสรุปจาก unifiedRows (รองรับกรณีส่งมาแค่ "รวม") =====
+const buildMovementFromUnified = (rows = []) => {
+  const n = (v) => Number(v ?? 0) || 0;
+  const pick = (o, keys) => {
+    for (const k of keys) if (o?.[k] !== undefined && o?.[k] !== null) return o[k];
+    return 0;
+  };
+  const F = {
+    carry:       (r) => n(pick(r, ["bed_carry","carry_forward","carry"])),
+    admitNew:    (r) => n(pick(r, ["bed_new","admit_new"])),
+    admitTI:     (r) => n(pick(r, ["bed_transfer_in","admit_transfer_in","transfer_in","receive_transfer_in"])),
+    disHome:     (r) => n(pick(r, ["discharge_home","dis_home"])),
+    // บางระบบเก็บ "ย้ายตึก" ไว้ใน transfer_out
+    disMove:     (r) => n(pick(r, ["discharge_move_ward","move_ward","transfer_intra","discharge_transfer_out","dis_transfer_out"])),
+    disRefOut:   (r) => n(pick(r, ["discharge_refer_out","dis_ref_out"])),
+    disRefBack:  (r) => n(pick(r, ["discharge_refer_back","dis_ref_back"])),
+    disDeath:    (r) => n(pick(r, ["discharge_died","dis_death","death"])),
+    remain:      (r) => n(pick(r, ["bed_remain","remain"])),
+  };
+
+  const isRollup = (r) =>
+    (r?.wardname == null && r?.subward == null) ||
+    String(r?.wardname || "").trim() === "รวม";
+
+  const normalRows = rows.filter((r) => !isRollup(r));
+  const rollupRow  = rows.find(isRollup);
+
+  const zero = {
+    carryForward: 0, admitNew: 0, admitTransferIn: 0,
+    disHome: 0, disMoveWard: 0, disReferOut: 0, disReferBack: 0, disDeath: 0,
+    admitAll: 0, dischargeAll: 0, remain: 0,
+  };
+
+  // มีแถวปกติ -> รวมเอง
+  if (normalRows.length) {
+    const t = normalRows.reduce((a, r) => ({
+      carry:      a.carry      + F.carry(r),
+      admitNew:   a.admitNew   + F.admitNew(r),
+      admitTI:    a.admitTI    + F.admitTI(r),
+      disHome:    a.disHome    + F.disHome(r),
+      disMove:    a.disMove    + F.disMove(r),
+      disRefOut:  a.disRefOut  + F.disRefOut(r),
+      disRefBack: a.disRefBack + F.disRefBack(r),
+      disDeath:   a.disDeath   + F.disDeath(r),
+      remain:     a.remain     + F.remain(r),
+    }), {carry:0,admitNew:0,admitTI:0,disHome:0,disMove:0,disRefOut:0,disRefBack:0,disDeath:0,remain:0});
+
+    const mv = {
+      carryForward: t.carry,
+      admitNew: t.admitNew,
+      admitTransferIn: t.admitTI,
+      disHome: t.disHome,
+      disMoveWard: t.disMove,
+      disReferOut: t.disRefOut,
+      disReferBack: t.disRefBack,
+      disDeath: t.disDeath,
+      remain: t.remain,
+    };
+    mv.admitAll = mv.admitNew + mv.admitTransferIn;
+    mv.dischargeAll = mv.disHome + mv.disMoveWard + mv.disReferOut + mv.disReferBack + mv.disDeath;
+    return { movement: mv, hasData: true };
+  }
+
+  // ไม่มีแถวปกติ แต่มีแถวรวม -> ใช้แถวรวมนั้นเลย
+  if (rollupRow) {
+    const R = rollupRow;
+    const mv = {
+      carryForward:   F.carry(R),
+      admitNew:       F.admitNew(R),
+      admitTransferIn:F.admitTI(R),
+      disHome:        F.disHome(R),
+      disMoveWard:    F.disMove(R),
+      disReferOut:    F.disRefOut(R),
+      disReferBack:   F.disRefBack(R),
+      disDeath:       F.disDeath(R),
+      remain:         F.remain(R),
+    };
+    mv.admitAll = mv.admitNew + mv.admitTransferIn;
+    mv.dischargeAll = mv.disHome + mv.disMoveWard + mv.disReferOut + mv.disReferBack + mv.disDeath;
+    return { movement: mv, hasData: true };
+  }
+
+  // ไม่มีข้อมูลเลย
+  return { movement: zero, hasData: false };
+};
+
+// ===== Memo: ได้ movementV / unifiedHasData ไว้ใช้ใน JSX =====
+const { movement: movementV, hasData: unifiedHasData } = useMemo(
+  () => buildMovementFromUnified(unifiedRows),
+  [unifiedRows]
+);
+
 
   /** ---------------- รายการตามเวลา (Log view) ---------------- **/
   const logItems = useMemo(() => {
     const shiftStart = { morning: "07:00", afternoon: "15:00", night: "23:00" };
-    const dtCandidates = ["datetime", "date_time", "created_at", "updated_at", "time"];
+    const dtCandidates = [
+      "datetime",
+      "date_time",
+      "created_at",
+      "updated_at",
+      "time",
+    ];
 
     const toDisplayDateTime = (row) => {
       // ใช้ฟิลด์วัน/เวลาเป็น ts แต่ "แสดงผลแค่วันที่"
       for (const k of dtCandidates) {
         if (row?.[k]) {
           const d = new Date(row[k]);
-          if (!Number.isNaN(d)) return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
+          if (!Number.isNaN(d))
+            return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
         }
       }
       // ถ้าไม่มี datetime → ใช้เวลาเริ่มเวรสำหรับ sort แต่ text เป็น "วันที่"
@@ -314,12 +622,16 @@ export default function Dashboard({ username, wardname }) {
         const dSort = new Date(`${dateKey(row.date)}T${time}:00`);
         const dText = new Date(dateKey(row.date));
         if (!Number.isNaN(dSort) && !Number.isNaN(dText))
-          return { ts: dSort.getTime(), text: dText.toLocaleDateString("th-TH") };
+          return {
+            ts: dSort.getTime(),
+            text: dText.toLocaleDateString("th-TH"),
+          };
       }
       // สุดท้าย ใช้วันที่อย่างเดียว
       if (row?.date) {
         const d = new Date(dateKey(row.date));
-        if (!Number.isNaN(d)) return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
+        if (!Number.isNaN(d))
+          return { ts: d.getTime(), text: d.toLocaleDateString("th-TH") };
       }
       return { ts: 0, text: "-" };
     };
@@ -327,14 +639,37 @@ export default function Dashboard({ username, wardname }) {
     return [...filteredData]
       .map((r) => {
         const dt = toDisplayDateTime(r);
-        const carry   = numFromKeys(r, ["carry_forward","brought_forward","opening_census","begin_balance","bed_carry"]);
-        const tIn     = numFromKeys(r, ["admit_transfer_in","bed_transfer_in","transfer_in","receive_transfer_in"]);
-        const moveW   = numFromKeys(r, ["discharge_move_ward","move_ward","transfer_intra"]);
-        const refOut  = numFromKeys(r, ["discharge_refer_out","discharge_transfer_out","refer_out"]);
-        const refBack = numFromKeys(r, ["discharge_refer_back","refer_back"]);
-        const death   = numFromKeys(r, ["discharge_death","discharge_died","death"]);
+        const carry = numFromKeys(r, [
+          "carry_forward",
+          "brought_forward",
+          "opening_census",
+          "begin_balance",
+          "bed_carry",
+        ]);
+        const tIn = numFromKeys(r, [
+          "admit_transfer_in",
+          "bed_transfer_in",
+          "transfer_in",
+          "receive_transfer_in",
+        ]);
+        const moveW = numFromKeys(r, [
+          "discharge_move_ward",
+          "move_ward",
+          "transfer_intra",
+        ]);
+        const refOut = numFromKeys(r, [
+          "discharge_refer_out",
+          "discharge_transfer_out",
+          "refer_out",
+        ]);
+        const refBack = numFromKeys(r, ["discharge_refer_back", "refer_back"]);
+        const death = numFromKeys(r, [
+          "discharge_death",
+          "discharge_died",
+          "death",
+        ]);
         const admitNew = r.bed_new || 0;
-        const disHome  = r.discharge_home || 0;
+        const disHome = r.discharge_home || 0;
         const admitAll = admitNew + tIn;
         const dischargeAll = disHome + moveW + refOut + refBack + death;
         const remain = carry + admitAll - dischargeAll;
@@ -344,10 +679,17 @@ export default function Dashboard({ username, wardname }) {
           timeText: dt.text,
           shift: r.shift || "",
           department: r.department || "",
-          ward: strFromKeys(r, ["wardname","ward"]) || "-",
-          subward: strFromKeys(r, ["subward","sub_ward","subWard"]) || "-",
-          admitNew, transferIn: tIn, disHome, moveWard: moveW, referOut: refOut,
-          referBack: refBack, death, remain, productivity: r.productivity,
+          ward: strFromKeys(r, ["wardname", "ward"]) || "-",
+          subward: strFromKeys(r, ["subward", "sub_ward", "subWard"]) || "-",
+          admitNew,
+          transferIn: tIn,
+          disHome,
+          moveWard: moveW,
+          referOut: refOut,
+          referBack: refBack,
+          death,
+          remain,
+          productivity: r.productivity,
         };
       })
       .sort((a, b) => b.ts - a.ts || b.ward.localeCompare(a.ward, "th"));
@@ -359,36 +701,74 @@ export default function Dashboard({ username, wardname }) {
     [logItems.length]
   );
   const pageLogItems = useMemo(
-    () => logItems.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE),
+    () =>
+      logItems.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE),
     [logItems, logPage]
   );
 
   // reset หน้า เมื่อฟิลเตอร์เปลี่ยน
-  useEffect(() => { setLogPage(1); }, [
-    filteredData.length, filters.date, filters.shift, filters.department,
-    filters.ward, filters.subward, filters.month, filters.year,
+  useEffect(() => {
+    setLogPage(1);
+  }, [
+    filteredData.length,
+    filters.date,
+    filters.shift,
+    filters.department,
+    filters.ward,
+    filters.subward,
+    filters.month,
+    filters.year,
   ]);
 
   // ถ้าจำนวนหน้าลดลง
-  useEffect(() => { if (logPage > totalLogPages) setLogPage(totalLogPages); },
-    [totalLogPages, logPage]);
+  useEffect(() => {
+    if (logPage > totalLogPages) setLogPage(totalLogPages);
+  }, [totalLogPages, logPage]);
 
-  const handleFilterChange = (e) => setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleFilterChange = (e) =>
+    setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const clearFilters = () => {
     setFilters({
-      date: "", shift: "", department: "",
+      date: "",
+      shift: "",
+      department: "",
       ward: isAdmin ? "" : wardname || "",
-      subward: "", month: "", year: "",
+      subward: "",
+      month: "",
+      year: "",
     });
   };
 
-  const COLORS = ["#7e3cbd", "#c084fc", "#a855f7", "#9333ea", "#8b5cf6", "#7c3aed"];
+  const COLORS = [
+    "#7e3cbd",
+    "#c084fc",
+    "#a855f7",
+    "#9333ea",
+    "#8b5cf6",
+    "#7c3aed",
+  ];
 
   // สไตล์ตาราง: กึ่งกลางทุกช่อง + กินเต็มคอลัมน์
-  const tableStyle = { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" };
-  const thStyle = { padding: 8, borderBottom: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "nowrap" };
-  const tdStyle = { padding: 8, borderBottom: "1px solid #f3f4f6", textAlign: "center", verticalAlign: "middle", overflow: "hidden", textOverflow: "ellipsis" };
+  const tableStyle = {
+    width: "100%",
+    borderCollapse: "collapse",
+    tableLayout: "fixed",
+  };
+  const thStyle = {
+    padding: 8,
+    borderBottom: "1px solid #e5e7eb",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  };
+  const tdStyle = {
+    padding: 8,
+    borderBottom: "1px solid #f3f4f6",
+    textAlign: "center",
+    verticalAlign: "middle",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  };
 
   if (loading)
     return (
@@ -400,6 +780,26 @@ export default function Dashboard({ username, wardname }) {
 
   if (error) return <div className={styles.errorContainer}>{error}</div>;
 
+  // คอลัมน์สำหรับตารางจาก View ใหม่
+  const unifiedCols = [
+    { key: "wardname", label: "Ward" },
+    { key: "subward", label: "Sub-ward" },
+    { key: "bed_carry", label: "ยกมา" },
+    { key: "bed_new", label: "รับใหม่" },
+    { key: "bed_transfer_in", label: "รับย้าย" },
+    { key: "discharge_home", label: "กลับบ้าน" },
+    { key: "discharge_transfer_out", label: "ย้ายตึก" },
+    { key: "discharge_refer_out", label: "Refer out" },
+    { key: "discharge_refer_back", label: "Refer back" },
+    { key: "discharge_died", label: "เสียชีวิต" },
+    { key: "bed_remain", label: "คงพยาบาล" },
+    { key: "deliveries_total", label: "คลอดรวม" },
+    { key: "delivery_nl", label: "ปกติ" },
+    { key: "delivery_forcep", label: "Forceps" },
+    { key: "delivery_vac", label: "Vacuum" },
+    { key: "delivery_br", label: "Breech" },
+    { key: "delivery_cs", label: "C/S" },
+  ];
 
   return (
     <div className={styles.dashboardContainer}>
@@ -407,7 +807,9 @@ export default function Dashboard({ username, wardname }) {
         <div className={styles.dashboardHeaderContent}>
           <div>
             <h1 className={styles.dashboardTitle}>📊 ภาพรวมข้อมูลโรงพยาบาล</h1>
-            <p className={styles.dashboardSubtitle}>ระบบติดตามและวิเคราะห์ข้อมูลการดำเนินงาน</p>
+            <p className={styles.dashboardSubtitle}>
+              ระบบติดตามและวิเคราะห์ข้อมูลการดำเนินงาน
+            </p>
           </div>
         </div>
       </div>
@@ -415,14 +817,40 @@ export default function Dashboard({ username, wardname }) {
       {/* การ์ดสรุป */}
       <div className={styles.summaryCardsGrid}>
         {[
-          { label: "จำนวนรายการทั้งหมด", value: summaryStats.recordCount, icon: <Users size={24} />, colorClass: "blue" },
-          { label: "ยอดรับใหม่ (Admit)", value: summaryStats.totalAdmissions, icon: <TrendingUp size={24} />, colorClass: "green" },
-          { label: "ยอดจำหน่าย (Discharge)", value: summaryStats.totalDischarges, icon: <Activity size={24} />, colorClass: "yellow" },
-          { label: "Productivity เฉลี่ย", value: `${summaryStats.avgProductivity}%`, icon: <Award size={24} />, colorClass: "red" },
+          {
+            label: "จำนวนรายการทั้งหมด",
+            value: summaryStats.recordCount,
+            icon: <Users size={24} />,
+            colorClass: "blue",
+          },
+          {
+            label: "ยอดรับใหม่ (Admit)",
+            value: summaryStats.totalAdmissions,
+            icon: <TrendingUp size={24} />,
+            colorClass: "green",
+          },
+          {
+            label: "ยอดจำหน่าย (Discharge)",
+            value: summaryStats.totalDischarges,
+            icon: <Activity size={24} />,
+            colorClass: "yellow",
+          },
+          {
+            label: "Productivity เฉลี่ย",
+            value: `${summaryStats.avgProductivity}%`,
+            icon: <Award size={24} />,
+            colorClass: "red",
+          },
         ].map((card, index) => (
           <div key={index} className={styles.summaryCard}>
             <div className={styles.summaryCardHeader}>
-              <div className={`${styles.summaryCardIcon} ${styles[card.colorClass]}`}>{card.icon}</div>
+              <div
+                className={`${styles.summaryCardIcon} ${
+                  styles[card.colorClass]
+                }`}
+              >
+                {card.icon}
+              </div>
             </div>
             <div className={styles.summaryCardLabel}>{card.label}</div>
             <div className={styles.summaryCardValue}>{card.value}</div>
@@ -438,21 +866,63 @@ export default function Dashboard({ username, wardname }) {
         </div>
         <div className={styles.filterGrid}>
           {[
-            { name: "date", label: "เลือกวันที่", type: "date", value: filters.date },
             {
-              name: "shift", label: "เลือกเวร", type: "select", value: filters.shift,
-              options: [{ value: "morning", label: "เวรเช้า" }, { value: "afternoon", label: "เวรบ่าย" }, { value: "night", label: "เวรดึก" }],
+              name: "date",
+              label: "เลือกวันที่",
+              type: "date",
+              value: filters.date,
             },
-            { name: "year", label: "เลือกปี", type: "select", value: filters.year, options: filterOptions.years },
             {
-              name: "month", label: "เลือกเดือน", type: "select", value: filters.month,
-              options: Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: new Date(0, i).toLocaleString("th-TH", { month: "long" }) })),
+              name: "shift",
+              label: "เลือกเวร",
+              type: "select",
+              value: filters.shift,
+              options: [
+                { value: "morning", label: "เวรเช้า" },
+                { value: "afternoon", label: "เวรบ่าย" },
+                { value: "night", label: "เวรดึก" },
+              ],
             },
-            { name: "department", label: "เลือกกลุ่มงาน", type: "select", value: filters.department, options: filterOptions.departments },
-            { name: "ward", label: "เลือก Ward", type: "select", value: filters.ward, options: filterOptions.wards },
             {
-              name: "subward", label: "เลือก Sub-ward", type: "select", value: filters.subward,
-              options: filterOptions.subwards, disabled: !filters.ward || filterOptions.subwards.length === 0,
+              name: "year",
+              label: "เลือกปี",
+              type: "select",
+              value: filters.year,
+              options: filterOptions.years,
+            },
+            {
+              name: "month",
+              label: "เลือกเดือน",
+              type: "select",
+              value: filters.month,
+              options: Array.from({ length: 12 }, (_, i) => ({
+                value: i + 1,
+                label: new Date(0, i).toLocaleString("th-TH", {
+                  month: "long",
+                }),
+              })),
+            },
+            {
+              name: "department",
+              label: "เลือกกลุ่มงาน",
+              type: "select",
+              value: filters.department,
+              options: filterOptions.departments,
+            },
+            {
+              name: "ward",
+              label: "เลือก Ward",
+              type: "select",
+              value: filters.ward,
+              options: filterOptions.wards,
+            },
+            {
+              name: "subward",
+              label: "เลือก Sub-ward",
+              type: "select",
+              value: filters.subward,
+              options: filterOptions.subwards,
+              disabled: !filters.ward || filterOptions.subwards.length === 0,
             },
           ].map((field) => (
             <div key={field.name} className={styles.filterItem}>
@@ -466,7 +936,10 @@ export default function Dashboard({ username, wardname }) {
                   className={styles.filterInput}
                   onPointerDown={(e) => {
                     const el = e.currentTarget;
-                    if (typeof el.showPicker === "function") { e.preventDefault(); el.showPicker(); }
+                    if (typeof el.showPicker === "function") {
+                      e.preventDefault();
+                      el.showPicker();
+                    }
                   }}
                 />
               ) : (
@@ -478,14 +951,17 @@ export default function Dashboard({ username, wardname }) {
                   className={styles.filterSelect}
                 >
                   <option value="">ทั้งหมด</option>
-                  {field.options && field.options.map((option) => (
-                    <option
-                      key={typeof option === "object" ? option.value : option}
-                      value={typeof option === "object" ? option.value : option}
-                    >
-                      {typeof option === "object" ? option.label : option}
-                    </option>
-                  ))}
+                  {field.options &&
+                    field.options.map((option) => (
+                      <option
+                        key={typeof option === "object" ? option.value : option}
+                        value={
+                          typeof option === "object" ? option.value : option
+                        }
+                      >
+                        {typeof option === "object" ? option.label : option}
+                      </option>
+                    ))}
                 </select>
               )}
             </div>
@@ -504,21 +980,33 @@ export default function Dashboard({ username, wardname }) {
             แนวโน้ม Productivity และการรับผู้ป่วย
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={filteredData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart
+              data={filteredData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("th-TH", { month: "short", day: "numeric" })
+                  new Date(value).toLocaleDateString("th-TH", {
+                    month: "short",
+                    day: "numeric",
+                  })
                 }
               />
               <YAxis />
               <Tooltip
                 formatter={(value, name) => [
                   value,
-                  name === "productivity" ? "Productivity (%)" : name === "bed_new" ? "การรับใหม่" : name,
+                  name === "productivity"
+                    ? "Productivity (%)"
+                    : name === "bed_new"
+                    ? "การรับใหม่"
+                    : name,
                 ]}
-                labelFormatter={(value) => `วันที่: ${new Date(value).toLocaleDateString("th-TH")}`}
+                labelFormatter={(value) =>
+                  `วันที่: ${new Date(value).toLocaleDateString("th-TH")}`
+                }
               />
               <Legend />
               <Line
@@ -543,17 +1031,31 @@ export default function Dashboard({ username, wardname }) {
 
         <div className={styles.chartContainer}>
           <h3 className={styles.chartTitleSmall}>
-            {filters.department ? "การกระจายตาม Ward (ใน Department ที่เลือก)" : "การกระจายตาม Department"}
+            {filters.department
+              ? "การกระจายตาม Ward (ใน Department ที่เลือก)"
+              : "การกระจายตาม Department"}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={filters.department ? wardDistribution : departmentDistribution}
-                cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5}
+                data={
+                  filters.department ? wardDistribution : departmentDistribution
+                }
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={100}
+                paddingAngle={5}
                 dataKey="value"
               >
-                {(filters.department ? wardDistribution : departmentDistribution).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {(filters.department
+                  ? wardDistribution
+                  : departmentDistribution
+                ).map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => [`${value} คน`, "จำนวน"]} />
@@ -569,20 +1071,41 @@ export default function Dashboard({ username, wardname }) {
           เปรียบเทียบการรับและจำหน่ายผู้ป่วย
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart
+            data={filteredData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+          >
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
               tickFormatter={(value) =>
-                new Date(value).toLocaleDateString("th-TH", { month: "short", day: "numeric" })
+                new Date(value).toLocaleDateString("th-TH", {
+                  month: "short",
+                  day: "numeric",
+                })
               }
             />
             <YAxis />
             <Tooltip formatter={(value, name) => [value, name]} />
             <Legend />
-            <Bar dataKey="bed_new" fill="#7e3cbd" name="รับใหม่" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="discharge_home" fill="#10b981" name="จำหน่ายกลับบ้าน" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="discharge_transfer_out" fill="#f59e0b" name="โอนออก" radius={[4, 4, 0, 0]} />
+            <Bar
+              dataKey="bed_new"
+              fill="#7e3cbd"
+              name="รับใหม่"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="discharge_home"
+              fill="#10b981"
+              name="จำหน่ายกลับบ้าน"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="discharge_transfer_out"
+              fill="#f59e0b"
+              name="โอนออก"
+              radius={[4, 4, 0, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -599,10 +1122,18 @@ export default function Dashboard({ username, wardname }) {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th rowSpan={2} style={thStyle}>ยอดยกมา</th>
-                  <th colSpan={2} style={thStyle}>ยอดรับ</th>
-                  <th colSpan={5} style={thStyle}>ยอดจำหน่าย</th>
-                  <th rowSpan={2} style={thStyle}>คงพยาบาล</th>
+                  <th rowSpan={2} style={thStyle}>
+                    ยอดยกมา
+                  </th>
+                  <th colSpan={2} style={thStyle}>
+                    ยอดรับ
+                  </th>
+                  <th colSpan={5} style={thStyle}>
+                    ยอดจำหน่าย
+                  </th>
+                  <th rowSpan={2} style={thStyle}>
+                    คงพยาบาล
+                  </th>
                 </tr>
                 <tr>
                   <th style={thStyle}>รับใหม่</th>
@@ -629,17 +1160,99 @@ export default function Dashboard({ username, wardname }) {
               </tbody>
             </table>
 
-            <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
-              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 16,
+                marginTop: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  padding: "6px 10px",
+                  background: "#f3f4f6",
+                  borderRadius: 8,
+                }}
+              >
                 <strong>ยอดรับรวม:</strong> {fmt(movement.admitAll)}
               </div>
-              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+              <div
+                style={{
+                  padding: "6px 10px",
+                  background: "#f3f4f6",
+                  borderRadius: 8,
+                }}
+              >
                 <strong>ยอดจำหน่ายรวม:</strong> {fmt(movement.dischargeAll)}
               </div>
             </div>
           </div>
         )}
       </div>
+
+{/* ✅ สรุปจาก View (v_reports_unified) — รูปแบบเดียวกับตารางบน */}
+<div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
+  <h3 className={styles.chartTitle}>สรุปจาก View (v_reports_unified)</h3>
+
+  {unifiedLoading ? (
+    <div className={styles.loadingContainer} style={{ height: 80 }}>
+      <RefreshCw className={styles.loadingSpinner} size={20} />
+      <span className={styles.loadingText}>กำลังโหลดข้อมูลจาก View...</span>
+    </div>
+  ) : unifiedError ? (
+    <div className={styles.errorContainer}>{unifiedError}</div>
+  ) : !unifiedHasData ? (
+    <div className={styles.loadingContainer} style={{ height: 80 }}>
+      <span className={styles.loadingText}>ไม่มีข้อมูลตามตัวกรอง</span>
+    </div>
+  ) : (
+    <div style={{ overflowX: "auto" }}>
+      <table style={tableStyle}>
+        <thead>
+          <tr>
+            <th rowSpan={2} style={thStyle}>ยอดยกมา</th>
+            <th colSpan={2} style={thStyle}>ยอดรับ</th>
+            <th colSpan={5} style={thStyle}>ยอดจำหน่าย</th>
+            <th rowSpan={2} style={thStyle}>คงพยาบาล</th>
+          </tr>
+          <tr>
+            <th style={thStyle}>รับใหม่</th>
+            <th style={thStyle}>รับย้าย</th>
+            <th style={thStyle}>กลับบ้าน</th>
+            <th style={thStyle}>ย้ายตึก</th>
+            <th style={thStyle}>Refer out</th>
+            <th style={thStyle}>Refer back</th>
+            <th style={thStyle}>เสียชีวิต</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={tdStyle}>{fmt(movementV.carryForward)}</td>
+            <td style={tdStyle}>{fmt(movementV.admitNew)}</td>
+            <td style={tdStyle}>{fmt(movementV.admitTransferIn)}</td>
+            <td style={tdStyle}>{fmt(movementV.disHome)}</td>
+            <td style={tdStyle}>{fmt(movementV.disMoveWard)}</td>
+            <td style={tdStyle}>{fmt(movementV.disReferOut)}</td>
+            <td style={tdStyle}>{fmt(movementV.disReferBack)}</td>
+            <td style={tdStyle}>{fmt(movementV.disDeath)}</td>
+            <td style={tdStyle}>{fmt(movementV.remain)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
+        <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+          <strong>ยอดรับรวม:</strong> {fmt(movementV.admitAll)}
+        </div>
+        <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
+          <strong>ยอดจำหน่ายรวม:</strong> {fmt(movementV.dischargeAll)}
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
 
       {/* ✅ รายการตามเวลา (Log view) + แบ่งหน้า */}
       <div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
@@ -655,7 +1268,6 @@ export default function Dashboard({ username, wardname }) {
                 <tr>
                   <th style={thStyle}>วันที่</th>
                   <th style={thStyle}>เวร</th>
-                  <th style={thStyle}>กลุ่มงาน</th>
                   <th style={thStyle}>Ward</th>
                   <th style={thStyle}>Sub-ward</th>
                   <th style={thStyle}>รับใหม่</th>
@@ -674,7 +1286,6 @@ export default function Dashboard({ username, wardname }) {
                   <tr key={`${r.ts}-${idx}`}>
                     <td style={tdStyle}>{r.timeText}</td>
                     <td style={tdStyle}>{shiftLabel(r.shift)}</td>
-                    <td style={tdStyle}>{r.department || "-"}</td>
                     <td style={tdStyle}>{r.ward || "-"}</td>
                     <td style={tdStyle}>{r.subward || "-"}</td>
                     <td style={tdStyle}>{fmt(r.admitNew)}</td>
@@ -686,7 +1297,9 @@ export default function Dashboard({ username, wardname }) {
                     <td style={tdStyle}>{fmt(r.death)}</td>
                     <td style={tdStyle}>{fmt(r.remain)}</td>
                     <td style={tdStyle}>
-                      {Number.isFinite(+r.productivity) ? Number(r.productivity).toFixed(2) : "-"}
+                      {Number.isFinite(+r.productivity)
+                        ? Number(r.productivity).toFixed(2)
+                        : "-"}
                     </td>
                   </tr>
                 ))}
@@ -695,7 +1308,11 @@ export default function Dashboard({ username, wardname }) {
 
             {/* ตัวควบคุมแบ่งหน้า */}
             <div className={styles.pagination}>
-              <button className={styles.pageBtn} onClick={() => setLogPage(1)} disabled={logPage === 1}>
+              <button
+                className={styles.pageBtn}
+                onClick={() => setLogPage(1)}
+                disabled={logPage === 1}
+              >
                 « หน้าแรก
               </button>
               <button
@@ -707,12 +1324,15 @@ export default function Dashboard({ username, wardname }) {
               </button>
 
               <span className={styles.pageInfo}>
-                หน้า {logPage} / {totalLogPages} • ทั้งหมด {logItems.length.toLocaleString("th-TH")} รายการ
+                หน้า {logPage} / {totalLogPages} • ทั้งหมด{" "}
+                {logItems.length.toLocaleString("th-TH")} รายการ
               </span>
 
               <button
                 className={styles.pageBtn}
-                onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))}
+                onClick={() =>
+                  setLogPage((p) => Math.min(totalLogPages, p + 1))
+                }
                 disabled={logPage === totalLogPages}
               >
                 ถัดไป ›

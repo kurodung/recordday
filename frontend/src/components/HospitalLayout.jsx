@@ -1,3 +1,4 @@
+// src/components/HospitalLayout.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -64,6 +65,10 @@ export default function HospitalLayout({ children }) {
   const [wardname, setWardname] = useState("");
   const [subward, setsubward] = useState("");
   const [subwardOptions, setsubwardOptions] = useState([]);
+
+  // 👉 ตัวช่วยตัดสินใจหน้า
+  const isLRUser = norm(username) === "lr";
+  const isDeliveryRoom = norm(subward) === "ห้องคลอด";
 
   // มือถือ/เดสก์ท็อป & เมนูด้านซ้าย
   const [isMobile, setIsMobile] = useState(false);
@@ -174,7 +179,7 @@ export default function HospitalLayout({ children }) {
     fetchsubwards();
   }, [username, wardname]); // ไม่ใส่ subward กันลูป
 
-  // sync query
+  // sync query (เฉพาะ search string)
   useEffect(() => {
     if (!username || !wardname) return;
     const current = new URLSearchParams(location.search);
@@ -197,15 +202,42 @@ export default function HospitalLayout({ children }) {
     navigate,
   ]);
 
+  // ✅ Auto-switch หน้าเมื่อเปลี่ยน subward ระหว่างอยู่ "แท็บทั่วไป" (/main หรือ /lrpage)
+  useEffect(() => {
+    const onGeneralTab = ["/main", "/lrpage"].some((p) =>
+      location.pathname.startsWith(p)
+    );
+    if (!onGeneralTab) return;
+
+    const base = isLRUser && isDeliveryRoom ? "/lrpage" : "/main";
+    const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
+    if (subward) qs.set("subward", subward);
+    const target = `${base}?${qs.toString()}`;
+
+    const current = `${location.pathname}${location.search}`;
+    if (current !== target) {
+      navigate(target, { replace: true });
+    }
+  }, [
+    isLRUser,
+    isDeliveryRoom,
+    subward,
+    activeShift,
+    selectedDate,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
+
   const isActiveTab = (paths) => {
     if (Array.isArray(paths))
       return paths.some((p) => location.pathname.includes(p));
     return location.pathname.includes(paths);
   };
 
+  // ⬇️ ปุ่ม "ทั่วไป" จะเลือกหน้าให้ถูกต้องตาม subward ปัจจุบัน
   const handleGeneralClick = () => {
-    const lowerUser = username?.trim().toLowerCase();
-    const base = lowerUser === "lr" ? "/lrpage" : "/main";
+    const base = isLRUser && isDeliveryRoom ? "/lrpage" : "/main";
     const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
     if (subward) qs.append("subward", subward);
     navigate(`${base}?${qs.toString()}`);
