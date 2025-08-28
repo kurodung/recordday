@@ -2,6 +2,9 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+// Database
+const db = require("./db");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -15,7 +18,7 @@ const dashboardRoute = require("./routes/dashboard");
 const lrReportRoutes = require("./routes/lrReportRoutes");
 const subwardsRoute = require("./routes/subwards");
 const reportStatusRoutes = require("./routes/reportStatusRoutes");
-const dashboardSummaryRoute = require("./routes/dashboardSummary");
+
 
 // Register Routes
 app.use("/api", authRoutes); // /api/register, /api/login, /api/profile
@@ -26,9 +29,6 @@ app.use("/api/subwards", subwardsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/lr-report", lrReportRoutes);
 app.use("/api", reportStatusRoutes);           // -> /api/report-status-range
-app.use("/api", dashboardSummaryRoute);
-// Database
-const db = require("./db");
 
 const toMysqlDate = (value) => {
   if (!value) return null;
