@@ -23,8 +23,8 @@ const has = (v) => typeof v === "string" && v.trim() !== "";
 /** --------- Small utils --------- **/
 function logQuery(label, sql, params) {
   // เปิดไว้ดีเวลาตรวจสอบ; ถ้าไม่ต้องการก็ comment ได้
-  console.log(`[${label}] SQL:`, sql.replace(/\s+/g, " "));
-  console.log(`[${label}] Params:`, params);
+  //console.log(`[${label}] SQL:`, sql.replace(/\s+/g, " "));
+  //console.log(`[${label}] Params:`, params);
 }
 
 const JOIN_WARDS = `

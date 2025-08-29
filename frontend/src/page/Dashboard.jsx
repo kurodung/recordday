@@ -21,6 +21,80 @@ import styles from "../styles/Dashboard.module.css";
 /** -------------------------------- Config -------------------------------- **/
 const API_BASE = (import.meta?.env?.VITE_API_BASE || "http://localhost:5000/api").replace(/\/$/, "");
 const LOG_PAGE_SIZE = 10; // จำนวนรายการ log ต่อหน้า
+// ✅ รายชื่อวอร์ดพิเศษสำหรับรวม bed_remain
+const SPECIAL_WARDS = [
+  "พิเศษ EENT",
+  "EENT", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+  "พิเศษอายุรกรรม 3",
+  "พิเศษอายุรกรรม 4",
+  "พิเศษอายุรกรรม 5",
+  "พิเศษอายุรกรรม 6",
+  "พิเศษอายุรกรรม 7",
+]; 
+
+const ICUAD_WARDS = [
+  "SICU 3",
+  "MICU 2", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+  "AIIR",
+  "MICU 1",
+  "RCU",
+  "SICU 1",
+  "SICU 2",
+  "CCU",
+  "CVT",
+]; 
+
+const ICUCH_WARDS = [
+  "NICU",
+  "EENT", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+]; 
+
+const NORMAL_WARDS = [
+  "หลังคลอด",
+  "นรีเวชกรรม", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+  "SNB",
+  "Stroke Unit",
+  "เคมีบำบัด",
+  "EENT",
+  "อายุรกรรมหญิง 3",
+  "อายุรกรรมหญิง 4",
+  "อายุรกรรมชาย 5",
+  "อายุรกรรมชาย 6",
+  "อายุรกรรมชาย 7/สงฆ์",
+  "รอคลอด",
+  "ห้องคลอด",
+
+  "กุมารเวชกรรม 1",
+  "กุมารเวชกรรม 2",
+  "ออร์โธปิดิกส์ชาย",
+  "ออร์โธปิดิกส์หญิง",
+  "ศัลยกรรมหญิง 1",
+  "ศัลยกรรมหญิง 2",
+  "URO",
+  "ศัลยกรรมชาย 2",
+  "ศัลยกรรมชาย 1",
+  "ปาริชาต",
+]; 
+
+const Semi_ICU = [
+  "NICU (ในSNB)",
+  "Semi ICU", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+  "Semi ICU",
+  "Semi ICU",
+  "Semi ICU",
+  "Semi ICU",
+  "Semi ICU",
+  "Semi ICU",
+]; 
+
+const Newborn = [
+  "ทารก",
+  "SNB", // เผื่อบางฐานข้อมูลใช้ชื่อสั้น
+  "ทารก",
+  "SNB",
+  "ทารก",
+  "SNB",
+]; 
 
 /** -------------------------------- Utils --------------------------------- **/
 // คืนค่าเป็นวันตาม local time เช่น "2025-08-15"
@@ -464,7 +538,79 @@ export default function Dashboard({ username, wardname }) {
     return { movement: zero, hasData: false };
   };
 
-  const { movement: movementV, hasData: unifiedHasData } = useMemo(() => buildMovementFromUnified(unifiedRows), [unifiedRows]);
+const { hasData: unifiedHasData } = useMemo(() => buildMovementFromUnified(unifiedRows), [unifiedRows]);
+
+// ✅ รวมคงพยาบาลจาก View: ทั้งหมด และเฉพาะวอร์ดพิเศษ (แมตช์ชื่อยืดหยุ่น)
+const { allRemain, specialRemain } = useMemo(() => {
+  // normalize ชื่อ: ตัดช่องว่าง/สัญลักษณ์ และไม่แยกเคส
+  const norm = (s) =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/\s+/g, "")       // ลบช่องว่างทั้งหมด
+      .replace(/[()\-_.]/g, ""); // ลบสัญลักษณ์ที่พบบ่อย
+
+  // เผื่อบางชุดข้อมูลใช้ key คนละชื่อกับ wardname
+  const wardNameOf = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
+
+  // ชุดคำที่ถือว่าเป็นวอร์ดพิเศษ (normalize ไว้ก่อนเทียบ)
+  const SPECIAL_SET = new Set(
+    [
+      "พิเศษ eent",
+      "eent",
+      "พิเศษอายุรกรรม 3",
+      "พิเศษอายุรกรรม 4",
+      "พิเศษอายุรกรรม 5",
+      "พิเศษอายุรกรรม 6",
+      "พิเศษอายุรกรรม 7",
+    ].map(norm)
+  );
+
+  const getRemain = (r) => Number(r?.bed_remain ?? r?.remain ?? 0) || 0;
+
+  // แถวรวมทั้งโรงพยาบาล
+  const isRollup = (r) =>
+    (r?.wardname == null && r?.subward == null) ||
+    String(r?.wardname || "").trim() === "รวม";
+
+  if (!unifiedRows?.length) {
+    return { allRemain: 0, specialRemain: 0, specialFound: false };
+  }
+
+  const normals = unifiedRows.filter((r) => !isRollup(r));
+
+  // ถือว่าเป็นวอร์ดพิเศษถ้าชื่อหลัง normalize มีคำพิเศษเป็นส่วนหนึ่ง (substring)
+  const isSpecialWard = (name) => {
+    const w = norm(name);
+    if (!w) return false;
+    for (const key of SPECIAL_SET) {
+      if (w.includes(key)) return true;
+    }
+    return false;
+  };
+
+  if (normals.length) {
+    let all = 0;
+    let sp = 0;
+    let found = false;
+
+    for (const r of normals) {
+      const rm = getRemain(r);
+      all += rm;
+
+      if (isSpecialWard(wardNameOf(r))) {
+        sp += rm;
+        found = true;
+      }
+    }
+    return { allRemain: all, specialRemain: sp, specialFound: found };
+  }
+
+  // ได้มาเป็นแถวรวมอย่างเดียว → สรุปยอดรวมได้ แต่ยอดวอร์ดพิเศษจะแยกไม่ได้
+  const R = unifiedRows.find(isRollup);
+  const all = R ? getRemain(R) : 0;
+  return { allRemain: all, specialRemain: 0, specialFound: false };
+}, [unifiedRows]);
+
 
   /** ----------------------------- Log view w/ paging ---------------------------- **/
   const logItems = useMemo(() => {
@@ -812,59 +958,41 @@ export default function Dashboard({ username, wardname }) {
       <div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
         <h3 className={styles.chartTitle}>สรุปจาก View (v_reports_unified)</h3>
 
-        {unifiedLoading ? (
+        {unifiedLoading && (
           <div className={styles.loadingContainer} style={{ height: 80 }}>
             <RefreshCw className={styles.loadingSpinner} size={20} />
             <span className={styles.loadingText}>กำลังโหลดข้อมูลจาก View...</span>
           </div>
-        ) : unifiedError ? (
+        )}
+
+        {!unifiedLoading && unifiedError && (
           <div className={styles.errorContainer}>{unifiedError}</div>
-        ) : !unifiedHasData ? (
+        )}
+
+        {!unifiedLoading && !unifiedError && !unifiedHasData && (
           <div className={styles.loadingContainer} style={{ height: 80 }}>
             <span className={styles.loadingText}>ไม่มีข้อมูลตามตัวกรอง</span>
           </div>
-        ) : (
+        )}
+
+        {!unifiedLoading && !unifiedError && unifiedHasData && (
           <div style={{ overflowX: "auto" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th rowSpan={2} style={thStyle}>ยอดยกมา</th>
-                  <th colSpan={2} style={thStyle}>ยอดรับ</th>
-                  <th colSpan={5} style={thStyle}>ยอดจำหน่าย</th>
-                  <th rowSpan={2} style={thStyle}>คงพยาบาล</th>
-                </tr>
-                <tr>
-                  <th style={thStyle}>รับใหม่</th>
-                  <th style={thStyle}>รับย้าย</th>
-                  <th style={thStyle}>กลับบ้าน</th>
-                  <th style={thStyle}>ย้ายตึก</th>
-                  <th style={thStyle}>Refer out</th>
-                  <th style={thStyle}>Refer back</th>
-                  <th style={thStyle}>เสียชีวิต</th>
+                  <th style={thStyle}>รวมคงพยาบาลทั้งหมด</th>
+                  <th style={thStyle}>คงพยาบาล (วอร์ดพิเศษ)</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td style={tdStyle}>{fmt(movementV.carryForward)}</td>
-                  <td style={tdStyle}>{fmt(movementV.admitNew)}</td>
-                  <td style={tdStyle}>{fmt(movementV.admitTransferIn)}</td>
-                  <td style={tdStyle}>{fmt(movementV.disHome)}</td>
-                  <td style={tdStyle}>{fmt(movementV.disMoveWard)}</td>
-                  <td style={tdStyle}>{fmt(movementV.disReferOut)}</td>
-                  <td style={tdStyle}>{fmt(movementV.disReferBack)}</td>
-                  <td style={tdStyle}>{fmt(movementV.disDeath)}</td>
-                  <td style={tdStyle}>{fmt(movementV.remain)}</td>
+                  <td style={tdStyle}>{fmt(allRemain)}</td>
+                  <td style={tdStyle}>{fmt(specialRemain)}</td>
                 </tr>
               </tbody>
             </table>
-
-            <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
-              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
-                <strong>ยอดรับรวม:</strong> {fmt(movementV.admitAll)}
-              </div>
-              <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: 8 }}>
-                <strong>ยอดจำหน่ายรวม:</strong> {fmt(movementV.dischargeAll)}
-              </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>
+              รวมวอร์ดพิเศษ: {SPECIAL_WARDS.join(", ")}
             </div>
           </div>
         )}
