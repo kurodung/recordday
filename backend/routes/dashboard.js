@@ -22,15 +22,18 @@ const has = (v) => typeof v === "string" && v.trim() !== "";
 
 /** --------- Small utils --------- **/
 function logQuery(label, sql, params) {
-  // เปิดไว้ดีเวลาตรวจสอบ; ถ้าไม่ต้องการก็ comment ได้
-  //console.log(`[${label}] SQL:`, sql.replace(/\s+/g, " "));
-  //console.log(`[${label}] Params:`, params);
+  // console.log(`[${label}] SQL:`, sql.replace(/\s+/g, " ").trim());
+  // console.log(`[${label}] Params:`, params);
 }
 
+/** ใช้ subward (ไม่ใช่ sub_ward) และตัดซ้ำด้วย DISTINCT */
 const JOIN_WARDS = `
-LEFT JOIN wards w
+LEFT JOIN (
+  SELECT DISTINCT wardname, subward, TRIM(department) AS department
+  FROM wards
+) w
   ON w.wardname = vu.wardname
- AND COALESCE(vu.subward,'') = COALESCE(w.subward,'')  -- << ใช้ sub_ward ตัวเดียว
+ AND COALESCE(TRIM(vu.subward),'') = COALESCE(TRIM(w.subward),'')
 `;
 
 // สร้าง WHERE เงื่อนไขตาม query filter (รองรับทั้ง start/end และ date/dateFrom/dateTo)
@@ -54,13 +57,14 @@ function buildFilters(req, { forceWardLimit = true } = {}) {
   const where = ["1=1"];
   const params = [];
 
-  // วันที่: รองรับได้ 3 แนว (start/end) หรือ (date) หรือ (dateFrom/dateTo)
+  // วันที่
   const _start = start || dateFrom || date || null;
   const _end = end || dateTo || date || null;
 
   if (_start && _end) {
-    // ปิดที่ < end + 1day
-    where.push(`vu.report_date >= ? AND vu.report_date < DATE_ADD(?, INTERVAL 1 DAY)`);
+    where.push(
+      `vu.report_date >= ? AND vu.report_date < DATE_ADD(?, INTERVAL 1 DAY)`
+    );
     params.push(_start, _end);
   } else if (_start) {
     where.push(`vu.report_date >= ?`);
@@ -75,10 +79,10 @@ function buildFilters(req, { forceWardLimit = true } = {}) {
     params.push(shift.trim());
   }
 
-  // สำหรับ admin เลือกได้ทั้ง ward/wardname; non-admin บังคับตาม token (ถ้าต้องการรวมทั้งรพ. ให้ set forceWardLimit=false)
+  // บังคับวอร์ดสำหรับ non-admin (ถ้าต้องการรวมทั้ง รพ. ให้ส่งผ่าน forceWardLimit:false)
   const wardParam = has(wardname) ? wardname : ward;
   if (forceWardLimit) {
-    const effectiveWard = isAdmin ? (wardParam || "") : (user.wardname || "");
+    const effectiveWard = isAdmin ? wardParam || "" : user.wardname || "";
     if (has(effectiveWard)) {
       where.push(`vu.wardname = ?`);
       params.push(effectiveWard.trim());
@@ -105,53 +109,54 @@ function buildFilters(req, { forceWardLimit = true } = {}) {
 }
 
 /** ------------------------------------------------
- * GET /api/dashboard
- * คืน "แถวดิบ" จาก v_reports_unified (เป็นหลัก)
- * (alias คอลัมน์ให้เข้ากับของเดิมเท่าที่จำเป็น)
+ * GET /api/dashboard  (แถวดิบ)
  * ----------------------------------------------- */
 router.get("/", requireBearer, async (req, res) => {
   try {
     const { where, params, needsJoinWards, department } = buildFilters(req, {
-      forceWardLimit: true, // non-admin จะถูกจำกัดตาม token. admin เลือกได้
+      forceWardLimit: true,
     });
 
-     const joinWards = JOIN_WARDS;
-
-    if (department) {
+    const joinWards = needsJoinWards ? JOIN_WARDS : "";
+    if (needsJoinWards && department) {
       where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
     }
+    const selectDepartment = needsJoinWards
+      ? "TRIM(w.department)          AS department"
+      : "NULL                        AS department";
 
     const sql = `
       SELECT
-        -- วัน/เวลาหลักจาก view
         vu.report_date              AS report_date,
-        vu.report_date              AS date,            -- alias ให้โค้ดหน้าเดิมใช้ได้
+        vu.report_date              AS date,
         vu.shift                    AS shift,
         vu.wardname                 AS wardname,
         vu.subward                  AS subward,
         vu.source                   AS source,
 
-        -- เตียง/เคลื่อนไหว
         vu.bed_total                AS bed_total,
         vu.bed_carry                AS bed_carry,
-        vu.bed_carry                AS carry_forward,   -- alias ให้ helper เดิมอ่านได้
+        vu.bed_carry                AS carry_forward,
         vu.bed_new                  AS bed_new,
         vu.bed_transfer_in          AS bed_transfer_in,
-        vu.bed_transfer_in          AS admit_transfer_in,  -- alias
+        vu.bed_transfer_in          AS admit_transfer_in,
         vu.discharge_home           AS discharge_home,
         vu.discharge_transfer_out   AS discharge_transfer_out,
         vu.discharge_refer_out      AS discharge_refer_out,
         vu.discharge_refer_back     AS discharge_refer_back,
         vu.discharge_died           AS discharge_died,
-        vu.discharge_died           AS discharge_death, -- alias
+        vu.discharge_died           AS discharge_death,
         vu.bed_remain               AS bed_remain,
+        vu.type4                    AS type4,
+        vu.type5                    AS type5,
+        COALESCE(vu.vent_invasive,0)     AS vent_invasive,
+        COALESCE(vu.vent_noninvasive,0)  AS vent_noninvasive,
+        COALESCE(vu.stroke,0)            AS stroke,
 
-        -- อื่น ๆ
         vu.productivity             AS productivity,
 
-        -- department จากตาราง wards
-        TRIM(w.department)          AS department
+        ${selectDepartment}
       FROM v_reports_unified vu
       ${joinWards}
       WHERE ${where.join(" AND ")}
@@ -168,19 +173,15 @@ router.get("/", requireBearer, async (req, res) => {
 });
 
 /** ------------------------------------------------
- * GET /api/dashboard/summary
- * รวมผลตาม ward/sub-ward จาก v_reports_unified
- * ส่งกลับ { ok:true, data:[รายการ..., แถวรวม] }
+ * GET /api/dashboard/summary  (รวมตาม ward/subward)
  * ----------------------------------------------- */
 router.get("/summary", requireBearer, async (req, res) => {
   try {
-    // อนุญาต “ไม่จำกัด ward” ได้ (เพื่อสรุประดับ รพ.) => forceWardLimit:false
     const { where, params, needsJoinWards, department } = buildFilters(req, {
       forceWardLimit: false,
     });
 
-    const joinWards = JOIN_WARDS;
-
+    const joinWards = needsJoinWards ? JOIN_WARDS : "";
     if (needsJoinWards && department) {
       where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
@@ -198,7 +199,12 @@ router.get("/summary", requireBearer, async (req, res) => {
         SUM(vu.discharge_refer_out)    AS discharge_refer_out,
         SUM(vu.discharge_refer_back)   AS discharge_refer_back,
         SUM(vu.discharge_died)         AS discharge_died,
-        SUM(vu.bed_remain)             AS bed_remain
+        SUM(vu.bed_remain)             AS bed_remain,
+        SUM(vu.type4)                  AS type4,
+        SUM(vu.type5)                  AS type5,
+        SUM(COALESCE(vu.vent_invasive,0))    AS vent_invasive,
+        SUM(COALESCE(vu.vent_noninvasive,0)) AS vent_noninvasive,
+        SUM(COALESCE(vu.stroke,0))            AS stroke
 
       FROM v_reports_unified vu
       ${joinWards}
@@ -210,7 +216,7 @@ router.get("/summary", requireBearer, async (req, res) => {
     logQuery("GET /dashboard/summary", sql, params);
     const [rows] = await db.query(sql, params);
 
-    // สร้างแถวรวม “รวม”
+    // แถวรวม “รวม”
     const total = rows.reduce(
       (t, r) => {
         for (const k of [
@@ -223,7 +229,11 @@ router.get("/summary", requireBearer, async (req, res) => {
           "discharge_refer_back",
           "discharge_died",
           "bed_remain",
-
+          "type4",
+          "type5",
+          "vent_invasive",
+          "vent_noninvasive",
+          "stroke",
         ]) {
           t[k] = (t[k] || 0) + (Number(r[k]) || 0);
         }
@@ -239,20 +249,173 @@ router.get("/summary", requireBearer, async (req, res) => {
   }
 });
 
+/** --------- JOIN สำหรับ dengue (ใช้ตอนกรอง department) --------- **/
+const JOIN_WARDS_DENGUE = `
+LEFT JOIN (
+  SELECT DISTINCT wardname, subward, TRIM(department) AS department
+  FROM wards
+) w
+  ON w.wardname = dr.wardname
+ AND COALESCE(TRIM(dr.subward),'') = COALESCE(TRIM(w.subward),'')
+`;
+
+/** ฟิลเตอร์สำหรับ dengue_reports (alias: dr) */
+function buildDengueFilters(req, { forceWardLimit = false } = {}) {
+  const user = req.user || {};
+  const isAdmin = String(user.username || "").toLowerCase() === "admin";
+
+  const {
+    start, end, date, dateFrom, dateTo,
+    shift, ward, wardname, subward, department,
+  } = req.query;
+
+  const where = ["1=1"];
+  const params = [];
+
+  // NOTE: ตารางนี้ใช้คอลัมน์วันที่ชื่อ 'date'
+  const _start = start || dateFrom || date || null;
+  const _end   = end   || dateTo   || date || null;
+
+  if (_start && _end) {
+    where.push(`dr.date >= ? AND dr.date < DATE_ADD(?, INTERVAL 1 DAY)`);
+    params.push(_start, _end);
+  } else if (_start) {
+    where.push(`dr.date >= ?`);
+    params.push(_start);
+  } else if (_end) {
+    where.push(`dr.date < DATE_ADD(?, INTERVAL 1 DAY)`);
+    params.push(_end);
+  }
+
+  if (has(shift)) {
+    where.push(`dr.shift = ?`);
+    params.push(shift.trim());
+  }
+
+  // จำกัดสิทธิ์ตาม ward สำหรับ non-admin (ถ้าอยากรวมทั้ง รพ. ไม่ต้องส่ง ward มา)
+  const wardParam = has(wardname) ? wardname : ward;
+  if (forceWardLimit) {
+    const effectiveWard = isAdmin ? wardParam || "" : user.wardname || "";
+    if (has(effectiveWard)) {
+      where.push(`dr.wardname = ?`);
+      params.push(effectiveWard.trim());
+    }
+  } else if (has(wardParam)) {
+    where.push(`dr.wardname = ?`);
+    params.push(wardParam.trim());
+  }
+
+  if (has(subward)) {
+    where.push(`dr.subward = ?`);
+    params.push(subward.trim());
+  }
+
+  const needsJoinWards = has(department);
+
+  return {
+    where,
+    params,
+    needsJoinWards,
+    department: has(department) ? department.trim() : null,
+  };
+}
+
 /** ------------------------------------------------
- * GET /api/dashboard/summary/movement
- * รวมเคลื่อนไหว (carry, admit, discharge, remain)
- * อ้างอิงคอลัมน์จาก view โดยตรง
+ * GET /api/dashboard/dengue-summary
+ *  สรุป DF/DHF/DSS: รับใหม่, กลับบ้าน, เสียชีวิต, คงพยาบาล
+ *  (รวมจากคอลัมน์ *_df, *_dhf, *_dss)
+ * ----------------------------------------------- */
+router.get("/dengue-summary", requireBearer, async (req, res) => {
+  try {
+    const { where, params, needsJoinWards, department } = buildDengueFilters(req, {
+      forceWardLimit: false, // อยากรวมทั้ง รพ. ได้เว้นแต่ส่ง ward มากรอง
+    });
+
+    const joinWards = needsJoinWards ? JOIN_WARDS_DENGUE : "";
+    if (needsJoinWards && department) {
+      where.push(`TRIM(w.department) = TRIM(?)`);
+      params.push(department);
+    }
+
+    // ดึงยอดรวมครั้งเดียว แล้วค่อยแตกเป็น 3 แถวในโค้ด
+    const sql = `
+      SELECT
+        SUM(COALESCE(dr.new_df,        0)) AS new_df,
+        SUM(COALESCE(dr.discharge_df,  0)) AS dis_df,
+        SUM(COALESCE(dr.died_df,       0)) AS died_df,
+        SUM(COALESCE(dr.remain_df,     0)) AS rem_df,
+
+        SUM(COALESCE(dr.new_dhf,       0)) AS new_dhf,
+        SUM(COALESCE(dr.discharge_dhf, 0)) AS dis_dhf,
+        SUM(COALESCE(dr.died_dhf,      0)) AS died_dhf,
+        SUM(COALESCE(dr.remain_dhf,    0)) AS rem_dhf,
+
+        SUM(COALESCE(dr.new_dss,       0)) AS new_dss,
+        SUM(COALESCE(dr.discharge_dss, 0)) AS dis_dss,
+        SUM(COALESCE(dr.died_dss,      0)) AS died_dss,
+        SUM(COALESCE(dr.remain_dss,    0)) AS rem_dss
+      FROM dengue_reports dr
+      ${joinWards}
+      WHERE ${where.join(" AND ")}
+    `;
+
+    const [rows] = await db.query(sql, params);
+    const r = rows?.[0] || {};
+
+    const data = [
+      {
+        dengue_type: "DF",
+        admit_new:      Number(r.new_df  || 0),
+        discharge_home: Number(r.dis_df  || 0),
+        discharge_died: Number(r.died_df || 0),
+        bed_remain:     Number(r.rem_df  || 0),
+      },
+      {
+        dengue_type: "DHF",
+        admit_new:      Number(r.new_dhf  || 0),
+        discharge_home: Number(r.dis_dhf  || 0),
+        discharge_died: Number(r.died_dhf || 0),
+        bed_remain:     Number(r.rem_dhf  || 0),
+      },
+      {
+        dengue_type: "DSS",
+        admit_new:      Number(r.new_dss  || 0),
+        discharge_home: Number(r.dis_dss  || 0),
+        discharge_died: Number(r.died_dss || 0),
+        bed_remain:     Number(r.rem_dss  || 0),
+      },
+    ];
+
+    const total = data.reduce(
+      (a, x) => ({
+        dengue_type: "รวม",
+        admit_new:      a.admit_new      + x.admit_new,
+        discharge_home: a.discharge_home + x.discharge_home,
+        discharge_died: a.discharge_died + x.discharge_died,
+        bed_remain:     a.bed_remain     + x.bed_remain,
+      }),
+      { dengue_type: "รวม", admit_new: 0, discharge_home: 0, discharge_died: 0, bed_remain: 0 }
+    );
+
+    res.json({ ok: true, data, total });
+  } catch (err) {
+    console.error("GET /dashboard/dengue-summary error:", err);
+    res.status(500).json({ ok: false, message: "Database error" });
+  }
+});
+
+
+
+/** ------------------------------------------------
+ * GET /api/dashboard/summary/movement  (รวมทั้ง รพ.)
  * ----------------------------------------------- */
 router.get("/summary/movement", requireBearer, async (req, res) => {
   try {
-    // ไม่บังคับ ward เพื่อให้สรุประดับ รพ. ได้
     const { where, params, needsJoinWards, department } = buildFilters(req, {
       forceWardLimit: false,
     });
 
-    const joinWards = JOIN_WARDS;
-
+    const joinWards = needsJoinWards ? JOIN_WARDS : "";
     if (needsJoinWards && department) {
       where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
@@ -260,14 +423,14 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
 
     const sql = `
       SELECT
-        vu.bed_carry              AS bed_carry,
-        vu.bed_new                AS bed_new,
-        vu.bed_transfer_in        AS bed_transfer_in,
-        vu.discharge_home         AS discharge_home,
-        vu.discharge_transfer_out AS discharge_transfer_out,
-        vu.discharge_refer_out    AS discharge_refer_out,
-        vu.discharge_refer_back   AS discharge_refer_back,
-        vu.discharge_died         AS discharge_died
+        SUM(vu.bed_carry)              AS carryForward,
+        SUM(vu.bed_new)                AS admitNew,
+        SUM(vu.bed_transfer_in)        AS admitTransferIn,
+        SUM(vu.discharge_home)         AS disHome,
+        SUM(vu.discharge_transfer_out) AS disMoveWard,
+        SUM(vu.discharge_refer_out)    AS disReferOut,
+        SUM(vu.discharge_refer_back)   AS disReferBack,
+        SUM(vu.discharge_died)         AS disDeath
       FROM v_reports_unified vu
       ${joinWards}
       WHERE ${where.join(" AND ")}
@@ -275,21 +438,21 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
 
     logQuery("GET /dashboard/summary/movement", sql, params);
     const [rows] = await db.query(sql, params);
+    const row = rows?.[0] || {};
 
-    const sum = (key) => rows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+    const carryForward = Number(row.carryForward) || 0;
+    const admitNew = Number(row.admitNew) || 0;
+    const admitTransferIn = Number(row.admitTransferIn) || 0;
+    const disHome = Number(row.disHome) || 0;
+    const disMoveWard = Number(row.disMoveWard) || 0;
+    const disReferOut = Number(row.disReferOut) || 0;
+    const disReferBack = Number(row.disReferBack) || 0;
+    const disDeath = Number(row.disDeath) || 0;
 
-    const carryForward    = sum("bed_carry");
-    const admitNew        = sum("bed_new");
-    const admitTransferIn = sum("bed_transfer_in");
-    const disHome         = sum("discharge_home");
-    const disMoveWard     = sum("discharge_transfer_out"); // ใน view ใช้คอลัมน์นี้แทน 'move ward'
-    const disReferOut     = sum("discharge_refer_out");
-    const disReferBack    = sum("discharge_refer_back");
-    const disDeath        = sum("discharge_died");
-
-    const admitAll     = admitNew + admitTransferIn;
-    const dischargeAll = disHome + disMoveWard + disReferOut + disReferBack + disDeath;
-    const remain       = carryForward + admitAll - dischargeAll;
+    const admitAll = admitNew + admitTransferIn;
+    const dischargeAll =
+      disHome + disMoveWard + disReferOut + disReferBack + disDeath;
+    const remain = carryForward + admitAll - dischargeAll;
 
     res.json({
       carryForward,
@@ -303,7 +466,7 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
       disDeath,
       dischargeAll,
       remain,
-      count: rows.length,
+      count: 1,
     });
   } catch (err) {
     console.error("GET /dashboard/summary/movement error:", err);
@@ -313,7 +476,6 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
 
 /** ------------------------------------------------
  * GET /api/dashboard/departments
- * ใช้จากตาราง wards (เหมือนเดิม)
  * ----------------------------------------------- */
 router.get("/departments", requireBearer, async (_req, res) => {
   try {
@@ -332,7 +494,6 @@ router.get("/departments", requireBearer, async (_req, res) => {
 
 /** ------------------------------------------------
  * GET /api/dashboard/wards-by-department
- * ใช้จากตาราง wards (เหมือนเดิม)
  * ----------------------------------------------- */
 router.get("/wards-by-department", requireBearer, async (req, res) => {
   try {
