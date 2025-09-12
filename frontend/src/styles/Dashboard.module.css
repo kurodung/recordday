@@ -483,6 +483,96 @@
   white-space: nowrap;         /* หัวข้อไม่ตัดบรรทัด */
 }
 
+.miniRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 คอลัมน์เท่า ๆ กัน */
+  gap: 40px;
+  margin: 0 0 16px 0;
+}
+
+/* การ์ดขยายกว้างเท่าช่อง grid */
+.miniCard {
+  width: auto;               
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;              
+  flex-direction: column;
+  height: 100%;
+}
+
+.miniCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #000000;
+  margin-bottom: 6px;
+}
+
+.miniIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.miniCardValue {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111827;
+  width: 100%;
+  text-align: center;           /* จัดกลางแนวนอน */
+  display: flex;                
+  justify-content: center;      /* กันเคสมี inline element ภายใน */
+}
+
+.miniCardLink {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #7e3cbd;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.miniCardList {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #374151;
+  padding-left: 16px;
+  max-height: 160px;            /* ถ้ามีหลายบรรทัดให้เลื่อนในการ์ด */
+  overflow: auto;
+}
+
+/* หัวการ์ดแบบแนวนอน */
+.miniCardHeaderInline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:6px;
+}
+
+/* ตัวเลขด้านขวาในหัวการ์ด */
+.miniCardValueInline{
+  font-size:26px;
+  font-weight:700;
+  color:#111827;
+  line-height:1;
+}
+
+
+
 
 @keyframes fadeIn {
   from {

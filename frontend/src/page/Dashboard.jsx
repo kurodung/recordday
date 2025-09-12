@@ -70,6 +70,12 @@ export default function Dashboard({ username, wardname }) {
   const [dengueTotal, setDengueTotal] = useState(null);
   const [dengueLoading, setDengueLoading] = useState(false);
   const [dengueError, setDengueError] = useState(null);
+  const [showStrokeDetails, setShowStrokeDetails] = useState(false);
+  const [showPsychDetails, setShowPsychDetails] = useState(false);
+  const [showPrisonerDetails, setShowPrisonerDetails] = useState(false);
+
+  // UI: toggle รายละเอียดเปลเสริม (ซ่อน/แสดง)
+  const [showExtraBedDetails, setShowExtraBedDetails] = useState(false);
 
   // สำหรับ view summary
   const [unifiedRows, setUnifiedRows] = useState([]);
@@ -205,6 +211,7 @@ export default function Dashboard({ username, wardname }) {
       if (filters.shift) qs.set("shift", filters.shift);
       if (filters.ward) qs.set("wardname", filters.ward);
       if (filters.subward) qs.set("subward", filters.subward);
+      if (filters.department) qs.set("department", filters.department);
 
       const url = `${API_BASE}/dashboard/summary${
         qs.toString() ? `?${qs}` : ""
@@ -434,12 +441,12 @@ export default function Dashboard({ username, wardname }) {
       carryForward,
       admitNew,
       admitTransferIn,
-      admitAll,
       disHome,
       disMoveWard,
       disReferOut,
       disReferBack,
       disDeath,
+      admitAll,
       dischargeAll,
       remain,
     };
@@ -947,68 +954,372 @@ export default function Dashboard({ username, wardname }) {
     }
   }, []);
 
-// สรุป Stroke:
-// ช่อง1: bed_remain เฉพาะ ward "Stroke Unit"
-// ช่อง2: stroke (รวมทั้ง รพ. จาก View) — ใช้แถว "รวม" ถ้ามี ไม่งั้น sum ทุกแถว
-// ช่อง3: รวมช่อง1+ช่อง2
-const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
-  const norm = (s) =>
-    String(s || "").toLowerCase().replace(/\s+/g, "").replace(/[()\-_.]/g, "");
+  // รวม Stroke: คงพยาบาลใน Stroke Unit + ค่าจาก view
+  // eslint-disable-next-line no-unused-vars
+  const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\-_.]/g, "");
 
-  const wardOf   = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
-  const remainOf = (r) => Number(r?.bed_remain ?? r?.remain ?? 0) || 0;
+    const wardOf = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
+    const remainOf = (r) => Number(r?.bed_remain ?? r?.remain ?? 0) || 0;
 
-  const isRollup = (r) =>
-    (r?.wardname == null && r?.subward == null) ||
-    String(r?.wardname || "").trim() === "รวม";
+    const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const getByAliases = (row, aliases) => {
+      const m = {};
+      for (const [k, v] of Object.entries(row || {})) m[norm(k)] = v;
+      for (const name of aliases) {
+        const k = norm(name);
+        if (m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+      }
+      return 0;
+    };
+    const strokeAliases = [
+      "stroke",
+      "stroke_cases",
+      "stroke_total",
+      "strokeall",
+    ];
 
-  // อ่านค่า stroke แบบทน alias
-  const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-  const getByAliases = (row, aliases) => {
-    const m = {};
-    for (const [k, v] of Object.entries(row || {})) m[norm(k)] = v;
-    for (const name of aliases) {
-      const k = norm(name);
-      if (m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    const rows = (unifiedRows || []).filter((r) => !isRollup(r));
+    if (!rows.length)
+      return { strokeRemainSU: 0, strokeFromView: 0, strokeTotal: 0 };
+
+    // 1) คงพยาบาลของ Stroke Unit (รวมทุก sub-ward)
+    const targetWard = norm("Stroke Unit");
+    const suRemain = rows.reduce(
+      (sum, r) => sum + (norm(wardOf(r)) === targetWard ? remainOf(r) : 0),
+      0
+    );
+
+    // 2) stroke จาก view (ถ้ามี rollup ใช้จาก rollup, ถ้าไม่มีก็รวมรายแถว)
+    const roll = unifiedRows.find(isRollup);
+    const strokeFromView = roll
+      ? toNum(getByAliases(roll, strokeAliases))
+      : rows.reduce((sum, r) => sum + toNum(getByAliases(r, strokeAliases)), 0);
+
+    return {
+      strokeRemainSU: suRemain,
+      strokeFromView,
+      strokeTotal: suRemain + strokeFromView,
+    };
+  }, [unifiedRows]);
+
+  // สรุป Stroke
+  const strokeList = useMemo(() => {
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\-_.]/g, "");
+
+    const wardOf = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
+    const subOf = (r) => strFromKeys(r, ["subward", "sub_ward", "subWard"]);
+    const remainOf = (r) => Number(r?.bed_remain ?? r?.remain ?? 0) || 0;
+
+    const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const getByAliases = (row, aliases) => {
+      const m = {};
+      for (const [k, v] of Object.entries(row || {})) m[norm(k)] = v;
+      for (const name of aliases) {
+        const k = norm(name);
+        if (m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+      }
+      return 0;
+    };
+    const strokeAliases = [
+      "stroke",
+      "stroke_cases",
+      "stroke_total",
+      "strokeall",
+    ];
+
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    const rows = (unifiedRows || []).filter((r) => !isRollup(r));
+    if (!rows.length) return [];
+
+    const byLabel = {};
+    for (const r of rows) {
+      const w = wardOf(r) || "-";
+      const s = subOf(r) || "";
+      const label = s ? `${w} - ${s}` : w;
+
+      // 1) คงพยาบาลใน Stroke Unit
+      if (norm(w) === norm("Stroke Unit")) {
+        const rm = remainOf(r);
+        if (rm > 0) byLabel[label] = (byLabel[label] || 0) + rm;
+      }
+
+      // 2) stroke จาก view ราย ward/subward (ถ้ามีในแถว)
+      const sc = toNum(getByAliases(r, strokeAliases));
+      if (sc > 0) byLabel[label] = (byLabel[label] || 0) + sc;
     }
-    return 0;
-  };
 
-  if (!Array.isArray(unifiedRows) || unifiedRows.length === 0) {
-    return { strokeRemainSU: 0, strokeFromView: 0, strokeTotal: 0 };
-  }
-
-  // 1) คงพยาบาล Stroke Unit (รวมทุก subward ภายใต้ ward นี้)
-  const detailRows = unifiedRows.filter((r) => !isRollup(r));
-  const targetWard = norm("Stroke Unit");
-  const remainSU = detailRows.reduce((sum, r) => {
-    return sum + (norm(wardOf(r)) === targetWard ? remainOf(r) : 0);
-  }, 0);
-
-  // 2) stroke จาก View (รวมทั้ง รพ.)
-  const strokeAliases = ["stroke", "stroke_cases", "stroke_total", "strokeall"];
-  const roll = unifiedRows.find(isRollup);
-  const stroke = roll
-    ? toNum(getByAliases(roll, strokeAliases))
-    : detailRows.reduce(
-        (sum, r) => sum + toNum(getByAliases(r, strokeAliases)),
-        0
-      );
-
-  return {
-    strokeRemainSU: remainSU,
-    strokeFromView: stroke,
-    strokeTotal: remainSU + stroke,
-  };
-}, [unifiedRows]);
-
-
+    return Object.entries(byLabel)
+      .sort(
+        (a, b) =>
+          b[1] - a[1] || a[0].localeCompare(b[0], "th", { sensitivity: "base" })
+      )
+      .map(([label, val]) => `${label}: ${fmt(val)}`);
+  }, [unifiedRows]);
 
   useEffect(() => {
     const ac = new AbortController();
     fetchDengue(filters, ac.signal);
     return () => ac.abort();
   }, [fetchDengue, filters]);
+
+  /** ---------------------- Extra bed (เปลเสริม) from View ---------------------- **/
+  const { extraBedTotal, extraBedList } = useMemo(() => {
+    const n = (v) => Number(v ?? 0) || 0;
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    if (!Array.isArray(unifiedRows) || unifiedRows.length === 0) {
+      return { extraBedTotal: 0, extraBedList: [] };
+    }
+
+    const rows = unifiedRows.filter((r) => !isRollup(r));
+    const roll = unifiedRows.find(isRollup);
+
+    const total = roll
+      ? n(roll.extra_bed)
+      : rows.reduce((s, r) => s + n(r.extra_bed), 0);
+
+    const byLabel = {};
+    for (const r of rows) {
+      const w = strFromKeys(r, ["wardname", "ward", "ward_name"]) || "-";
+      const s = strFromKeys(r, ["subward", "sub_ward", "subWard"]) || "";
+      const label = s ? `${w} - ${s}` : w;
+      const eb = n(r.extra_bed);
+      if (eb > 0) byLabel[label] = (byLabel[label] || 0) + eb;
+    }
+
+    const list = Object.entries(byLabel)
+      .sort(
+        (a, b) =>
+          b[1] - a[1] || a[0].localeCompare(b[0], "th", { sensitivity: "base" })
+      )
+      .map(([label, val]) => `${label}: ${fmt(val)}`);
+
+    return { extraBedTotal: total, extraBedList: list };
+  }, [unifiedRows]);
+
+  // ✅ รวมจิตเวช: bed_remain ของทุกวอร์ดที่เป็นจิตเวช + ค่าจิตเวชจากคอลัมน์ psych*
+  const { psychTotal, psychList } = useMemo(() => {
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\-_.]/g, "");
+
+    const wardOf = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
+    const subOf = (r) => strFromKeys(r, ["subward", "sub_ward", "subWard"]);
+    const remainOf = (r) => Number(r?.bed_remain ?? r?.remain ?? 0) || 0;
+
+    const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const getByAliases = (row, aliases) => {
+      const m = {};
+      for (const [k, v] of Object.entries(row || {})) m[norm(k)] = v;
+      for (const name of aliases) {
+        const k = norm(name);
+        if (m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+      }
+      return 0;
+    };
+
+    // รองรับชื่อคอลัมน์จิตเวชหลายแบบ
+    const psychAliases = [
+      "psych",
+      "psych_cases",
+      "psych_total",
+      "psychiatric",
+      "psychall",
+      "psy",
+    ];
+
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    const rows = (unifiedRows || []).filter((r) => !isRollup(r));
+    if (!rows.length) return { psychTotal: 0, psychList: [] };
+
+    // -------- กติกาการนับ bed_remain วอร์ดจิตเวช --------
+    // 1) “ชื่อแน่นอน” (เพิ่ม/แก้ชื่อวอร์ดจริงของคุณที่นี่ได้เลย)
+    const PSYCH_REMAIN_LABELS = [
+      "ปาริชาติ", // ตัวอย่างวอร์ดจริง
+      "จิตเวช", // ถ้ามีวอร์ดชื่อ "จิตเวช" ตรง ๆ
+      // ใส่รูปแบบ "Ward - Subward" ได้ เช่น "พิเศษ จิตเวช - ผู้ใหญ่"
+      // "พิเศษ จิตเวช - ผู้ใหญ่",
+    ];
+
+    // 2) “คีย์เวิร์ด” ถ้าพบใน ward หรือ subward ให้ถือว่าเป็นจิตเวช
+    const PSYCH_REMAIN_KEYWORDS = ["จิตเวช", "psych", "psychi", "mental"].map(
+      norm
+    );
+
+    const parseLabels = (labels) => {
+      const SINGLE = new Set();
+      const COMBO = new Set();
+      for (const label of labels || []) {
+        const [w, s] = String(label).split(/\s*-\s*/);
+        if (s) COMBO.add(`${norm(w)}|${norm(s)}`);
+        else SINGLE.add(norm(w));
+      }
+      return { SINGLE, COMBO };
+    };
+    const { SINGLE, COMBO } = parseLabels(PSYCH_REMAIN_LABELS);
+
+    const shouldCountRemain = (w, s) => {
+      const wn = norm(w),
+        sn = norm(s);
+      return (
+        SINGLE.has(wn) ||
+        COMBO.has(`${wn}|${sn}`) ||
+        PSYCH_REMAIN_KEYWORDS.some((k) => wn.includes(k) || sn.includes(k))
+      );
+    };
+    // ------------------------------------------------------
+
+    const byLabel = {};
+    let total = 0;
+
+    for (const r of rows) {
+      const w = wardOf(r) || "-";
+      const s = subOf(r) || "";
+      const label = s ? `${w} - ${s}` : w;
+
+      // รวม 2 อย่าง: (1) bed_remain เฉพาะวอร์ดจิตเวช (2) ค่า psych* ของแถวนั้น
+      const rm = shouldCountRemain(w, s) ? remainOf(r) : 0;
+      const ps = toNum(getByAliases(r, psychAliases));
+      const val = rm + ps;
+
+      if (val > 0) {
+        byLabel[label] = (byLabel[label] || 0) + val;
+        total += val;
+      }
+    }
+
+    const list = Object.entries(byLabel)
+      .sort(
+        (a, b) =>
+          b[1] - a[1] || a[0].localeCompare(b[0], "th", { sensitivity: "base" })
+      )
+      .map(([label, val]) => `${label}: ${fmt(val)}`);
+
+    return { psychTotal: total, psychList: list };
+  }, [unifiedRows]);
+
+  // ✅ Prisoner: ดึงจาก View อย่างเดียว (คอลัมน์ prisoner*)
+  const { prisonerTotal, prisonerList } = useMemo(() => {
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\-_.]/g, "");
+
+    const wardOf = (r) => strFromKeys(r, ["wardname", "ward", "ward_name"]);
+    const subOf = (r) => strFromKeys(r, ["subward", "sub_ward", "subWard"]);
+
+    const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const getByAliases = (row, aliases) => {
+      const m = {};
+      for (const [k, v] of Object.entries(row || {})) m[norm(k)] = v;
+      for (const name of aliases) {
+        const k = norm(name);
+        if (m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+      }
+      return 0;
+    };
+
+    // เปลี่ยน/เพิ่ม alias ให้ครอบคลุมชื่อคอลัมน์จริงใน view
+    const prisonerAliases = [
+      "prisoner",
+      "prisoner_cases",
+      "prisoner_total",
+      "inmate",
+      "inmate_cases",
+      "prisonerall",
+    ];
+
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    if (!Array.isArray(unifiedRows) || unifiedRows.length === 0)
+      return { prisonerTotal: 0, prisonerList: [] };
+
+    const rows = unifiedRows.filter((r) => !isRollup(r));
+    const roll = unifiedRows.find(isRollup);
+
+    // รวมทั้งหมด: ถ้ามีแถว "รวม" ใช้จากรวมนั้น เพื่อกันนับซ้ำ
+    const total = roll
+      ? toNum(getByAliases(roll, prisonerAliases))
+      : rows.reduce((s, r) => s + toNum(getByAliases(r, prisonerAliases)), 0);
+
+    // รายการราย ward/subward
+    const byLabel = {};
+    for (const r of rows) {
+      const w = wardOf(r) || "-";
+      const s = subOf(r) || "";
+      const label = s ? `${w} - ${s}` : w;
+      const p = toNum(getByAliases(r, prisonerAliases));
+      if (p > 0) byLabel[label] = (byLabel[label] || 0) + p;
+    }
+
+    const list = Object.entries(byLabel)
+      .sort(
+        (a, b) =>
+          b[1] - a[1] || a[0].localeCompare(b[0], "th", { sensitivity: "base" })
+      )
+      .map(([label, val]) => `${label}: ${fmt(val)}`);
+
+    return { prisonerTotal: total, prisonerList: list };
+  }, [unifiedRows]);
+
+  // ✅ รวม RN ทั้ง รพ. จาก unifiedRows (ใช้แถว "รวม" ถ้ามี)
+  const { rnSum, rnExtraSum, rnAllSum } = useMemo(() => {
+    const n = (v) => Number(v ?? 0) || 0;
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    if (!Array.isArray(unifiedRows) || unifiedRows.length === 0) {
+      return { rnSum: 0, rnExtraSum: 0, rnAllSum: 0 };
+    }
+
+    const roll = unifiedRows.find(isRollup);
+    if (roll) {
+      const rn = n(roll.rn);
+      const rnExtra = n(roll.rn_extra);
+      return { rnSum: rn, rnExtraSum: rnExtra, rnAllSum: rn + rnExtra };
+    }
+
+    const sums = unifiedRows.reduce(
+      (a, r) => ({
+        rn: a.rn + n(r.rn),
+        rn_extra: a.rn_extra + n(r.rn_extra),
+      }),
+      { rn: 0, rn_extra: 0 }
+    );
+
+    return {
+      rnSum: sums.rn,
+      rnExtraSum: sums.rn_extra,
+      rnAllSum: sums.rn + sums.rn_extra,
+    };
+  }, [unifiedRows]);
 
   /** ----------------------------- Log view w/ paging ---------------------------- **/
   const logItems = useMemo(() => {
@@ -1350,50 +1661,6 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
         </div>
       </div>
 
-      <div className={`${styles.chartContainer} ${styles.fullWidthChart}`}>
-        <h3 className={styles.chartTitle}>
-          <Activity size={20} style={{ color: "#7e3cbd" }} />{" "}
-          เปรียบเทียบการรับและจำหน่ายผู้ป่วย
-        </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={filteredData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-          >
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12 }}
-              tickFormatter={(value) =>
-                new Date(value).toLocaleDateString("th-TH", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }
-            />
-            <YAxis />
-            <Tooltip formatter={(value, name) => [value, name]} />
-            <Legend />
-            <Bar
-              dataKey="bed_new"
-              fill="#7e3cbd"
-              name="รับใหม่"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="discharge_home"
-              fill="#10b981"
-              name="จำหน่ายกลับบ้าน"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="discharge_transfer_out"
-              fill="#f59e0b"
-              name="โอนออก"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
 
       {/* Movement (local) */}
       <Block
@@ -1467,7 +1734,7 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
       {/* View: สามัญ / Semi ICU / ทารก + รวม 5 ช่อง */}
       <Block
         styles={styles}
-        title="สรุป สามัญ / Semi ICU / ทารก (จาก View)"
+        title="สรุป สามัญ / Semi ICU / ทารก"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}
@@ -1483,11 +1750,11 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
         <div style={{ height: 12 }} />
         <TableBox
           headers={[
-            "ประเภทที่ 5 (รวม)",
-            "ประเภทที่ 4 (รวม)",
-            "รับใหม่ (รวม)",
-            "จำหน่ายกลับบ้าน (รวม)",
-            "เสียชีวิต (รวม)",
+            "ประเภทที่ 5",
+            "ประเภทที่ 4",
+            "รับใหม่",
+            "จำหน่ายกลับบ้าน",
+            "เสียชีวิต",
           ]}
           rows={[
             [
@@ -1500,10 +1767,11 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
           ]}
         />
       </Block>
+
       {/* View: Ventilator */}
       <Block
         styles={styles}
-        title="สรุป Ventilator (จาก View)"
+        title="สรุป Ventilator "
         loading={unifiedLoading}
         error={unifiedError}
         empty={
@@ -1544,7 +1812,6 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
           <>
             <div style={{ height: 8 }} />
             <TableBox
-              headers={["รวม", "รับใหม่", "กลับบ้าน", "เสียชีวิต", "คงพยาบาล"]}
               rows={[
                 [
                   "รวม",
@@ -1559,20 +1826,138 @@ const { strokeRemainSU, strokeFromView, strokeTotal } = useMemo(() => {
         )}
       </Block>
 
-            {/* View: Stroke */}
+      {/* Mini cards row (แนวนอน) */}
+      {/* แถวการ์ดเล็ก (แนวนอน) */}
+      <div className={styles.miniRow}>
+        {/* Card: เปลเสริม */}
+        <div className={styles.miniCard}>
+          <div className={styles.miniCardTitle}>
+            <span className={styles.miniIcon}>
+              <Activity size={16} />
+            </span>
+            เปลเสริม
+          </div>
+          <div className={styles.miniCardValue}>{fmt(extraBedTotal)}</div>
+
+          {!!extraBedTotal && extraBedList.length > 0 && (
+            <>
+              <button
+                className={styles.miniCardLink}
+                onClick={() => setShowExtraBedDetails((v) => !v)}
+              >
+                {showExtraBedDetails ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+              </button>
+              {showExtraBedDetails && (
+                <ul className={styles.miniCardList}>
+                  {extraBedList.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Card: Stroke (รวม SU remain + stroke จาก view) */}
+        <div className={styles.miniCard}>
+          <div className={styles.miniCardTitle}>
+            <span className={styles.miniIcon}>
+              <Activity size={16} />
+            </span>
+            Stroke
+          </div>
+          <div className={styles.miniCardValue}>{fmt(strokeTotal)}</div>
+
+          {strokeTotal > 0 && strokeList.length > 0 && (
+            <>
+              <button
+                className={styles.miniCardLink}
+                onClick={() => setShowStrokeDetails((v) => !v)}
+              >
+                {showStrokeDetails ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+              </button>
+              {showStrokeDetails && (
+                <ul className={styles.miniCardList}>
+                  {strokeList.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Card: จิตเวช */}
+        <div className={styles.miniCard}>
+          <div className={styles.miniCardTitle}>
+            <span className={styles.miniIcon}>
+              <Activity size={16} />
+            </span>
+            จิตเวช
+          </div>
+          <div className={styles.miniCardValue}>{fmt(psychTotal)}</div>
+
+          {psychTotal > 0 && psychList.length > 0 && (
+            <>
+              <button
+                className={styles.miniCardLink}
+                onClick={() => setShowPsychDetails((v) => !v)}
+              >
+                {showPsychDetails ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+              </button>
+              {showPsychDetails && (
+                <ul className={styles.miniCardList}>
+                  {psychList.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Card: นักโทษ */}
+        <div className={styles.miniCard}>
+          <div className={styles.miniCardTitle}>
+            <span className={styles.miniIcon}>
+              <Activity size={16} />
+            </span>
+            นักโทษ
+          </div>
+          <div className={styles.miniCardValue}>{fmt(prisonerTotal)}</div>
+
+          {prisonerTotal > 0 && prisonerList.length > 0 && (
+            <>
+              <button
+                className={styles.miniCardLink}
+                onClick={() => setShowPrisonerDetails((v) => !v)}
+              >
+                {showPrisonerDetails ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+              </button>
+              {showPrisonerDetails && (
+                <ul className={styles.miniCardList}>
+                  {prisonerList.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       <Block
         styles={styles}
-        title="สรุป Stroke (จาก View)"
+        title="สรุปกำลังพยาบาล (RN)"
         loading={unifiedLoading}
         error={unifiedError}
-        empty={!unifiedLoading && !unifiedError && (strokeRemainSU + strokeFromView === 0)}
+        empty={!unifiedLoading && !unifiedError && !unifiedHasData}
       >
         <TableBox
-          headers={["คงพยาบาล (Stroke Unit)", "Stroke (จาก View)", "รวม"]}
-          rows={[[fmt(strokeRemainSU), fmt(strokeFromView), fmt(strokeTotal)]]}
+          headers={["RN", "RN เพิ่ม", "รวม RN"]}
+          rows={[[fmt(rnSum), fmt(rnExtraSum), fmt(rnAllSum)]]}
         />
       </Block>
-
 
       {/* Log view + แบ่งหน้า */}
       <Block

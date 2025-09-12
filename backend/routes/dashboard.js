@@ -153,6 +153,11 @@ router.get("/", requireBearer, async (req, res) => {
         COALESCE(vu.vent_invasive,0)     AS vent_invasive,
         COALESCE(vu.vent_noninvasive,0)  AS vent_noninvasive,
         COALESCE(vu.stroke,0)            AS stroke,
+        COALESCE(vu.extra_bed,0)         AS extra_bed,
+        COALESCE(vu.psych,0)             AS psych,
+        COALESCE(vu.prisoner,0)          AS prisoner,
+        COALESCE(vu.rn,0)                AS rn,
+        COALESCE(vu.rn_extra,0)          AS rn_extra,
 
         vu.productivity             AS productivity,
 
@@ -204,7 +209,12 @@ router.get("/summary", requireBearer, async (req, res) => {
         SUM(vu.type5)                  AS type5,
         SUM(COALESCE(vu.vent_invasive,0))    AS vent_invasive,
         SUM(COALESCE(vu.vent_noninvasive,0)) AS vent_noninvasive,
-        SUM(COALESCE(vu.stroke,0))            AS stroke
+        SUM(COALESCE(vu.stroke,0))            AS stroke,
+        SUM(COALESCE(vu.extra_bed,0))         AS extra_bed,
+        SUM(COALESCE(vu.psych,0))             AS psych,
+        SUM(COALESCE(vu.prisoner,0))          AS prisoner,
+        SUM(COALESCE(vu.rn,0))                AS rn,
+        SUM(COALESCE(vu.rn_extra,0))          AS rn_extra
 
       FROM v_reports_unified vu
       ${joinWards}
@@ -234,6 +244,10 @@ router.get("/summary", requireBearer, async (req, res) => {
           "vent_invasive",
           "vent_noninvasive",
           "stroke",
+          "extra_bed",
+          "psych",
+          "prisoner",
+          "rn","rn_extra",
         ]) {
           t[k] = (t[k] || 0) + (Number(r[k]) || 0);
         }
