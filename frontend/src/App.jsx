@@ -9,6 +9,7 @@ import LRpage from "./page/LRpage";
 import Dashboard from "./page/Dashboard";
 import HospitalLayout from "./components/HospitalLayout";
 import MultiDayReportStatus from "./page/MultiDayReportStatus";
+import ORpage from "./page/ORpage";
 
 const App = () => {
   return (
@@ -63,6 +64,15 @@ const App = () => {
             </HospitalLayout>
           }
         />
+        <Route 
+          path="/orpage" 
+          element={
+            <HospitalLayout>
+              <ORpage />
+            </HospitalLayout>
+          }
+        />
+        
       </Routes>
     </Router>
   );

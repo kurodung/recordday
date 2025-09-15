@@ -49,6 +49,14 @@ const Login = () => {
 
       if (username === "lr") {
         navigate("/lrpage");
+      } else if (username === "or") {
+        const shift = "morning";
+        const date = localISODate();
+        navigate(
+          `/orpage?shift=${encodeURIComponent(shift)}&date=${encodeURIComponent(
+            date
+          )}`
+        );
       } else {
         // ดึง subwards ของ user
         const subRes = await api.get("/api/subwards", { params: { username } });
@@ -173,7 +181,6 @@ const Login = () => {
               </p>
             )}
           </form>
-
         </div>
       </div>
     </div>

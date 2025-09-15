@@ -32,6 +32,16 @@ const hasToken = (name, token) => {
   return n === t || n.startsWith(t) || n.includes(t);
 };
 
+const usernameToPageMap = {
+  lr: (subward) => subward === "ห้องคลอด" ? "/lrpage" : "/main",
+  or: () => "/orpage",
+  eye: () => "/eyePage",
+  icu: () => "/icuPage",
+  ods: () => "/odsPage",
+  // เพิ่มได้เรื่อยๆ
+};
+
+
 // จัดลำดับ sub-ward ให้ "อายุรกรรม*" มาก่อน "semi icu"
 const sortSubwardsWithPriority = (list, ward) => {
   const PRIORITY = {
@@ -65,10 +75,6 @@ export default function HospitalLayout({ children }) {
   const [wardname, setWardname] = useState("");
   const [subward, setsubward] = useState("");
   const [subwardOptions, setsubwardOptions] = useState([]);
-
-  // 👉 ตัวช่วยตัดสินใจหน้า
-  const isLRUser = norm(username) === "lr";
-  const isDeliveryRoom = norm(subward) === "ห้องคลอด";
 
   // มือถือ/เดสก์ท็อป & เมนูด้านซ้าย
   const [isMobile, setIsMobile] = useState(false);
@@ -202,32 +208,37 @@ export default function HospitalLayout({ children }) {
     navigate,
   ]);
 
-  // ✅ Auto-switch หน้าเมื่อเปลี่ยน subward ระหว่างอยู่ "แท็บทั่วไป" (/main หรือ /lrpage)
-  useEffect(() => {
-    const onGeneralTab = ["/main", "/lrpage"].some((p) =>
-      location.pathname.startsWith(p)
-    );
-    if (!onGeneralTab) return;
+useEffect(() => {
+  const sub = norm(subward);
+  const qs = new URLSearchParams({
+    shift: activeShift,
+    date: selectedDate,
+    subward,
+  });
 
-    const base = isLRUser && isDeliveryRoom ? "/lrpage" : "/main";
-    const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
-    if (subward) qs.set("subward", subward);
-    const target = `${base}?${qs.toString()}`;
+  let target = null;
 
+  if (sub === "ห้องคลอด") {
+    target = `/lrpage?${qs.toString()}`;
+  } else if (sub === "รอคลอด") {
+    target = `/main?${qs.toString()}`;
+  }
+
+  if (target) {
     const current = `${location.pathname}${location.search}`;
     if (current !== target) {
       navigate(target, { replace: true });
     }
-  }, [
-    isLRUser,
-    isDeliveryRoom,
-    subward,
-    activeShift,
-    selectedDate,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
+  }
+}, [
+  subward,
+  activeShift,
+  selectedDate,
+  location.pathname,
+  location.search,
+  navigate,
+]);
+
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths))
@@ -237,7 +248,9 @@ export default function HospitalLayout({ children }) {
 
   // ⬇️ ปุ่ม "ทั่วไป" จะเลือกหน้าให้ถูกต้องตาม subward ปัจจุบัน
   const handleGeneralClick = () => {
-    const base = isLRUser && isDeliveryRoom ? "/lrpage" : "/main";
+  const getBasePage = usernameToPageMap[norm(username)];
+  const base = getBasePage ? getBasePage(subward) : "/main";
+
     const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
     if (subward) qs.append("subward", subward);
     navigate(`${base}?${qs.toString()}`);
