@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import styles from "../styles/ReportStatus.module.css";
+import { API_BASE } from "../config";
 
 /* ---------------------- helpers ---------------------- */
 const isYMD = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -42,11 +43,6 @@ const splitGroup = (label) => {
 };
 /* ----------------------------------------------------- */
 
-// ใช้ ENV ได้ ถ้าไม่ตั้งจะ fallback เป็น localhost:5000
-const API_BASE =
-  (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) ||
-  "http://localhost:5000/api";
-
 // จำนวนรายการต่อหน้า
 const PAGE_SIZE = 15;
 
@@ -86,7 +82,7 @@ export default function MultiDayReportStatus() {
   // ดึงรายชื่อ department (ถ้ามี route)
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/report-status-departments`);
+      const res = await axios.get(`${API_BASE}/api/report-status-departments`);
       setDepartments(
         Array.isArray(res.data?.departments) ? res.data.departments : []
       );
@@ -111,7 +107,7 @@ export default function MultiDayReportStatus() {
     try {
       const token = localStorage.getItem("token") || "";
       const res = await axios.get(
-        `${API_BASE}/report-status-range?${params.toString()}`,
+        `${API_BASE}/api/report-status-range?${params.toString()}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: controller.signal, // ⬅️ สำคัญ

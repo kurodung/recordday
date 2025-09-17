@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+import { API_BASE } from "../config";
 
 const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
   const formRef = useRef(null);
@@ -27,7 +28,7 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
         }
 
         const res = await fetch(
-          `http://localhost:5000/api/covid-report?${queryParams.toString()}`,
+          `${API_BASE}/api/covid-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -85,8 +86,8 @@ const Covid19Page = ({ username, wardname, selectedDate, shift }) => {
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/covid-report/${formData.id}`
-        : `http://localhost:5000/api/covid-report`;
+        ? `${API_BASE}/api/covid-report/${formData.id}`
+        : `${API_BASE}/api/covid-report`;
 
       const response = await fetch(url, {
         method,

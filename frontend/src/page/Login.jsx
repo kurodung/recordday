@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api";
 import styles from "../styles/Login.module.css";
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaHospital } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../config";
 
 // ✅ คืนค่า YYYY-MM-DD แบบ Local time (กัน -1 วัน)
 const localISODate = (d = new Date()) => {
@@ -10,12 +11,6 @@ const localISODate = (d = new Date()) => {
   dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
   return dt.toISOString().slice(0, 10);
 };
-
-// ✅ ใช้ axios instance รองรับทั้ง dev/prod (ตั้งค่า VITE_API_BASE ได้)
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "http://localhost:5000", // ตัวอย่าง: "http://localhost:5000"
-  withCredentials: false,
-});
 
 const Login = () => {
   const [form, setForm] = useState({ username: "", password: "" });

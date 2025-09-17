@@ -1,6 +1,7 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { API_BASE } from "../config";
 import {
   LineChart,
   Line,
@@ -47,10 +48,6 @@ import {
   buildDateRange,
 } from "../utils/helpers";
 
-/** -------------------------------- Config -------------------------------- **/
-const API_BASE = (
-  import.meta?.env?.VITE_API_BASE || "http://localhost:5000/api"
-).replace(/\/$/, "");
 const LOG_PAGE_SIZE = 10;
 
 /** ------------------------------- Component ------------------------------ **/
@@ -111,7 +108,7 @@ export default function Dashboard({ username, wardname }) {
     const run = async () => {
       try {
         const token = localStorage.getItem("token") || "";
-        const res = await fetch(`${API_BASE}/dashboard/departments`, {
+        const res = await fetch(`${API_BASE}/api/dashboard/departments`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: ac.signal,
         });
@@ -141,7 +138,7 @@ export default function Dashboard({ username, wardname }) {
         const token = localStorage.getItem("token") || "";
         const qs = new URLSearchParams({ department: filters.department });
         const res = await fetch(
-          `${API_BASE}/dashboard/wards-by-department?${qs}`,
+          `${API_BASE}/api/dashboard/wards-by-department?${qs}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             signal: ac.signal,
@@ -175,7 +172,7 @@ export default function Dashboard({ username, wardname }) {
         if (filters.department) qs.set("department", filters.department);
         if (filters.subward) qs.set("subward", filters.subward);
 
-        const url = `${API_BASE}/dashboard${qs.toString() ? `?${qs}` : ""}`;
+        const url = `${API_BASE}/api/dashboard${qs.toString() ? `?${qs}` : ""}`;
         const res = await fetch(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal,
@@ -213,7 +210,7 @@ export default function Dashboard({ username, wardname }) {
       if (filters.subward) qs.set("subward", filters.subward);
       if (filters.department) qs.set("department", filters.department);
 
-      const url = `${API_BASE}/dashboard/summary${
+      const url = `${API_BASE}/api/dashboard/summary${
         qs.toString() ? `?${qs}` : ""
       }`;
       const res = await fetch(url, {
@@ -930,7 +927,7 @@ export default function Dashboard({ username, wardname }) {
       // ถ้าจะกรองตาม department ด้วย ก็เพิ่ม:
       if (filters.department) qs.set("department", filters.department);
 
-      const url = `${API_BASE}/dashboard/dengue-summary${
+      const url = `${API_BASE}/api/dashboard/dengue-summary${
         qs.toString() ? `?${qs}` : ""
       }`;
       const res = await fetch(url, {

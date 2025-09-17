@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+import { API_BASE } from "../config";
 
 export default function LRpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
@@ -24,7 +25,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `http://localhost:5000/api/lr-report?${queryParams.toString()}`,
+          `${API_BASE}/api/lr-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -71,7 +72,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
     const subwardQuery = subward
       ? `&subward=${encodeURIComponent(subward)}`
       : "";
-    const url = `http://localhost:5000/api/ward-report/bed-total?wardname=${encodeURIComponent(
+    const url =`${API_BASE}/api/ward-report/bed-total?wardname=${encodeURIComponent(
       wardname
     )}${subwardQuery}`;
 
@@ -156,8 +157,8 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/lr-report/${formData.id}`
-        : "http://localhost:5000/api/lr-report";
+        ? `${API_BASE}/api/lr-report/${formData.id}`
+        : `${API_BASE}/api/lr-report`;
 
       const response = await fetch(url, {
         method,

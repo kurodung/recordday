@@ -2,9 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+import { API_BASE } from "../config";
 
-// 🔧 ปรับตามสภาพแวดล้อมของคุณ
-const API_BASE = "http://localhost:5000";
 
 // แสดง 0 เป็นช่องว่าง
 const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
@@ -230,9 +229,6 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
 
   return (
     <div className="form-container" ref={formRef}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
-        หัตถการ / OR — {effDate || "-"} • {effShift || "-"}
-      </h2>
 
       <div className="form-section">
         <div className="flex-grid">
@@ -245,12 +241,16 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
           </div>
         </div>
       </div>
+      
 
       <div className="button-container">
         <button type="button" className="save-button" onClick={handleSubmit}>
           บันทึกข้อมูล
         </button>
       </div>
+
+    
+
     </div>
   );
 }

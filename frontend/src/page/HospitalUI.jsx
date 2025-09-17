@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+import { API_BASE } from "../config";
 
-const API_BASE = "http://localhost:5000";
 
 const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
 

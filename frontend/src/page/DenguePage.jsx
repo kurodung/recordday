@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
+import { API_BASE } from "../config";
 
 const DenguePage = ({ username, wardname, selectedDate, shift }) => {
   const [formData, setFormData] = useState({});
@@ -23,7 +24,7 @@ const DenguePage = ({ username, wardname, selectedDate, shift }) => {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `http://localhost:5000/api/dengue-report?${queryParams.toString()}`,
+          `${API_BASE}/api/dengue-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -79,8 +80,8 @@ const DenguePage = ({ username, wardname, selectedDate, shift }) => {
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `http://localhost:5000/api/dengue-report/${formData.id}`
-        : `http://localhost:5000/api/dengue-report`;
+        ? `${API_BASE}/api/dengue-report/${formData.id}`
+        : `${API_BASE}/api/dengue-report`;
 
       const response = await fetch(url, {
         method,
