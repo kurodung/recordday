@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { API_BASE } from "../config";
+import { API_BASE } from "../../config";
 import {
   LineChart,
   Line,
@@ -17,12 +17,12 @@ import {
   Cell,
 } from "recharts";
 import { Users, Activity, TrendingUp, Award, RefreshCw } from "lucide-react";
-import styles from "../styles/Dashboard.module.css";
+import styles from "../../styles/Dashboard.module.css";
 
 // Components
-import FilterPanel from "../components/dashboard/FilterPanel";
-import Block from "../components/common/Block";
-import TableBox from "../components/common/TableBox";
+import FilterPanel from "../../components/dashboard/FilterPanel";
+import Block from "../../components/common/Block";
+import TableBox from "../../components/common/TableBox";
 
 // Constants (moved out)
 import {
@@ -35,7 +35,7 @@ import {
   ICU_Ven,
   AD_Ven,
   CH_Ven,
-} from "../constants/wards";
+} from "../../constants/wards";
 
 // Helpers (moved out)
 import {
@@ -46,7 +46,7 @@ import {
   fmt,
   shiftLabel,
   buildDateRange,
-} from "../utils/helpers";
+} from "../../utils/helpers";
 
 const LOG_PAGE_SIZE = 10;
 

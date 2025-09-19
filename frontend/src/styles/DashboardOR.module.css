@@ -1,0 +1,132 @@
+/* DashboardOR.module.css - สไตล์เฉพาะหน้า Dashboard OR */
+
+/* ===== Container & Header ===== */
+.dashboardContainer {
+  padding: 20px;
+  background-color: #f9f6ff; /* OR ใช้โทนม่วงอ่อน */
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.dashboardHeader {
+  background: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  color: white;
+  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.25);
+}
+
+.dashboardTitle {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.dashboardSubtitle {
+  font-size: 15px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+/* ===== Summary Cards ===== */
+.summaryCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.summaryCard {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(147, 51, 234, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.15);
+}
+
+.summaryCardLabel {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.summaryCardValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+}
+
+/* ===== ตาราง OR ===== */
+.tableScroll {
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.tableScroll table {
+  width: 100%;
+  min-width: 1600px;     /* ✅ บังคับให้กว้างพอ */
+  border-collapse: collapse;
+  table-layout: fixed;   /* ✅ คอลัมน์ fix ขนาดตาม width */
+  border: 1px solid #e5e7eb;
+}
+
+.tableScroll th,
+.tableScroll td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* ✅ กันข้อความล้น */
+}
+
+.tableScroll th {
+  background: #f9fafb;
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+}
+
+/* คอลัมน์เฉพาะ */
+.tableScroll th:first-child,
+.tableScroll td:first-child {
+  min-width: 200px;   /* วันที่ */
+}
+
+.tableScroll th:last-child,
+.tableScroll td:last-child {
+  min-width: 220px;   /* หัวหน้าเวร */
+}
+
+.tableScroll th.col-cleaner,
+.tableScroll td.col-cleaner {
+  min-width: 180px;   /* ทำความสะอาด */
+}
+
+
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .summaryCardsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .summaryCardValue {
+    font-size: 20px;
+  }
+
+  .dashboardTitle {
+    font-size: 22px;
+  }
+}

@@ -571,6 +571,43 @@
   line-height:1;
 }
 
+.input-field {
+  width: 100%;
+  min-width: 80px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1.5px solid #a855f7;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* ใช้ตามช่องพิเศษ */
+.input-small {
+  max-width: 100px;
+}
+
+.input-medium {
+  max-width: 180px;
+}
+
+.input-wide {
+  max-width: 240px;
+}
+
+/* input กว้างเต็ม box */
+.input-full {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* input ใน form-column ให้กินเต็ม */
+.form-column .input-field {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+
 
 
 

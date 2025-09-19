@@ -36,6 +36,18 @@ export const strFromKeys = (row, keys) => {
   return "";
 };
 
+// ✅ แปลงวันที่เป็น DD/MM/YYYY (พ.ศ.)
+export const formatThaiDate = (dateStr) => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "-"; // กัน parse ไม่ได้
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear() + 543;
+  return `${day}/${month}/${year}`;
+};
+
+
 export const fmt = (n) => (Number.isFinite(+n) ? +n : 0).toLocaleString("th-TH");
 
 export const shiftLabel = (sh) =>

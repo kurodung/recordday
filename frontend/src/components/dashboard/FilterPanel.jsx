@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Filter, X } from "lucide-react";
+import styles from "../../styles/Dashboard.module.css"; // 👈 ใช้ CSS module โดยตรง
 
 function toOptions(list) {
   return (list || []).map((it) =>
@@ -8,20 +9,30 @@ function toOptions(list) {
 }
 
 export default function FilterPanel({
-  styles, filters, filterOptions, departments,
-  onChangeFilter, onChangeDate, onClear,
+  filters,
+  filterOptions,
+  departments,
+  onChangeFilter,
+  onChangeDate,
+  onClear,
 }) {
-  const shiftOptions = useMemo(() => ([
-    { value: "morning", label: "เวรเช้า" },
-    { value: "afternoon", label: "เวรบ่าย" },
-    { value: "night", label: "เวรดึก" },
-  ]), []);
+  const shiftOptions = useMemo(
+    () => [
+      { value: "morning", label: "เวรเช้า" },
+      { value: "afternoon", label: "เวรบ่าย" },
+      { value: "night", label: "เวรดึก" },
+    ],
+    []
+  );
 
-  const monthOptions = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => ({
-      value: i + 1,
-      label: new Date(0, i).toLocaleString("th-TH", { month: "long" }),
-    })), []);
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: new Date(0, i).toLocaleString("th-TH", { month: "long" }),
+      })),
+    []
+  );
 
   const yearOptions = useMemo(() => toOptions(filterOptions?.years), [filterOptions?.years]);
   const deptOptions = useMemo(() => toOptions(departments), [departments]);
@@ -36,7 +47,14 @@ export default function FilterPanel({
     { name: "month",     label: "เลือกเดือน",    type: "select", value: filters.month, options: monthOptions, disabled: !filters.year },
     { name: "department",label: "เลือกกลุ่มงาน", type: "select", value: filters.department, options: deptOptions },
     { name: "ward",      label: "เลือก Ward",    type: "select", value: filters.ward, options: wardOptions },
-    { name: "subward",   label: "เลือก Sub-ward",type: "select", value: filters.subward, options: subwardOpts, disabled: !filters.ward || (filterOptions?.subwards || []).length === 0 },
+    {
+      name: "subward",
+      label: "เลือก Sub-ward",
+      type: "select",
+      value: filters.subward,
+      options: subwardOpts,
+      disabled: !filters.ward || (filterOptions?.subwards || []).length === 0,
+    },
   ];
 
   return (
@@ -60,7 +78,10 @@ export default function FilterPanel({
                 className={styles.filterInput}
                 onPointerDown={(e) => {
                   const el = e.currentTarget;
-                  if (typeof el.showPicker === "function") { e.preventDefault(); el.showPicker(); }
+                  if (typeof el.showPicker === "function") {
+                    e.preventDefault();
+                    el.showPicker();
+                  }
                 }}
               />
             ) : (
@@ -73,7 +94,9 @@ export default function FilterPanel({
               >
                 <option value="">ทั้งหมด</option>
                 {(field.options || []).map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             )}

@@ -6,10 +6,11 @@ import Covid19Page from "./page/Covid19Page";
 import DenguePage from "./page/DenguePage";
 import LoginPage from "./page/Login";
 import LRpage from "./page/LRpage";
-import Dashboard from "./page/Dashboard";
+import Dashboard from "./page/Dashboard/Dashboard";
 import HospitalLayout from "./components/HospitalLayout";
 import MultiDayReportStatus from "./page/MultiDayReportStatus";
 import ORpage from "./page/ORpage";
+import DashboardOR from "./page/Dashboard/DashboardOR";
 
 const App = () => {
   return (
@@ -64,15 +65,22 @@ const App = () => {
             </HospitalLayout>
           }
         />
-        <Route 
-          path="/orpage" 
+        <Route
+          path="/orpage"
           element={
             <HospitalLayout>
               <ORpage />
             </HospitalLayout>
           }
         />
-        
+        <Route
+          path="/dashboard-or"
+          element={
+            <HospitalLayout>
+              <DashboardOR />
+            </HospitalLayout>
+          }
+        />
       </Routes>
     </Router>
   );

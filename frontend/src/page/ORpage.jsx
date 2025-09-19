@@ -4,70 +4,40 @@ import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
 
-
-// แสดง 0 เป็นช่องว่าง
 const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
-
-// แปลงเป็นจำนวนเต็ม (ค่าว่าง=>0)
 const toInt = (v) =>
   v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
 
-// (เก็บไว้ก่อน เผื่อใช้ตรวจ completeness เพิ่มเติม)
-const CORE_FIELDS = ["username", "wardname", "date", "shift"];
-
-// ✅ ช่องอินพุตให้ตรงกับตาราง or_reports
-const PROC_FIELDS = [
-  { label: "ซับซ้อน", name: "complex" },
-  { label: "ผ่านกล้อง", name: "endoscopic" },
-  { label: "ผ่าตัดใหญ่", name: "major_surgery" },
-  { label: "ผ่าตัดเล็ก", name: "minor_surgery" },
-  { label: "เฝือก", name: "cast" },
-  { label: "OR เล็ก", name: "or_small" },
-  { label: "ODS", name: "ods" },
-  { label: "ตา", name: "eye" },
-  { label: "Covid", name: "covid" },
-  { label: "smc", name: "smc" },
-];
-
-const NUMERIC_FIELDS = PROC_FIELDS.map((f) => f.name);
-const TEXT_FIELDS = []; // เผื่ออนาคต
-
 export default function ORpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
 
-  // รองรับกรณีมาจาก query (เช่น /or?shift=...&date=...)
   const qsShift = searchParams.get("shift");
   const qsDate = searchParams.get("date");
   const effShift = qsShift || shift;
   const effDate = qsDate || selectedDate;
 
-  // ---------- โหลดข้อมูลเดิม ----------
   useEffect(() => {
     const fetchExisting = async () => {
       if (!username || !wardname || !effDate || !effShift) return;
-
       try {
+        setLoading(true);
         const token = localStorage.getItem("token");
         const qs = new URLSearchParams({
           date: effDate,
           shift: effShift,
           wardname,
-          username, // backend ไม่ได้ใช้ แต่ส่งไปได้ไม่เป็นไร
+          username,
         });
-
         const res = await fetch(`${API_BASE}/api/or-report?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 204) {
-          setFormData({
-            username,
-            wardname,
-            date: effDate,
-            shift: effShift,
-          });
+          setFormData({ username, wardname, date: effDate, shift: effShift });
+          setLoading(false);
           return;
         }
 
@@ -75,15 +45,9 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         const text = await res.text();
         const data =
           ct.includes("application/json") && text ? JSON.parse(text) : {};
-
-        // ถ้าแถวใน DB เป็นคนละเวร/วันกับที่ขอมา ให้เริ่มเปล่า
         if (data.shift && data.shift !== effShift) {
-          setFormData({
-            username,
-            wardname,
-            date: effDate,
-            shift: effShift,
-          });
+          setFormData({ username, wardname, date: effDate, shift: effShift });
+          setLoading(false);
           return;
         }
 
@@ -92,23 +56,18 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
           username,
           wardname,
           date: effDate,
-          shift: effShift, // ✅ ใส่ shift เสมอ
+          shift: effShift,
         });
       } catch (err) {
         console.error("โหลดข้อมูล OR ล้มเหลว", err);
-        setFormData({
-          username,
-          wardname,
-          date: effDate,
-          shift: effShift,
-        });
+        setFormData({ username, wardname, date: effDate, shift: effShift });
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchExisting();
   }, [username, wardname, effDate, effShift]);
 
-  // ---------- เลื่อนโฟกัส input ซ้าย/ขวา ด้วยปุ่มลูกศร ----------
   useEffect(() => {
     const handleArrowNavigation = (e) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -116,7 +75,6 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         const arr = inputs ? Array.from(inputs) : [];
         const currentIndex = arr.indexOf(document.activeElement);
         if (currentIndex === -1) return;
-
         let nextIndex = currentIndex + (e.key === "ArrowRight" ? 1 : -1);
         if (nextIndex >= 0 && nextIndex < arr.length) {
           arr[nextIndex].focus();
@@ -124,7 +82,6 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         }
       }
     };
-
     const el = formRef.current;
     if (el) {
       el.addEventListener("keydown", handleArrowNavigation);
@@ -132,15 +89,18 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
     }
   }, []);
 
-  // ---------- เปลี่ยนค่า input ----------
+  // ✅ handleChange รองรับทั้ง number และ text
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    // จำกัดให้เป็นเลขจำนวนเต็ม >= 0
-    const v = value === "" ? "" : String(Math.max(0, parseInt(value || 0, 10)));
-    setFormData((prev) => ({ ...prev, [name]: v }));
+    const { name, value, type } = e.target;
+    if (type === "number") {
+      const v =
+        value === "" ? "" : String(Math.max(0, parseInt(value || 0, 10)));
+      setFormData((prev) => ({ ...prev, [name]: v }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
-  // ---------- เตรียม payload แบบ whitelist + แปลงชนิด ----------
   const buildPayload = () => {
     const base = {
       username,
@@ -150,22 +110,42 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
           ? formData.date.toISOString().split("T")[0]
           : formData.date || effDate,
       shift: effShift,
-      // ไม่มี subward สำหรับหน้า OR
     };
 
+    // ฟิลด์ตัวเลข
+    const numericFields = [
+      "complex",
+      "endoscopic",
+      "major_surgery",
+      "minor_surgery",
+      "cast",
+      "or_small",
+      "ods",
+      "eye",
+      "covid",
+      "smc",
+      "rn",
+      "pn",
+      "na",
+      "sb",
+      "tn",
+      "autoclave",
+      "cssd",
+      "cleaner",
+    ];
+
+    // ฟิลด์ข้อความ
+    const textFields = ["head_nurse"];
+
     const numeric = {};
-    for (const k of NUMERIC_FIELDS) numeric[k] = toInt(formData[k]);
+    for (const k of numericFields) numeric[k] = toInt(formData[k]);
 
     const text = {};
-    for (const k of TEXT_FIELDS) {
-      const v = formData[k];
-      if (v !== undefined) text[k] = v;
-    }
+    for (const k of textFields) text[k] = formData[k] ?? "";
 
     return { ...base, ...numeric, ...text };
   };
 
-  // ---------- ส่งข้อมูล ----------
   const handleSubmit = async () => {
     try {
       if (!username || !wardname || !effDate || !effShift) {
@@ -174,12 +154,10 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
       }
       const token = localStorage.getItem("token");
       const payload = buildPayload();
-
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
         ? `${API_BASE}/api/or-report/${formData.id}`
         : `${API_BASE}/api/or-report`;
-
       const res = await fetch(url, {
         method,
         headers: {
@@ -188,18 +166,15 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         },
         body: JSON.stringify(payload),
       });
-
       const ct = res.headers.get("content-type") || "";
       const text = await res.text();
       const json =
         ct.includes("application/json") && text ? JSON.parse(text) : {};
-
       if (!res.ok) {
         console.error("POST/PUT /or-report failed:", res.status, json || text);
         alert(json?.message || `HTTP ${res.status}`);
         return;
       }
-
       alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
       window.location.reload();
     } catch (error) {
@@ -208,20 +183,37 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
     }
   };
 
-  // ---------- helper render ----------
-  const renderInput = (label, name) => {
+  // ✅ renderInput รองรับ extraClass
+  const renderInput = (
+    label,
+    name,
+    type = "number",
+    width = null,
+    readOnly = false,
+    extraClass = ""
+  ) => {
     const raw = formData[name];
-    const display = displayZeroAsBlank(raw);
+    const display = type === "number" ? displayZeroAsBlank(raw) : raw ?? "";
     return (
-      <div className="input-group" key={name}>
-        <label className="input-label">{label}:</label>
+      <div className="input-group" key={name} style={width ? { width } : {}}>
+        {label && (
+          <label className="input-label" htmlFor={name}>
+            {label}
+          </label>
+        )}
         <input
-          type="number"
-          min="0"
+          id={name}
+          type={type}
+          min={type === "number" ? "0" : undefined}
+          step="1"
+          inputMode={type === "number" ? "numeric" : undefined}
+          pattern={type === "number" ? "[0-9]*" : undefined}
           name={name}
-          className="input-field"
+          className={`input-field ${extraClass}`}
           value={display}
           onChange={handleChange}
+          onWheel={(e) => e.currentTarget.blur()}
+          readOnly={readOnly}
         />
       </div>
     );
@@ -229,28 +221,102 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
 
   return (
     <div className="form-container" ref={formRef}>
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">ผ่าตัดซับซ้อน</div>
+            {renderInput("", "complex")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ผ่านกล้อง</div>
+            {renderInput("", "endoscopic")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ผ่าตัดใหญ่</div>
+            {renderInput("", "major_surgery")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ผ่าตัดเล็ก</div>
+            {renderInput("", "minor_surgery")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ใส่เฝือก</div>
+            {renderInput("", "cast")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">OR เล็ก</div>
+            {renderInput("", "or_small")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ODS</div>
+            {renderInput("", "ods")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ตา</div>
+            {renderInput("", "eye")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">Covid</div>
+            {renderInput("", "covid")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">SMC</div>
+            {renderInput("", "smc")}
+          </div>
+        </div>
+      </div>
 
       <div className="form-section">
         <div className="flex-grid">
-          {/* คอลัมน์เดียว/หลายคอลัมน์ได้ตามจอ ด้วยสไตล์เดิม */}
           <div className="form-column">
-            <div className="section-header">หัตถการ / ผ่าตัด</div>
-            <div className="horizontal-inputs" style={{ alignItems: "center" }}>
-              {PROC_FIELDS.map((f) => renderInput(f.label, f.name))}
+            <div className="section-header">RN(63)</div>
+            {renderInput("", "rn")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">PN(6)</div>
+            {renderInput("", "pn")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">NA(24)</div>
+            {renderInput("", "na")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">พ.เปล(24)</div>
+            {renderInput("", "sb")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">TN(5)</div>
+            {renderInput("", "tn")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">หม้อนึ่ง(3)</div>
+            {renderInput("", "autoclave")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">พ.จ่ายกลาง(13)</div>
+            {renderInput("", "cssd")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">พ.ทำความสะอาด(5)</div>
+            {renderInput("", "cleaner", "number", null, false, "input-medium")}
+          </div>
+
+          <div className="form-column">
+            <div className="section-header" style={{ color: "green" }}>
+              พยาบาลหัวหน้าเวร
+            </div>
+            <div className="horizontal-inputs">
+              {renderInput("", "head_nurse", "text", null, false, "input-wide")}
             </div>
           </div>
         </div>
       </div>
-      
 
       <div className="button-container">
         <button type="button" className="save-button" onClick={handleSubmit}>
           บันทึกข้อมูล
         </button>
       </div>
-
-    
-
     </div>
   );
 }

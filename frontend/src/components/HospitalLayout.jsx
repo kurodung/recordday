@@ -33,14 +33,13 @@ const hasToken = (name, token) => {
 };
 
 const usernameToPageMap = {
-  lr: (subward) => subward === "ห้องคลอด" ? "/lrpage" : "/main",
+  lr: (subward) => (subward === "ห้องคลอด" ? "/lrpage" : "/main"),
   or: () => "/orpage",
   eye: () => "/eyePage",
   icu: () => "/icuPage",
   ods: () => "/odsPage",
   // เพิ่มได้เรื่อยๆ
 };
-
 
 // จัดลำดับ sub-ward ให้ "อายุรกรรม*" มาก่อน "semi icu"
 const sortSubwardsWithPriority = (list, ward) => {
@@ -208,37 +207,36 @@ export default function HospitalLayout({ children }) {
     navigate,
   ]);
 
-useEffect(() => {
-  const sub = norm(subward);
-  const qs = new URLSearchParams({
-    shift: activeShift,
-    date: selectedDate,
-    subward,
-  });
+  useEffect(() => {
+    const sub = norm(subward);
+    const qs = new URLSearchParams({
+      shift: activeShift,
+      date: selectedDate,
+      subward,
+    });
 
-  let target = null;
+    let target = null;
 
-  if (sub === "ห้องคลอด") {
-    target = `/lrpage?${qs.toString()}`;
-  } else if (sub === "รอคลอด") {
-    target = `/main?${qs.toString()}`;
-  }
-
-  if (target) {
-    const current = `${location.pathname}${location.search}`;
-    if (current !== target) {
-      navigate(target, { replace: true });
+    if (sub === "ห้องคลอด") {
+      target = `/lrpage?${qs.toString()}`;
+    } else if (sub === "รอคลอด") {
+      target = `/main?${qs.toString()}`;
     }
-  }
-}, [
-  subward,
-  activeShift,
-  selectedDate,
-  location.pathname,
-  location.search,
-  navigate,
-]);
 
+    if (target) {
+      const current = `${location.pathname}${location.search}`;
+      if (current !== target) {
+        navigate(target, { replace: true });
+      }
+    }
+  }, [
+    subward,
+    activeShift,
+    selectedDate,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths))
@@ -248,8 +246,8 @@ useEffect(() => {
 
   // ⬇️ ปุ่ม "ทั่วไป" จะเลือกหน้าให้ถูกต้องตาม subward ปัจจุบัน
   const handleGeneralClick = () => {
-  const getBasePage = usernameToPageMap[norm(username)];
-  const base = getBasePage ? getBasePage(subward) : "/main";
+    const getBasePage = usernameToPageMap[norm(username)];
+    const base = getBasePage ? getBasePage(subward) : "/main";
 
     const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
     if (subward) qs.append("subward", subward);
@@ -412,8 +410,19 @@ useEffect(() => {
               MultiDay
             </button>
             <button
-              className={`nav-tab ${isActiveTab("/dashboard") ? "active" : ""}`}
-              onClick={() => go("/dashboard")}
+              className={`nav-tab ${
+                isActiveTab(["/dashboard", "/dashboard-or"]) ? "active" : ""
+              }`}
+              onClick={() => {
+                if (
+                  norm(wardname) === "ห้องผ่าตัด" ||
+                  norm(username) === "or"
+                ) {
+                  go("/dashboard-or"); // 👉 ไป Dashboard OR
+                } else {
+                  go("/dashboard"); // 👉 ไป Dashboard ปกติ
+                }
+              }}
               style={{ display: "flex", alignItems: "center", gap: 6 }}
             >
               <FiBarChart className="sidebar-icon" />

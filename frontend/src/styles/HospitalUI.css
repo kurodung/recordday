@@ -557,6 +557,7 @@ body {
   padding: 0 10px;
 }
 
+
 /* ---------- มือถือ (<= 768px): ทำ Sidebar เป็น Drawer ---------- */
 @media (max-width: 768px) {
   /* Sidebar หลุดออกจาก flow เป็นลิ้นชักซ้าย */
