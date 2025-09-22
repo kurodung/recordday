@@ -3,7 +3,6 @@
 /* ===== Container & Header ===== */
 .dashboardContainer {
   padding: 20px;
-  background-color: #f9f6ff; /* OR ใช้โทนม่วงอ่อน */
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -65,17 +64,55 @@
   text-align: center;
 }
 
+/* ===== Loading & Error ===== */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #6b7280;
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+  color: #9333ea;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.errorContainer {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
 /* ===== ตาราง OR ===== */
 .tableScroll {
   overflow-x: auto;
   padding-bottom: 12px;
+  background: white;
+  border-radius: 12px;
 }
 
 .tableScroll table {
   width: 100%;
-  min-width: 1600px;     /* ✅ บังคับให้กว้างพอ */
+  min-width: 800px;
   border-collapse: collapse;
-  table-layout: fixed;   /* ✅ คอลัมน์ fix ขนาดตาม width */
+  table-layout: auto;
   border: 1px solid #e5e7eb;
 }
 
@@ -83,37 +120,90 @@
 .tableScroll td {
   text-align: center;
   vertical-align: middle;
-  padding: 8px;
+  padding: 12px 10px;
   border: 1px solid #e5e7eb;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* ✅ กันข้อความล้น */
+  font-size: 14px;
 }
 
 .tableScroll th {
   background: #f9fafb;
   font-weight: 600;
-  font-size: 14px;
   color: #374151;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.tableScroll td {
+  background: white;
+  font-weight: 500;
+  color: #1f2937;
 }
 
 /* คอลัมน์เฉพาะ */
-.tableScroll th:first-child,
-.tableScroll td:first-child {
-  min-width: 200px;   /* วันที่ */
+.tableScroll th:nth-child(1),
+.tableScroll td:nth-child(1) {
+  min-width: 120px;
+  font-weight: 600;
 }
 
+.tableScroll th:nth-child(2),
+.tableScroll td:nth-child(2) {
+  min-width: 80px;
+  font-weight: 600;
+}
+
+/* ตัวเลข */
+.tableScroll th:nth-child(n+3),
+.tableScroll td:nth-child(n+3) {
+  min-width: 75px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+}
+
+/* หัวหน้าเวร */
 .tableScroll th:last-child,
 .tableScroll td:last-child {
-  min-width: 220px;   /* หัวหน้าเวร */
+  min-width: 150px;
+  font-weight: 600;
 }
 
-.tableScroll th.col-cleaner,
-.tableScroll td.col-cleaner {
-  min-width: 180px;   /* ทำความสะอาด */
+/* Hover effect */
+.tableScroll tbody tr:hover {
+  background-color: #f8fafc;
+}
+.tableScroll tbody tr:hover td {
+  background-color: #f8fafc;
 }
 
+/* ===== Input เฉพาะ ===== */
+.inputHeadNurse {
+  display: inline-block;
+  width: 200px !important;
+  min-width: 180px;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
 
+.inputCleaner {
+  display: inline-block;
+  width: 150px !important;
+  min-width: 140px;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* ให้ input เต็ม cell */
+.tableScroll td input {
+  width: 100%;
+  box-sizing: border-box;
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
@@ -128,5 +218,9 @@
 
   .dashboardTitle {
     font-size: 22px;
+  }
+
+  .tableScroll table {
+    min-width: 1600px;
   }
 }

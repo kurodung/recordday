@@ -607,6 +607,17 @@
   box-sizing: border-box;
 }
 
+/* ช่อง พยาบาลหัวหน้าเวร */
+input[name="head_nurse"] {
+  width: 180px !important;
+}
+
+/* ช่อง พ.ทำความสะอาด */
+input[name="cleaner"] {
+  width: 140px !important;
+}
+
+
 
 
 
