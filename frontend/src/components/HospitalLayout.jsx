@@ -21,7 +21,7 @@ const localISODate = (d = new Date()) => {
   return dt.toISOString().slice(0, 10);
 };
 
-// -------- subward priority helpers --------
+// -------- helpers --------
 const norm = (s) =>
   String(s || "")
     .toLowerCase()
@@ -35,33 +35,9 @@ const hasToken = (name, token) => {
 const usernameToPageMap = {
   lr: (subward) => (subward === "ห้องคลอด" ? "/lrpage" : "/main"),
   or: () => "/orpage",
-  eye: () => "/eyePage",
-  icu: () => "/icuPage",
-  ods: () => "/odsPage",
-  // เพิ่มได้เรื่อยๆ
+  hd: () => "/hdpage",
 };
 
-// จัดลำดับ sub-ward ให้ "อายุรกรรม*" มาก่อน "semi icu"
-const sortSubwardsWithPriority = (list, ward) => {
-  const PRIORITY = {
-    อายุรกรรม: ["อายุรกรรม", "semi icu", "semi-icu", "semiicu"],
-  };
-  const wardKey = norm(ward);
-  const matchedKey =
-    Object.keys(PRIORITY).find((k) => wardKey.includes(norm(k))) || "";
-  const tokens = (PRIORITY[matchedKey] || []).map(norm);
-  const rankOf = (name) => {
-    for (let i = 0; i < tokens.length; i++)
-      if (hasToken(name, tokens[i])) return i;
-    return Infinity;
-  };
-  return [...(list || [])].filter(Boolean).sort((a, b) => {
-    const ra = rankOf(a),
-      rb = rankOf(b);
-    if (ra !== rb) return ra - rb;
-    return String(a).localeCompare(String(b), "th");
-  });
-};
 // -----------------------------------------
 
 export default function HospitalLayout({ children }) {
@@ -74,12 +50,10 @@ export default function HospitalLayout({ children }) {
   const [wardname, setWardname] = useState("");
   const [subward, setsubward] = useState("");
   const [subwardOptions, setsubwardOptions] = useState([]);
-
-  // มือถือ/เดสก์ท็อป & เมนูด้านซ้าย
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ----- viewport watcher -----
+  // viewport watcher
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
     const onChange = (e) => setIsMobile(e.matches);
@@ -98,7 +72,7 @@ export default function HospitalLayout({ children }) {
     };
   }, []);
 
-  // ล็อกสกอร์ล body เมื่อเมนูเปิดบนมือถือ
+  // lock scroll
   useEffect(() => {
     if (!isMobile) {
       document.body.style.overflow = "";
@@ -110,7 +84,7 @@ export default function HospitalLayout({ children }) {
     };
   }, [isMobile, sidebarOpen]);
 
-  // ปิดเมนูด้วย ESC
+  // esc close sidebar
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") setSidebarOpen(false);
@@ -119,7 +93,7 @@ export default function HospitalLayout({ children }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // อ่าน user จาก token
+  // read user from token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token || token.split(".").length !== 3) {
@@ -137,20 +111,18 @@ export default function HospitalLayout({ children }) {
       localStorage.removeItem("token");
       navigate("/");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navigate]);
 
-  // sync shift/date จาก query
+  // sync shift/date
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const qShift = params.get("shift");
     const qDate = params.get("date");
     if (qShift) setActiveShift(qShift);
     if (qDate) setSelectedDate(qDate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.search]);
 
-  // ดึง sub-ward
+  // fetch subwards
   useEffect(() => {
     const fetchsubwards = async () => {
       if (!username || !wardname) return;
@@ -168,23 +140,21 @@ export default function HospitalLayout({ children }) {
           : Array.isArray(data)
           ? data
           : [];
-        const sorted = sortSubwardsWithPriority(list, wardname);
-        setsubwardOptions(sorted);
+        setsubwardOptions(list);
 
         if (!subward) {
-          const preferred = sorted.find((s) => hasToken(s, "อายุรกรรม"));
-          setsubward(preferred || sorted[0] || "");
-        } else if (!sorted.includes(subward)) {
-          setsubward(sorted[0] || "");
+          setsubward(list[0] || "");
+        } else if (!list.includes(subward)) {
+          setsubward(list[0] || "");
         }
       } catch (err) {
         console.error("Failed to fetch subward options", err);
       }
     };
     fetchsubwards();
-  }, [username, wardname]); // ไม่ใส่ subward กันลูป
+  }, [username, wardname, subward]);
 
-  // sync query (เฉพาะ search string)
+  // sync query
   useEffect(() => {
     if (!username || !wardname) return;
     const current = new URLSearchParams(location.search);
@@ -196,47 +166,34 @@ export default function HospitalLayout({ children }) {
     if (current.toString() !== want.toString()) {
       navigate(`${location.pathname}?${want.toString()}`, { replace: true });
     }
-  }, [
-    activeShift,
-    selectedDate,
-    subward,
-    username,
-    wardname,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
+  }, [activeShift, selectedDate, subward, username, wardname, location.pathname, location.search, navigate]);
 
   useEffect(() => {
-    const sub = norm(subward);
-    const qs = new URLSearchParams({
-      shift: activeShift,
-      date: selectedDate,
-      subward,
-    });
+  // หน้าที่ไม่ควรบังคับ redirect
+  const skipPaths = ["/dashboard", "/dashboard-or", "/dashboard-hd", "/covid", "/dengue", "/multi-day", "/settings"];
+  if (skipPaths.some((p) => location.pathname.startsWith(p))) return;
 
-    let target = null;
-
-    if (sub === "ห้องคลอด") {
-      target = `/lrpage?${qs.toString()}`;
-    } else if (sub === "รอคลอด") {
-      target = `/main?${qs.toString()}`;
-    }
-
-    if (target) {
-      const current = `${location.pathname}${location.search}`;
-      if (current !== target) {
-        navigate(target, { replace: true });
-      }
-    }
-  }, [
+  const sub = norm(subward);
+  const qs = new URLSearchParams({
+    shift: activeShift,
+    date: selectedDate,
     subward,
-    activeShift,
-    selectedDate,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
+  });
+
+  let target = null;
+  if (sub === "ห้องคลอด") {
+    target = `/lrpage?${qs.toString()}`;
+  } else if (sub === "รอคลอด") {
+    target = `/main?${qs.toString()}`;
+  }
+
+  if (target) {
+    const current = `${location.pathname}${location.search}`;
+    if (current !== target) {
+      navigate(target, { replace: true });
+    }
+  }
+}, [subward, activeShift, selectedDate, location.pathname, location.search, navigate]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths))
@@ -244,11 +201,9 @@ export default function HospitalLayout({ children }) {
     return location.pathname.includes(paths);
   };
 
-  // ⬇️ ปุ่ม "ทั่วไป" จะเลือกหน้าให้ถูกต้องตาม subward ปัจจุบัน
   const handleGeneralClick = () => {
     const getBasePage = usernameToPageMap[norm(username)];
     const base = getBasePage ? getBasePage(subward) : "/main";
-
     const qs = new URLSearchParams({ shift: activeShift, date: selectedDate });
     if (subward) qs.append("subward", subward);
     navigate(`${base}?${qs.toString()}`);
@@ -268,19 +223,12 @@ export default function HospitalLayout({ children }) {
 
   return (
     <div className="hospital-container">
-      {/* Overlay มือถือ */}
       {isMobile && sidebarOpen && (
-        <div
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`sidebar custom-sidebar ${isMobile ? "mobile" : ""} ${
-          sidebarOpen ? "open" : ""
-        }`}
+        className={`sidebar custom-sidebar ${isMobile ? "mobile" : ""} ${sidebarOpen ? "open" : ""}`}
         aria-hidden={isMobile && !sidebarOpen}
       >
         <div className="sidebar-header">
@@ -289,11 +237,7 @@ export default function HospitalLayout({ children }) {
           </div>
           <div className="sidebar-title">{wardname || "Ward"}</div>
           {isMobile && (
-            <button
-              className="icon-button close"
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Close menu"
-            >
+            <button className="icon-button close" onClick={() => setSidebarOpen(false)}>
               <FiX />
             </button>
           )}
@@ -310,25 +254,19 @@ export default function HospitalLayout({ children }) {
         <div className="sidebar-section-label">เวรการทำงาน</div>
         <div className="sidebar-section shift-section">
           <div
-            className={`sidebar-item input-group ${
-              activeShift === "morning" ? "highlighted" : ""
-            }`}
+            className={`sidebar-item input-group ${activeShift === "morning" ? "highlighted" : ""}`}
             onClick={() => setActiveShift("morning")}
           >
             <FiSun className="sidebar-icon" /> เวรเช้า
           </div>
           <div
-            className={`sidebar-item input-group ${
-              activeShift === "afternoon" ? "highlighted" : ""
-            }`}
+            className={`sidebar-item input-group ${activeShift === "afternoon" ? "highlighted" : ""}`}
             onClick={() => setActiveShift("afternoon")}
           >
             <FiSunset className="sidebar-icon" /> เวรบ่าย
           </div>
           <div
-            className={`sidebar-item input-group ${
-              activeShift === "night" ? "highlighted" : ""
-            }`}
+            className={`sidebar-item input-group ${activeShift === "night" ? "highlighted" : ""}`}
             onClick={() => setActiveShift("night")}
           >
             <FiMoon className="sidebar-icon" /> เวรดึก
@@ -366,25 +304,17 @@ export default function HospitalLayout({ children }) {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="main-content">
         <div className="top-nav">
-          {/* ปุ่มเปิดเมนูในมือถือ */}
           {isMobile && (
-            <button
-              className="icon-button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
-            >
+            <button className="icon-button" onClick={() => setSidebarOpen(true)}>
               <FiMenu />
             </button>
           )}
 
           <div className="tabs-scroll">
             <button
-              className={`nav-tab ${
-                isActiveTab(["/main", "/lrpage"]) ? "active" : ""
-              }`}
+              className={`nav-tab ${isActiveTab(["/main", "/lrpage"]) ? "active" : ""}`}
               onClick={handleGeneralClick}
             >
               ทั่วไป
@@ -410,17 +340,14 @@ export default function HospitalLayout({ children }) {
               MultiDay
             </button>
             <button
-              className={`nav-tab ${
-                isActiveTab(["/dashboard", "/dashboard-or"]) ? "active" : ""
-              }`}
+              className={`nav-tab ${isActiveTab(["/dashboard", "/dashboard-or"]) ? "active" : ""}`}
               onClick={() => {
-                if (
-                  norm(wardname) === "ห้องผ่าตัด" ||
-                  norm(username) === "or"
-                ) {
-                  go("/dashboard-or"); // 👉 ไป Dashboard OR
+                if (norm(wardname) === "ห้องผ่าตัด" || norm(username) === "or") {
+                  go("/dashboard-or");
+                } else if (norm(wardname) === "ไตเทียม" || norm(username) === "hd") {
+                  go("/dashboard-hd");
                 } else {
-                  go("/dashboard"); // 👉 ไป Dashboard ปกติ
+                  go("/dashboard");
                 }
               }}
               style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -439,8 +366,8 @@ export default function HospitalLayout({ children }) {
               onPointerDown={(e) => {
                 const el = e.currentTarget;
                 if (typeof el.showPicker === "function") {
-                  e.preventDefault(); // กันโฟกัสเฉย ๆ
-                  el.showPicker(); // ✅ เปิดปฏิทินทันที (Chrome/Edge รองรับ)
+                  e.preventDefault();
+                  el.showPicker();
                 }
               }}
             />

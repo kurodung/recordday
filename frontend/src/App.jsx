@@ -10,7 +10,9 @@ import Dashboard from "./page/Dashboard/Dashboard";
 import HospitalLayout from "./components/HospitalLayout";
 import MultiDayReportStatus from "./page/MultiDayReportStatus";
 import ORpage from "./page/ORpage";
-import DashboardOR from "./page/Dashboard/DashboardOR";
+import ORDashboard from "./page/Dashboard/ORDashboard";
+import HDpage from "./page/HDpage";
+import HDDashboard from "./page/Dashboard/HDDashboard";
 
 const App = () => {
   return (
@@ -77,7 +79,23 @@ const App = () => {
           path="/dashboard-or"
           element={
             <HospitalLayout>
-              <DashboardOR />
+              <ORDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/hdpage"
+          element={
+            <HospitalLayout>
+              <HDpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-hd"
+          element={
+            <HospitalLayout>
+              <HDDashboard />
             </HospitalLayout>
           }
         />

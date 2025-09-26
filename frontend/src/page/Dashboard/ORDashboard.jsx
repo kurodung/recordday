@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { API_BASE } from "../../config";
-import styles from "../../styles/DashboardOR.module.css";
+import styles from "../../styles/ORDashboard.module.css";
 import stylesmain from "../../styles/Dashboard.module.css";
 import Block from "../../components/common/Block";
 import TableBox from "../../components/common/TableBox";
@@ -220,7 +220,7 @@ export default function DashboardOR() {
       color: "#dc2626",
     },
     {
-      label: "👥 รวมบุคลากรพยาบาล",
+      label: "👥 รวมบุคลากรพยาบาล(rn+pn+na)",
       value: fmt(summary.totalStaff),
       icon: <Users size={20} />,
       color: "#059669",
@@ -282,7 +282,7 @@ export default function DashboardOR() {
             style={{
               backgroundColor: bgColor,
               border: card.highlight
-                ? "2px solid #fbbf24"
+                ? "2px solid #ffffffff"
                 : "1px solid rgba(147, 51, 234, 0.15)",
               ...(card.color && { borderLeft: `4px solid ${card.color}` }),
             }}
@@ -293,7 +293,7 @@ export default function DashboardOR() {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                color: card.color || "#6b7280",
+                color: card.color || "#000000ff",
               }}
             >
               {card.icon}
@@ -415,13 +415,13 @@ export default function DashboardOR() {
       {renderCardSection("📈 สรุปภาพรวม", keyMetrics)}
 
       {/* รายละเอียดการผ่าตัด */}
-      {renderCardSection("🏥 รายละเอียดการผ่าตัด", surgeryDetails, "#fefbf3")}
+      {renderCardSection("🏥 รายละเอียดการผ่าตัด", surgeryDetails, "#ffffff")}
 
       {/* รายละเอียดบุคลากร */}
-      {renderCardSection("👥 บุคลากรพยาบาล", staffDetails, "#f0fdf4")}
+      {renderCardSection("👥 บุคลากรพยาบาล", staffDetails, "#ffffff")}
 
       {/* รายละเอียดสนับสนุน */}
-      {renderCardSection("🔧 บุคลากรสนับสนุน", supportDetails, "#faf5ff")}
+      {renderCardSection("🔧 บุคลากรสนับสนุน", supportDetails, "#ffffff")}
 
       {/* ตารางแยกส่วน - การผ่าตัด */}
       {renderSectionTable(

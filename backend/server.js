@@ -15,10 +15,11 @@ const wardReportRoutes = require("./routes/wardReportRoutes");
 const covidRoutes = require("./routes/covidRoutes");
 const dengueRoutes = require("./routes/dengueRoutes");
 const dashboardRoute = require("./routes/dashboard");
-const lrReportRoutes = require("./routes/lrReportRoutes");
+const lrReportRoutes = require("./routes/lrReport");
 const subwardsRoute = require("./routes/subwards");
 const reportStatusRoutes = require("./routes/reportStatusRoutes");
-const orreportRoutes = require("./routes/orreportRoutes");
+const orReportRoutes = require("./routes/orReport");
+const hdReportRoutes = require("./routes/hdReport");
 
 
 // Register Routes
@@ -30,7 +31,8 @@ app.use("/api/subwards", subwardsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/lr-report", lrReportRoutes);
 app.use("/api", reportStatusRoutes);           // -> /api/report-status-range
-app.use("/api", orreportRoutes);
+app.use("/api", orReportRoutes);
+app.use("/api/hd-report", hdReportRoutes);
 
 const toMysqlDate = (value) => {
   if (!value) return null;
