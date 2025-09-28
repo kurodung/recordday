@@ -1,4 +1,4 @@
-// src/pages/hd/HDDashboard.jsx
+// src/pages/stch/STCHDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../config";
 import styles from "../../styles/ORDashboard.module.css";
@@ -6,41 +6,25 @@ import stylesmain from "../../styles/Dashboard.module.css";
 import Block from "../../components/common/Block";
 import TableBox from "../../components/common/TableBox";
 import FilterPanel from "../../components/dashboard/FilterPanel";
-import {
-  RefreshCw,
-  Activity,
-  Users,
-  TrendingUp,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import {
-  fmt,
-  shiftLabel,
-  formatThaiDate,
-  buildDateRange,
-} from "../../utils/helpers";
+import { RefreshCw, Activity, ChevronDown, ChevronUp } from "lucide-react";
+import { fmt, shiftLabel, formatThaiDate, buildDateRange } from "../../utils/helpers";
 
-export default function HDDashboard() {
+export default function StchDashboard() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ฟิลเตอร์ช่วงวันที่/เวร (ถ้า backend ไม่ใช้ shift ก็ปล่อยว่างได้)
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
     shift: "",
   });
 
-  // พับ/ขยายตาราง
-  const [expanded, setExpanded] = useState({ hd: true });
-
-  // แบ่งหน้า
+  const [expanded, setExpanded] = useState({ stch: true });
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 12;
 
-  // โหลดข้อมูล HD
+  // โหลดข้อมูล STCH
   useEffect(() => {
     const ac = new AbortController();
     (async () => {
@@ -51,21 +35,17 @@ export default function HDDashboard() {
         const qs = buildDateRange(filters);
         if (filters.shift) qs.set("shift", filters.shift);
 
-        // ⚠️ ตาม backend ของคุณใช้ prefix นี้
         const url = qs.toString()
-          ? `${API_BASE}/api/hd-report/list?${qs.toString()}`
-          : `${API_BASE}/api/hd-report/list`;
+          ? `${API_BASE}/api/stch-report/list?${qs.toString()}`
+          : `${API_BASE}/api/stch-report/list`;
 
         const res = await fetch(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: ac.signal,
         });
 
-        if (!res.ok) throw new Error("โหลด HD reports ไม่สำเร็จ");
+        if (!res.ok) throw new Error("โหลด Stch reports ไม่สำเร็จ");
         const json = await res.json();
-
-        // คาดรูปแบบข้อมูลเป็น array ของ record รายวัน
-        // ฟิลด์ที่ใช้: report_date, shift, acute, chronic, icu, covid, capd_opd, capd_ipd
         setRows(Array.isArray(json) ? json : []);
         setPage(1);
       } catch (e) {
@@ -80,22 +60,18 @@ export default function HDDashboard() {
   // รวมยอด
   const summary = useMemo(() => {
     const sum = (k) => rows.reduce((a, r) => a + (Number(r?.[k]) || 0), 0);
-    const acute = sum("acute");
-    const chronic = sum("chronic");
-    const icu = sum("icu");
-    const covid = sum("covid");
-    const capdOPD = sum("capd_opd");
-    const capdIPD = sum("capd_ipd");
+    const drug = sum("drug");
+    const blood = sum("blood");
+    const bm = sum("bm");
+    const it = sum("it");
+    const port = sum("port");
     return {
-      acute,
-      chronic,
-      icu,
-      covid,
-      capdOPD,
-      capdIPD,
-      totalHD: acute + chronic + icu + covid,
-      totalCAPD: capdOPD + capdIPD,
-      grandTotal: acute + chronic + icu + covid + capdOPD + capdIPD,
+      drug,
+      blood,
+      bm,
+      it,
+      port,
+      total: drug + blood + bm + it + port,
     };
   }, [rows]);
 
@@ -107,23 +83,16 @@ export default function HDDashboard() {
   const renderCards = () => {
     const cards = [
       {
-        label: "รวม HD ทั้งหมด",
-        value: fmt(summary.totalHD),
+        label: "รวมทั้งหมด",
+        value: fmt(summary.total),
         icon: <Activity size={18} />,
         color: "#9333ea",
       },
-      { label: "Acute", value: fmt(summary.acute) },
-      { label: "Chronic", value: fmt(summary.chronic) },
-      { label: "ICU", value: fmt(summary.icu) },
-      { label: "Covid HD", value: fmt(summary.covid) },
-      {
-        label: "รวม CAPD",
-        value: fmt(summary.totalCAPD),
-        icon: <TrendingUp size={18} />,
-        color: "#059669",
-      },
-      { label: "CAPD (OPD)", value: fmt(summary.capdOPD) },
-      { label: "CAPD (IPD)", value: fmt(summary.capdIPD) },
+      { label: "ยาเคมีบำบัด", value: fmt(summary.drug) },
+      { label: "Blood transfusion", value: fmt(summary.blood) },
+      { label: "BM", value: fmt(summary.bm) },
+      { label: "IT", value: fmt(summary.it) },
+      { label: "PORT", value: fmt(summary.port) },
     ];
     return (
       <div className={styles.summaryCardsGrid}>
@@ -165,7 +134,7 @@ export default function HDDashboard() {
     return (
       <div className={styles.loadingContainer}>
         <RefreshCw className={styles.loadingSpinner} size={24} />
-        <span className={styles.loadingText}>กำลังโหลดข้อมูล HD...</span>
+        <span className={styles.loadingText}>กำลังโหลดข้อมูล STCH...</span>
       </div>
     );
   }
@@ -175,9 +144,9 @@ export default function HDDashboard() {
     <div className={styles.dashboardContainer}>
       {/* Header */}
       <div className={styles.dashboardHeader}>
-        <h1 className={styles.dashboardTitle}>💧 HD Dashboard (ไตเทียม)</h1>
+        <h1 className={styles.dashboardTitle}>💊 STCH Dashboard (เคมีบำบัด)</h1>
         <p className={styles.dashboardSubtitle}>
-          สรุปบริการ Hemodialysis / CAPD
+          สรุปบริการ (ยาเคมีบำบัด, Blood transfusion, BM, IT, PORT)
           {rows.length > 0 && (
             <span style={{ marginLeft: 16, opacity: 0.8 }}>
               📊 รวม {rows.length.toLocaleString("th-TH")} รายการ
@@ -214,17 +183,17 @@ export default function HDDashboard() {
               justifyContent: "space-between",
               cursor: "pointer",
             }}
-            onClick={() => setExpanded((p) => ({ ...p, hd: !p.hd }))}
+            onClick={() => setExpanded((p) => ({ ...p, stch: !p.stch }))}
           >
-            <span>📅 ตารางบริการรายวัน (HD/CAPD)</span>
-            {expanded.hd ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            <span>📅 ตารางบริการรายวัน (STCH)</span>
+            {expanded.stch ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
         }
         loading={false}
         error={null}
         empty={!rows.length}
       >
-        {expanded.hd && (
+        {expanded.stch && (
           <>
             <div className={stylesmain.tableScroll}>
               <TableBox
@@ -232,31 +201,21 @@ export default function HDDashboard() {
                 headers={[
                   "วันที่",
                   "เวร",
-                  "Acute",
-                  "Chronic",
-                  "ICU",
-                  "Covid HD",
-                  "CAPD (OPD)",
-                  "CAPD (IPD)",
+                  "ยาเคมีบำบัด",
+                  "Blood transfusion",
+                  "BM",
+                  "IT",
+                  "PORT",
                 ]}
-                rows={pageRows.map((r) => {
-                  const acute = Number(r.acute) || 0;
-                  const chronic = Number(r.chronic) || 0;
-                  const icu = Number(r.icu) || 0;
-                  const covid = Number(r.covid) || 0;
-                  const capdOPD = Number(r.capd_opd) || 0;
-                  const capdIPD = Number(r.capd_ipd) || 0;
-                  return [
-                    formatThaiDate(r.report_date || r.date),
-                    shiftLabel(r.shift),
-                    fmt(acute),
-                    fmt(chronic),
-                    fmt(icu),
-                    fmt(covid),
-                    fmt(capdOPD),
-                    fmt(capdIPD),
-                  ];
-                })}
+                rows={pageRows.map((r) => [
+                  formatThaiDate(r.report_date || r.date),
+                  shiftLabel(r.shift),
+                  fmt(r.drug),
+                  fmt(r.blood),
+                  fmt(r.bm),
+                  fmt(r.it),
+                  fmt(r.port),
+                ])}
               />
             </div>
 
@@ -304,7 +263,7 @@ export default function HDDashboard() {
       {/* ตารางบุคลากร */}
       <Block
         styles={stylesmain}
-        title="👩‍⚕️ ตารางบุคลากร HD"
+        title="👩‍⚕️ ตารางบุคลากร STCH"
         loading={false}
         error={null}
         empty={!rows.length}

@@ -16,6 +16,9 @@ const userPageMap = {
   lr: "/lrpage",
   or: "/orpage",
   hd: "/hdpage",
+  cl: "/clpage",
+  cu: "/cupage",
+  stch: "/stchpage",
   // เพิ่ม user อื่น ๆ ได้ตรงนี้ เช่น
   // nicu: "/nicipage",
   // pp: "/pppage",
@@ -27,6 +30,9 @@ const wardPageMap = {
   "ห้องคลอด": "/lrpage",
   "ห้องผ่าตัด": "/orpage",
   "ไตเทียม": "/hdpage",
+  "Cath lab": "/clpage",
+  "หน่วยโรคหัวใจ": "/cupage",
+  "เคมีบำบัด(ตรวจรักษาพิเศษ)": "/stchpage",
 };
 
 const Login = () => {

@@ -20,6 +20,9 @@ const subwardsRoute = require("./routes/subwards");
 const reportStatusRoutes = require("./routes/reportStatusRoutes");
 const orReportRoutes = require("./routes/orReport");
 const hdReportRoutes = require("./routes/hdReport");
+const clReportRoutes = require("./routes/clReport");
+const cuReportRoutes = require("./routes/cuReport");
+const stchReportRoutes = require("./routes/stchReport");
 
 
 // Register Routes
@@ -33,6 +36,10 @@ app.use("/api/lr-report", lrReportRoutes);
 app.use("/api", reportStatusRoutes);           // -> /api/report-status-range
 app.use("/api", orReportRoutes);
 app.use("/api/hd-report", hdReportRoutes);
+app.use("/api", clReportRoutes);
+app.use("/api", cuReportRoutes);
+app.use("/api", stchReportRoutes);
+
 
 const toMysqlDate = (value) => {
   if (!value) return null;

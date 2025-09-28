@@ -36,6 +36,9 @@ const usernameToPageMap = {
   lr: (subward) => (subward === "ห้องคลอด" ? "/lrpage" : "/main"),
   or: () => "/orpage",
   hd: () => "/hdpage",
+  cl: () => "/clpage",
+  cu: () => "/cupage",
+  stch: () => "/stchpage",
 };
 
 // -----------------------------------------
@@ -346,6 +349,12 @@ export default function HospitalLayout({ children }) {
                   go("/dashboard-or");
                 } else if (norm(wardname) === "ไตเทียม" || norm(username) === "hd") {
                   go("/dashboard-hd");
+                } else if (norm(wardname) === "Cath lab" || norm(username) === "cl") {
+                  go("/dashboard-cl");
+                } else if (norm(wardname) === "หน่วยโรคหัวใจ" || norm(username) === "cu") {
+                  go("/dashboard-cu");
+                } else if (norm(wardname) === "เคมีบำบัด(ตรวจรักษาพิเศษ)" || norm(username) === "stch") {
+                  go("/dashboard-stch");
                 } else {
                   go("/dashboard");
                 }

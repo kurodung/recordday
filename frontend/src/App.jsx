@@ -13,6 +13,12 @@ import ORpage from "./page/ORpage";
 import ORDashboard from "./page/Dashboard/ORDashboard";
 import HDpage from "./page/HDpage";
 import HDDashboard from "./page/Dashboard/HDDashboard";
+import CLpage from "./page/CLpage";
+import CLDashboard from "./page/Dashboard/CLDashboard";
+import CUpage from "./page/CUpage";
+import CUDashboard from "./page/Dashboard/CUDashboard";
+import Stchpage from "./page/Stchpage";
+import StchDashboard from "./page/Dashboard/StchDashboard";
 
 const App = () => {
   return (
@@ -96,6 +102,54 @@ const App = () => {
           element={
             <HospitalLayout>
               <HDDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/clpage"
+          element={
+            <HospitalLayout>
+              <CLpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-cl"
+          element={
+            <HospitalLayout>
+              <CLDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/cupage"
+          element={
+            <HospitalLayout>
+              <CUpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-cu"
+          element={
+            <HospitalLayout>
+              <CUDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/stchpage"
+          element={
+            <HospitalLayout>
+              <Stchpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-stch"
+          element={
+            <HospitalLayout>
+              <StchDashboard />
             </HospitalLayout>
           }
         />
