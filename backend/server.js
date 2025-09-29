@@ -23,6 +23,8 @@ const hdReportRoutes = require("./routes/hdReport");
 const clReportRoutes = require("./routes/clReport");
 const cuReportRoutes = require("./routes/cuReport");
 const stchReportRoutes = require("./routes/stchReport");
+const endoReportRoutes = require("./routes/endoReport");
+
 
 
 // Register Routes
@@ -39,6 +41,7 @@ app.use("/api/hd-report", hdReportRoutes);
 app.use("/api", clReportRoutes);
 app.use("/api", cuReportRoutes);
 app.use("/api", stchReportRoutes);
+app.use("/api", endoReportRoutes);
 
 
 const toMysqlDate = (value) => {

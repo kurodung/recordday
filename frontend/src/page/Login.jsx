@@ -19,6 +19,7 @@ const userPageMap = {
   cl: "/clpage",
   cu: "/cupage",
   stch: "/stchpage",
+  endo: "/endopage",
   // เพิ่ม user อื่น ๆ ได้ตรงนี้ เช่น
   // nicu: "/nicipage",
   // pp: "/pppage",
@@ -33,6 +34,8 @@ const wardPageMap = {
   "Cath lab": "/clpage",
   "หน่วยโรคหัวใจ": "/cupage",
   "เคมีบำบัด(ตรวจรักษาพิเศษ)": "/stchpage",
+  "ส่องกล้อง": "/endopage",
+
 };
 
 const Login = () => {

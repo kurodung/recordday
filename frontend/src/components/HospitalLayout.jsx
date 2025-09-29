@@ -39,6 +39,7 @@ const usernameToPageMap = {
   cl: () => "/clpage",
   cu: () => "/cupage",
   stch: () => "/stchpage",
+  endo: () => "/endopage",
 };
 
 // -----------------------------------------
@@ -354,6 +355,8 @@ export default function HospitalLayout({ children }) {
                 } else if (norm(wardname) === "หน่วยโรคหัวใจ" || norm(username) === "cu") {
                   go("/dashboard-cu");
                 } else if (norm(wardname) === "เคมีบำบัด(ตรวจรักษาพิเศษ)" || norm(username) === "stch") {
+                  go("/dashboard-stch");
+                } else if (norm(wardname) === "ส่องกล้อง" || norm(username) === "endo") {
                   go("/dashboard-stch");
                 } else {
                   go("/dashboard");

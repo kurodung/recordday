@@ -19,6 +19,7 @@ import CUpage from "./page/CUpage";
 import CUDashboard from "./page/Dashboard/CUDashboard";
 import Stchpage from "./page/Stchpage";
 import StchDashboard from "./page/Dashboard/StchDashboard";
+import Endopage from "./page/Endopage";
 
 const App = () => {
   return (
@@ -150,6 +151,14 @@ const App = () => {
           element={
             <HospitalLayout>
               <StchDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/endopage"
+          element={
+            <HospitalLayout>
+              <Endopage />
             </HospitalLayout>
           }
         />
