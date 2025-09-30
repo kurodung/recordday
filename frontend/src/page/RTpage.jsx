@@ -168,6 +168,10 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
         alert("Admin ไม่สามารถบันทึก rt report ได้");
         return;
       }
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+        alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+        return;
+      }
 
       const token = localStorage.getItem("token");
       const payload = buildPayload();
@@ -243,24 +247,16 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">ECHO</div>
-            {renderInput("", "echo")}
+            <div className="section-header">ตรวจ OPD</div>
+            {renderInput("", "opd")}
           </div>
           <div className="form-column">
-            <div className="section-header">EST</div>
-            {renderInput("", "est")}
+            <div className="section-header">CT Sim</div>
+            {renderInput("", "ctsim")}
           </div>
           <div className="form-column">
             <div className="section-header">HOLTER</div>
-            {renderInput("", "holter")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">TEE</div>
-            {renderInput("", "tee")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">อื่นๆ</div>
-            {renderInput("", "other")}
+            {renderInput("", "rt")}
           </div>
           <div className="form-column">
             <div className="section-header">อัตรากำลังทั้งหมด</div>
@@ -278,7 +274,6 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
 
       <div className="form-section">
         <div className="flex-grid">
-
           <div className="form-column">
             <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
             <div className="horizontal-inputs">

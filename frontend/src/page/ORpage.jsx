@@ -152,12 +152,20 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         alert("ข้อมูลหลักไม่ครบ (username/wardname/date/shift)");
         return;
       }
+
+      // ✅ เพิ่มตรงนี้
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+        alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+        return;
+      }
+
       const token = localStorage.getItem("token");
       const payload = buildPayload();
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
         ? `${API_BASE}/api/or-report/${formData.id}`
         : `${API_BASE}/api/or-report`;
+
       const res = await fetch(url, {
         method,
         headers: {
@@ -166,15 +174,18 @@ export default function ORpage({ username, wardname, selectedDate, shift }) {
         },
         body: JSON.stringify(payload),
       });
+
       const ct = res.headers.get("content-type") || "";
       const text = await res.text();
       const json =
         ct.includes("application/json") && text ? JSON.parse(text) : {};
+
       if (!res.ok) {
         console.error("POST/PUT /or-report failed:", res.status, json || text);
         alert(json?.message || `HTTP ${res.status}`);
         return;
       }
+
       alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
       window.location.reload();
     } catch (error) {

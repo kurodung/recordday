@@ -125,62 +125,62 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
   };
 
   // บันทึกข้อมูล
-  const handleSubmit = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const payload = {
-        ...formData,
-        date:
-          formData.date instanceof Date
-            ? formData.date.toISOString().split("T")[0]
-            : formData.date,
-      };
-      
-      if (subward) {
-        payload.subward = subward;
-      } else {
-        delete payload.subward;
-      }
-      
-
-      if (subward) {
-        payload.subward = subward;
-      } else {
-        delete payload.subward;
-      }
-
-      // ลบข้อมูลไม่ต้องการส่ง
-      delete payload.productivity;
-      delete payload.type;
-      delete payload.bed_remain;
-
-      const method = formData.id ? "PUT" : "POST";
-      const url = formData.id
-        ? `${API_BASE}/api/lr-report/${formData.id}`
-        : `${API_BASE}/api/lr-report`;
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
-        window.location.reload();
-      } else {
-        alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่ทราบสาเหตุ"));
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+const handleSubmit = async () => {
+  try {
+    // ✅ ตรวจสอบ head_nurse ก่อน
+    if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+      alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+      return;
     }
-  };
+
+    const token = localStorage.getItem("token");
+
+    const payload = {
+      ...formData,
+      date:
+        formData.date instanceof Date
+          ? formData.date.toISOString().split("T")[0]
+          : formData.date,
+    };
+
+    if (subward) {
+      payload.subward = subward;
+    } else {
+      delete payload.subward;
+    }
+
+    // ลบข้อมูลไม่ต้องการส่ง
+    delete payload.productivity;
+    delete payload.type;
+    delete payload.bed_remain;
+
+    const method = formData.id ? "PUT" : "POST";
+    const url = formData.id
+      ? `${API_BASE}/api/lr-report/${formData.id}`
+      : `${API_BASE}/api/lr-report`;
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+      alert(method === "POST" ? "บันทึกสำเร็จ" : "อัปเดตสำเร็จ");
+      window.location.reload();
+    } else {
+      alert("เกิดข้อผิดพลาด: " + (result.message || "ไม่ทราบสาเหตุ"));
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+  }
+};
+
 
   // ฟังก์ชันช่วยสร้าง input
   const renderInput = (

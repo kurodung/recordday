@@ -170,6 +170,10 @@ export default function CLpage({ username, wardname, selectedDate, shift }) {
         alert("Admin ไม่สามารถบันทึก cu report ได้");
         return;
       }
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+        alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+        return;
+      }
 
       const token = localStorage.getItem("token");
       const payload = buildPayload();
@@ -280,7 +284,6 @@ export default function CLpage({ username, wardname, selectedDate, shift }) {
 
       <div className="form-section">
         <div className="flex-grid">
-
           <div className="form-column">
             <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
             <div className="horizontal-inputs">

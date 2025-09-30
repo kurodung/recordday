@@ -200,7 +200,7 @@ export default function EndoDashboard() {
             <div className={stylesmain.tableScroll}>
               <TableBox
                 className={stylesmain.logTable}
-                headers={["วันที่", "เวร", "ECHO", "EST", "HOLTER", "TEE"]}
+                headers={["วันที่", "เวร", "ซับซ้อน", "Upper GI", "Lower GI", "chest"]}
                 rows={pageRows.map((r) => [
                   formatThaiDate(r.report_date || r.date),
                   shiftLabel(r.shift),

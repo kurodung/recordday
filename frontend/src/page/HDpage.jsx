@@ -195,6 +195,10 @@ export default function HDpage({ username, wardname, selectedDate, shift }) {
         alert("Admin ไม่สามารถบันทึก hd report ได้");
         return;
       }
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+      alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+      return;
+    }
 
       const token = localStorage.getItem("token");
       const payload = buildPayload();

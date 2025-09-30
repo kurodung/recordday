@@ -267,6 +267,10 @@ export default function HospitalUI({
         alert("Admin ไม่สามารถบันทึก ward report ได้");
         return;
       }
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+      alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+      return;
+    }
 
       const token = localStorage.getItem("token");
       const payload = buildPayload();

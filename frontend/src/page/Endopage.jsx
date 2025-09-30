@@ -170,6 +170,12 @@ export default function Endopage({ username, wardname, selectedDate, shift }) {
         return;
       }
 
+      // ✅ ตรวจสอบ head_nurse
+      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
+        alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+        return;
+      }
+
       const token = localStorage.getItem("token");
       const payload = buildPayload();
 
@@ -194,7 +200,11 @@ export default function Endopage({ username, wardname, selectedDate, shift }) {
         ct.includes("application/json") && text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        console.error("POST/PUT /endo-report failed:", res.status, json || text);
+        console.error(
+          "POST/PUT /endo-report failed:",
+          res.status,
+          json || text
+        );
         alert(json.message || `HTTP ${res.status}`);
         return;
       }
@@ -276,7 +286,6 @@ export default function Endopage({ username, wardname, selectedDate, shift }) {
 
       <div className="form-section">
         <div className="flex-grid">
-
           <div className="form-column">
             <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
             <div className="horizontal-inputs">
