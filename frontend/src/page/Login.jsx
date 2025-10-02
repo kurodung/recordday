@@ -20,6 +20,11 @@ const userPageMap = {
   cu: "/cupage",
   stch: "/stchpage",
   endo: "/endopage",
+  rt: "/rtpage",
+  ir: "/irpage",
+  nm: "/nmpage",
+  sl: "/slpage",
+  pft: "/pftpage",
   // เพิ่ม user อื่น ๆ ได้ตรงนี้ เช่น
   // nicu: "/nicipage",
   // pp: "/pppage",
@@ -35,6 +40,11 @@ const wardPageMap = {
   "หน่วยโรคหัวใจ": "/cupage",
   "เคมีบำบัด(ตรวจรักษาพิเศษ)": "/stchpage",
   "ส่องกล้อง": "/endopage",
+  "รังสีรักษา": "/rtpage",
+  "รังสีร่วมรักษา": "/irpage",
+  "เวชศาสตร์นิวเคลียร์": "/nmpage",
+  "Sleep lab": "/slpage",
+  "สมรรถภาพปอด": "/pftpage",
 
 };
 

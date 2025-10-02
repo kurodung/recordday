@@ -11,9 +11,11 @@ const toInt = (v) =>
 
 // ฟิลด์ตัวเลขที่อนุญาตให้ส่งเข้า DB (ปรับให้ตรง schema ของคุณได้)
 const NUMERIC_FIELDS = [
+  "scan",
+  "pet",
+  "ilow",
+  "consult",
   "opd",
-  "ctsim",
-  "rt",
 
   "rn",
   "pn",
@@ -29,7 +31,7 @@ const TEXT_FIELDS = ["incident", "head_nurse"];
 // ฟิลด์หลักที่ต้องมีเสมอ
 const CORE_FIELDS = ["username", "wardname", "date", "shift", "subward"];
 
-export default function RTpage({ username, wardname, selectedDate, shift }) {
+export default function NMpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
@@ -62,7 +64,7 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `${API_BASE}/api/rt-report?${queryParams.toString()}`,
+          `${API_BASE}/api/nm-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -165,7 +167,7 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
         return;
       }
       if (wardname.toLowerCase() === "admin") {
-        alert("Admin ไม่สามารถบันทึก rt report ได้");
+        alert("Admin ไม่สามารถบันทึก nm report ได้");
         return;
       }
       if (!formData.head_nurse || formData.head_nurse.trim() === "") {
@@ -179,8 +181,8 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
       // ID จะมาจากแถวเดิมที่โหลดได้ (ถ้ามี)
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `${API_BASE}/api/rt-report/${formData.id}`
-        : `${API_BASE}/api/rt-report`;
+        ? `${API_BASE}/api/nm-report/${formData.id}`
+        : `${API_BASE}/api/nm-report`;
 
       const res = await fetch(url, {
         method,
@@ -197,7 +199,7 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
         ct.includes("application/json") && text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        console.error("POST/PUT /rt-report failed:", res.status, json || text);
+        console.error("POST/PUT /nm-report failed:", res.status, json || text);
         alert(json.message || `HTTP ${res.status}`);
         return;
       }
@@ -247,16 +249,24 @@ export default function RTpage({ username, wardname, selectedDate, shift }) {
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">ตรวจ OPD</div>
+            <div className="section-header">ตรวจ Scan</div>
+            {renderInput("", "scan")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">PET CT</div>
+            {renderInput("", "pet")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">I-131 Low dose</div>
+            {renderInput("", "ilow")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">Consult</div>
+            {renderInput("", "consult")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">ตรวจ opd</div>
             {renderInput("", "opd")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">CT Sim</div>
-            {renderInput("", "ctsim")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">HOLTER</div>
-            {renderInput("", "rt")}
           </div>
           <div className="form-column">
             <div className="section-header">อัตรากำลังทั้งหมด</div>

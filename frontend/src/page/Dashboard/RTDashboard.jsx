@@ -1,4 +1,4 @@
-// src/pages/cl/CLDashboard.jsx
+// src/pages/rt/CLDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../config";
 import styles from "../../styles/ORDashboard.module.css";
@@ -9,7 +9,7 @@ import FilterPanel from "../../components/dashboard/FilterPanel";
 import { RefreshCw, Activity, Users, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { fmt, shiftLabel, formatThaiDate, buildDateRange } from "../../utils/helpers";
 
-export default function CUDashboard() {
+export default function RTDashboard() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +24,7 @@ export default function CUDashboard() {
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 12;
 
-  // โหลดข้อมูล CU
+  // โหลดข้อมูล RT
   useEffect(() => {
     const ac = new AbortController();
     (async () => {
@@ -35,17 +35,17 @@ export default function CUDashboard() {
         const qs = buildDateRange(filters);
         if (filters.shift) qs.set("shift", filters.shift);
 
-        // ⚠️ backend ต้องมี route นี้ (เหมือน hd-report/list)
+        // ⚠️ backend ต้องมี route นี้ (เหมือน rt-report/list)
         const url = qs.toString()
-          ? `${API_BASE}/api/cu-report/list?${qs.toString()}`
-          : `${API_BASE}/api/cu-report/list`;
+          ? `${API_BASE}/api/rt-report/list?${qs.toString()}`
+          : `${API_BASE}/api/rt-report/list`;
 
         const res = await fetch(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: ac.signal,
         });
 
-        if (!res.ok) throw new Error("โหลด CU reports ไม่สำเร็จ");
+        if (!res.ok) throw new Error("โหลด rt reports ไม่สำเร็จ");
         const json = await res.json();
         setRows(Array.isArray(json) ? json : []);
         setPage(1);
@@ -61,18 +61,15 @@ export default function CUDashboard() {
   // รวมยอด
   const summary = useMemo(() => {
     const sum = (k) => rows.reduce((a, r) => a + (Number(r?.[k]) || 0), 0);
-    const echo = sum("echo");
-    const est = sum("est");
-    const holter = sum("holter");
-    const tee = sum("tee");
-    const other = sum("other");
+    const opd = sum("opd");
+    const ctsim = sum("ctsim");
+    const rt = sum("rt");
+
     return {
-      echo,
-      est,
-      holter,
-      tee,
-      other,
-      total: echo + est + holter + tee + other,
+      opd,
+      ctsim,
+      rt,
+      total: opd + ctsim + rt ,
     };
   }, [rows]);
 
@@ -89,11 +86,10 @@ export default function CUDashboard() {
         icon: <Activity size={18} />,
         color: "#9333ea",
       },
-      { label: "ECHO", value: fmt(summary.echo) },
-      { label: "EST", value: fmt(summary.est) },
-      { label: "HOLTER", value: fmt(summary.holter) },
-      { label: "TEE", value: fmt(summary.tee) },
-      { label: "อื่นๆ", value: fmt(summary.other) },
+      { label: "ตรวจ OPD", value: fmt(summary.opd) },
+      { label: "CT Sim", value: fmt(summary.ctsim) },
+      { label: "RT", value: fmt(summary.rt) },
+
     ];
     return (
       <div className={styles.summaryCardsGrid}>
@@ -135,7 +131,7 @@ export default function CUDashboard() {
     return (
       <div className={styles.loadingContainer}>
         <RefreshCw className={styles.loadingSpinner} size={24} />
-        <span className={styles.loadingText}>กำลังโหลดข้อมูล CL...</span>
+        <span className={styles.loadingText}>กำลังโหลดข้อมูล RT...</span>
       </div>
     );
   }
@@ -145,9 +141,9 @@ export default function CUDashboard() {
     <div className={styles.dashboardContainer}>
       {/* Header */}
       <div className={styles.dashboardHeader}>
-        <h1 className={styles.dashboardTitle}>❤️ CU Dashboard (หน่วยโรคหัวใจ)</h1>
+        <h1 className={styles.dashboardTitle}>รังสีรักษา Dashboard</h1>
         <p className={styles.dashboardSubtitle}>
-          สรุปบริการ (ECHO, EST, HOLTER, TEE, อื่นๆ)
+          สรุปบริการ (ตรวจ OPD, CT Sim, RT)
           {rows.length > 0 && (
             <span style={{ marginLeft: 16, opacity: 0.8 }}>
               📊 รวม {rows.length.toLocaleString("th-TH")} รายการ
@@ -199,15 +195,13 @@ export default function CUDashboard() {
             <div className={stylesmain.tableScroll}>
               <TableBox
                 className={stylesmain.logTable}
-                headers={["วันที่", "เวร", "ECHO", "EST", "HOLTER", "TEE", "อื่นๆ"]}
+                headers={["วันที่", "เวร", "ตรวจ OPD", "CT Sim", "RT"]}
                 rows={pageRows.map((r) => [
                   formatThaiDate(r.report_date || r.date),
                   shiftLabel(r.shift),
-                  fmt(r.echo),
-                  fmt(r.est),
-                  fmt(r.holter),
-                  fmt(r.tee),
-                  fmt(r.other),
+                  fmt(r.opd),
+                  fmt(r.ctsim),
+                  fmt(r.rt),
                 ])}
               />
             </div>

@@ -20,6 +20,13 @@ import CUDashboard from "./page/Dashboard/CUDashboard";
 import Stchpage from "./page/Stchpage";
 import StchDashboard from "./page/Dashboard/StchDashboard";
 import Endopage from "./page/Endopage";
+import EndoDashboard from "./page/Dashboard/EndoDashboard";
+import RTpage from "./page/RTpage";
+import RTDashboard from "./page/Dashboard/RTDashboard";
+import IRpage from "./page/IRpage";
+import IRDashboard from "./page/Dashboard/IRDashboard";
+import NMpage from "./page/NMpage";
+import NMDashboard from "./page/Dashboard/NMDashboard";
 
 const App = () => {
   return (
@@ -159,6 +166,62 @@ const App = () => {
           element={
             <HospitalLayout>
               <Endopage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-endo"
+          element={
+            <HospitalLayout>
+              <EndoDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/rtpage"
+          element={
+            <HospitalLayout>
+              <RTpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-rt"
+          element={
+            <HospitalLayout>
+              <RTDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/irpage"
+          element={
+            <HospitalLayout>
+              <IRpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-ir"
+          element={
+            <HospitalLayout>
+              <IRDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/nmpage"
+          element={
+            <HospitalLayout>
+              <NMpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-nm"
+          element={
+            <HospitalLayout>
+              <NMDashboard />
             </HospitalLayout>
           }
         />

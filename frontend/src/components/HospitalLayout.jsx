@@ -40,6 +40,12 @@ const usernameToPageMap = {
   cu: () => "/cupage",
   stch: () => "/stchpage",
   endo: () => "/endopage",
+  rt: () => "/rtpage",
+  ir: () => "/irpage",
+  nm: () => "/nmpage",
+  sl: () => "/slpage",
+  pft: () => "/pftpage",
+
 };
 
 // -----------------------------------------
@@ -357,7 +363,17 @@ export default function HospitalLayout({ children }) {
                 } else if (norm(wardname) === "เคมีบำบัด(ตรวจรักษาพิเศษ)" || norm(username) === "stch") {
                   go("/dashboard-stch");
                 } else if (norm(wardname) === "ส่องกล้อง" || norm(username) === "endo") {
-                  go("/dashboard-stch");
+                  go("/dashboard-endo");
+                } else if (norm(wardname) === "รังสีรักษา" || norm(username) === "rt") {
+                  go("/dashboard-rt");
+                } else if (norm(wardname) === "รังสีร่วมรักษา" || norm(username) === "ir") {
+                  go("/dashboard-ir");
+                } else if (norm(wardname) === "เวชศาสตร์นิวเคลียร์" || norm(username) === "nm") {
+                  go("/dashboard-nm");
+                } else if (norm(wardname) === "Sleep lab" || norm(username) === "sl") {
+                  go("/dashboard-sl");
+                } else if (norm(wardname) === "สมรรถภาพปอด" || norm(username) === "pft") {
+                  go("/dashboard-pft");
                 } else {
                   go("/dashboard");
                 }

@@ -24,6 +24,9 @@ const clReportRoutes = require("./routes/clReport");
 const cuReportRoutes = require("./routes/cuReport");
 const stchReportRoutes = require("./routes/stchReport");
 const endoReportRoutes = require("./routes/endoReport");
+const rtReportRoutes = require("./routes/rtReport");
+const irReportRoutes = require("./routes/irReport");
+const nmReportRoutes = require("./routes/nmReport");
 
 
 
@@ -42,6 +45,9 @@ app.use("/api", clReportRoutes);
 app.use("/api", cuReportRoutes);
 app.use("/api", stchReportRoutes);
 app.use("/api", endoReportRoutes);
+app.use("/api", rtReportRoutes);
+app.use("/api", irReportRoutes);
+app.use("/api", nmReportRoutes);
 
 
 const toMysqlDate = (value) => {

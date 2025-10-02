@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect} from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
