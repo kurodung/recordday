@@ -25,6 +25,7 @@ const userPageMap = {
   nm: "/nmpage",
   sl: "/slpage",
   pft: "/pftpage",
+  nwcw: "/nwcwpage",
   // เพิ่ม user อื่น ๆ ได้ตรงนี้ เช่น
   // nicu: "/nicipage",
   // pp: "/pppage",
@@ -45,6 +46,7 @@ const wardPageMap = {
   "เวชศาสตร์นิวเคลียร์": "/nmpage",
   "Sleep lab": "/slpage",
   "สมรรถภาพปอด": "/pftpage",
+  "ศูนย์พักนวชีวา": "/nwcwpage",
 
 };
 

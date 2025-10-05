@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect} from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
@@ -11,11 +11,10 @@ const toInt = (v) =>
 
 // ฟิลด์ตัวเลขที่อนุญาตให้ส่งเข้า DB (ปรับให้ตรง schema ของคุณได้)
 const NUMERIC_FIELDS = [
-  "drug",
-  "blood",
-  "bm",
-  "it",
-  "port",
+  "sleep",
+  "cpap",
+  "consult",
+  "opd",
 
   "rn",
   "pn",
@@ -31,7 +30,7 @@ const TEXT_FIELDS = ["incident", "head_nurse"];
 // ฟิลด์หลักที่ต้องมีเสมอ
 const CORE_FIELDS = ["username", "wardname", "date", "shift", "subward"];
 
-export default function Stchpage({ username, wardname, selectedDate, shift }) {
+export default function SLpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
@@ -64,7 +63,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `${API_BASE}/api/stch-report?${queryParams.toString()}`,
+          `${API_BASE}/api/sl-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -167,7 +166,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         return;
       }
       if (wardname.toLowerCase() === "admin") {
-        alert("Admin ไม่สามารถบันทึก stch report ได้");
+        alert("Admin ไม่สามารถบันทึก sl report ได้");
         return;
       }
       if (!formData.head_nurse || formData.head_nurse.trim() === "") {
@@ -181,8 +180,8 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
       // ID จะมาจากแถวเดิมที่โหลดได้ (ถ้ามี)
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `${API_BASE}/api/stch-report/${formData.id}`
-        : `${API_BASE}/api/stch-report`;
+        ? `${API_BASE}/api/sl-report/${formData.id}`
+        : `${API_BASE}/api/sl-report`;
 
       const res = await fetch(url, {
         method,
@@ -199,11 +198,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         ct.includes("application/json") && text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        console.error(
-          "POST/PUT /stch-report failed:",
-          res.status,
-          json || text
-        );
+        console.error("POST/PUT /cl-report failed:", res.status, json || text);
         alert(json.message || `HTTP ${res.status}`);
         return;
       }
@@ -253,20 +248,20 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">ยาเคมีบำบัด</div>
-            {renderInput("", "drug")}
+            <div className="section-header">Sleep test</div>
+            {renderInput("", "sleep")}
           </div>
           <div className="form-column">
-            <div className="section-header">Blood transfusion</div>
-            {renderInput("", "blood")}
+            <div className="section-header">Titrate CPAP</div>
+            {renderInput("", "cpap")}
           </div>
           <div className="form-column">
-            <div className="section-header">หัตถการ</div>
-            <div className="horizontal-inputs">
-              {renderInput("BM:", "bm")}
-              {renderInput("IT:", "it")}
-              {renderInput("Port:", "port")}
-            </div>
+            <div className="section-header">Consult</div>
+            {renderInput("", "consult")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">OPD clinic</div>
+            {renderInput("", "opd")}
           </div>
           <div className="form-column">
             <div className="section-header">อัตรากำลังทั้งหมด</div>

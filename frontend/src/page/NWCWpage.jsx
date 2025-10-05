@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect} from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
@@ -11,18 +11,23 @@ const toInt = (v) =>
 
 // ฟิลด์ตัวเลขที่อนุญาตให้ส่งเข้า DB (ปรับให้ตรง schema ของคุณได้)
 const NUMERIC_FIELDS = [
-  "drug",
-  "blood",
-  "bm",
-  "it",
-  "port",
-
-  "rn",
+  "special",
+  "general",
+  "genspecial",
+  "specialgen",
+  "gengen",
+  "echo",
+  "cath_lab",
+  "dialysis",
+  "physio_new",
+  "xray",
+  "stay",
+  "refer_back",
+  "refer_out",
+  "nurse",
   "pn",
-  "na",
-  "other_staff",
-  "rn_extra",
-  "rn_down",
+  "stretcher",
+  "employee",
 ];
 
 // ฟิลด์ข้อความที่อนุญาต
@@ -31,7 +36,7 @@ const TEXT_FIELDS = ["incident", "head_nurse"];
 // ฟิลด์หลักที่ต้องมีเสมอ
 const CORE_FIELDS = ["username", "wardname", "date", "shift", "subward"];
 
-export default function Stchpage({ username, wardname, selectedDate, shift }) {
+export default function NWCWpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
@@ -64,7 +69,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         if (subward) queryParams.append("subward", subward);
 
         const res = await fetch(
-          `${API_BASE}/api/stch-report?${queryParams.toString()}`,
+          `${API_BASE}/api/nwcw-report?${queryParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -167,11 +172,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         return;
       }
       if (wardname.toLowerCase() === "admin") {
-        alert("Admin ไม่สามารถบันทึก stch report ได้");
-        return;
-      }
-      if (!formData.head_nurse || formData.head_nurse.trim() === "") {
-        alert("กรุณากรอกชื่อพยาบาลหัวหน้าเวร");
+        alert("Admin ไม่สามารถบันทึก nwcw report ได้");
         return;
       }
 
@@ -181,8 +182,8 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
       // ID จะมาจากแถวเดิมที่โหลดได้ (ถ้ามี)
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
-        ? `${API_BASE}/api/stch-report/${formData.id}`
-        : `${API_BASE}/api/stch-report`;
+        ? `${API_BASE}/api/nwcw-report/${formData.id}`
+        : `${API_BASE}/api/nwcw-report`;
 
       const res = await fetch(url, {
         method,
@@ -199,11 +200,7 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
         ct.includes("application/json") && text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        console.error(
-          "POST/PUT /stch-report failed:",
-          res.status,
-          json || text
-        );
+        console.error("POST/PUT /cl-report failed:", res.status, json || text);
         alert(json.message || `HTTP ${res.status}`);
         return;
       }
@@ -253,52 +250,67 @@ export default function Stchpage({ username, wardname, selectedDate, shift }) {
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">ยาเคมีบำบัด</div>
-            {renderInput("", "drug")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">Blood transfusion</div>
-            {renderInput("", "blood")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">หัตถการ</div>
+            <div className="section-header">ขอเปลกลับบ้าน</div>
             <div className="horizontal-inputs">
-              {renderInput("BM:", "bm")}
-              {renderInput("IT:", "it")}
-              {renderInput("Port:", "port")}
+              {renderInput("พิเศษ:", "special")}
+              {renderInput("สามัญ:", "general")}
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">อัตรากำลังทั้งหมด</div>
+            <div className="section-header">ขอเปลย้าย</div>
             <div className="horizontal-inputs">
-              {renderInput("RN:", "rn")}
-              {renderInput("PN:", "pn")}
-              {renderInput("NA:", "na")}
-              {renderInput("พนักงาน:", "other_staff")}
-              {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
-              {renderInput("RN ปรับลด:", "rn_down")}
+              {renderInput("สามัญ→พิเศษ:", "genspecial")}
+              {renderInput("พิเศษ→สามัญ:", "specialgen")}
+              {renderInput("สามัญ→สามัญ:", "gengen")}
             </div>
           </div>
+          
         </div>
       </div>
 
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">บันทึกเหตุการณ์/อุบัติการณ์</div>
+            <div className="section-header">ขอเปลส่ง</div>
             <div className="horizontal-inputs">
-              {renderInput("", "incident", "text", 200)}
+              {renderInput("Echo:", "echo")}
+              {renderInput("Cath lab:", "cath_lab")}
+              {renderInput("ไตเทียม:", "dialysis")}
+              {renderInput("กายภาพรายใหม่:", "physio_new")}
+              {renderInput("x-ray:", "xray")}
+            </div>
+          </div>
+          <div className="form-column">
+            <div className="section-header">พักในศูนย์</div>
+            {renderInput("", "stay")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">Refer back</div>
+            {renderInput("", "refer_back")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">Refer out</div>
+            {renderInput("", "refer_out")}
+          </div>
+          <div className="form-column">
+            <div className="section-header">พยาบาลเวร</div>
+            {renderInput("", "nurse")}
+          </div>
+
+        </div>
+      </div>
+
+      <div className="form-section">
+        <div className="flex-grid">
+          <div className="form-column">
+            <div className="section-header">อัตรากำลังทั้งหมด</div>
+            <div className="horizontal-inputs">
+              {renderInput("PN:", "pn")}
+              {renderInput("พนักงานเปล:", "stretcher")}
+              {renderInput("พนักงานทั่วไป:", "employee")}
             </div>
           </div>
 
-          <div className="form-column">
-            <div className="section-header" style={{ color: "green" }}>
-              พยาบาลหัวหน้าเวร
-            </div>
-            <div className="horizontal-inputs">
-              {renderInput("", "head_nurse", "text", 150)}
-            </div>
-          </div>
         </div>
       </div>
 

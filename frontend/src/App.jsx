@@ -27,6 +27,13 @@ import IRpage from "./page/IRpage";
 import IRDashboard from "./page/Dashboard/IRDashboard";
 import NMpage from "./page/NMpage";
 import NMDashboard from "./page/Dashboard/NMDashboard";
+import SLpage from "./page/SLpage";
+import SLDashboard from "./page/Dashboard/SLDashboard";
+import PFTpage from "./page/PFTpage";
+import PFTDashboard from "./page/Dashboard/PFTDashboard";
+import NWCWpage from "./page/NWCWpage";
+import NWCWDashboard from "./page/Dashboard/NWCWDashboard";
+
 
 const App = () => {
   return (
@@ -222,6 +229,54 @@ const App = () => {
           element={
             <HospitalLayout>
               <NMDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/slpage"
+          element={
+            <HospitalLayout>
+              <SLpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-sl"
+          element={
+            <HospitalLayout>
+              <SLDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/pftpage"
+          element={
+            <HospitalLayout>
+              <PFTpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-pft"
+          element={
+            <HospitalLayout>
+              <PFTDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/nwcwpage"
+          element={
+            <HospitalLayout>
+              <NWCWpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-nwcw"
+          element={
+            <HospitalLayout>
+              <NWCWDashboard />
             </HospitalLayout>
           }
         />
