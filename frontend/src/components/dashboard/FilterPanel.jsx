@@ -34,19 +34,69 @@ export default function FilterPanel({
     []
   );
 
-  const yearOptions = useMemo(() => toOptions(filterOptions?.years), [filterOptions?.years]);
+  const yearOptions = useMemo(
+    () => toOptions(filterOptions?.years),
+    [filterOptions?.years]
+  );
   const deptOptions = useMemo(() => toOptions(departments), [departments]);
-  const wardOptions = useMemo(() => toOptions(filterOptions?.wards), [filterOptions?.wards]);
-  const subwardOpts = useMemo(() => toOptions(filterOptions?.subwards), [filterOptions?.subwards]);
+  const wardOptions = useMemo(
+    () => toOptions(filterOptions?.wards),
+    [filterOptions?.wards]
+  );
+  const subwardOpts = useMemo(
+    () => toOptions(filterOptions?.subwards),
+    [filterOptions?.subwards]
+  );
 
   const fields = [
-    { name: "startDate", label: "ตั้งแต่วันที่", type: "date",   value: filters.startDate },
-    { name: "endDate",   label: "ถึงวันที่",     type: "date",   value: filters.endDate   },
-    { name: "shift",     label: "เลือกเวร",      type: "select", value: filters.shift, options: shiftOptions },
-    { name: "year",      label: "เลือกปี",       type: "select", value: filters.year,  options: yearOptions  },
-    { name: "month",     label: "เลือกเดือน",    type: "select", value: filters.month, options: monthOptions, disabled: !filters.year },
-    { name: "department",label: "เลือกกลุ่มงาน", type: "select", value: filters.department, options: deptOptions },
-    { name: "ward",      label: "เลือก Ward",    type: "select", value: filters.ward, options: wardOptions },
+    {
+      name: "startDate",
+      label: "ตั้งแต่วันที่",
+      type: "date",
+      value: filters.startDate,
+    },
+    {
+      name: "endDate",
+      label: "ถึงวันที่",
+      type: "date",
+      value: filters.endDate,
+    },
+    {
+      name: "shift",
+      label: "เลือกเวร",
+      type: "select",
+      value: filters.shift,
+      options: shiftOptions,
+    },
+    {
+      name: "year",
+      label: "เลือกปี",
+      type: "select",
+      value: filters.year,
+      options: yearOptions,
+    },
+    {
+      name: "month",
+      label: "เลือกเดือน",
+      type: "select",
+      value: filters.month,
+      options: monthOptions,
+      disabled: !filters.year,
+    },
+    {
+      name: "department",
+      label: "เลือกกลุ่มงาน",
+      type: "select",
+      value: filters.department,
+      options: deptOptions,
+    },
+    {
+      name: "ward",
+      label: "เลือก Ward",
+      type: "select",
+      value: filters.ward,
+      options: wardOptions,
+    },
     {
       name: "subward",
       label: "เลือก Sub-ward",
@@ -71,16 +121,19 @@ export default function FilterPanel({
             {field.type === "date" ? (
               <input
                 type="date"
+                lang="th-TH"
                 name={field.name}
                 value={field.value}
                 onChange={onChangeDate}
-                min={field.name === "endDate" && filters.startDate ? filters.startDate : undefined}
+                min={
+                  field.name === "endDate" && filters.startDate
+                    ? filters.startDate
+                    : undefined
+                }
                 className={styles.filterInput}
-                onPointerDown={(e) => {
-                  const el = e.currentTarget;
-                  if (typeof el.showPicker === "function") {
-                    e.preventDefault();
-                    el.showPicker();
+                onFocus={(e) => {
+                  if (typeof e.target.showPicker === "function") {
+                    e.target.showPicker(); // 👉 กดครั้งเดียว popup ปฏิทินเด้งขึ้นทันที
                   }
                 }}
               />

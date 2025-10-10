@@ -55,6 +55,13 @@ export const shiftLabel = (sh) =>
 
 export const buildDateRange = (filters) => {
   const qs = new URLSearchParams();
+  
+  if (filters.date) {
+    qs.set("start", filters.date);
+    qs.set("end", filters.date);
+    return qs;
+  }
+
   if (filters.startDate || filters.endDate) {
     const s = filters.startDate || filters.endDate;
     const e = filters.endDate || filters.startDate;

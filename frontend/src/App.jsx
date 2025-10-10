@@ -33,6 +33,10 @@ import PFTpage from "./page/PFTpage";
 import PFTDashboard from "./page/Dashboard/PFTDashboard";
 import NWCWpage from "./page/NWCWpage";
 import NWCWDashboard from "./page/Dashboard/NWCWDashboard";
+import ERpage from "./page/ERpage";
+import ERDashboard from "./page/Dashboard/ERDashboard";
+import OPDpage from "./page/OPDpage";
+import OPDDashboard from "./page/Dashboard/OPDDashboard";
 
 
 const App = () => {
@@ -277,6 +281,38 @@ const App = () => {
           element={
             <HospitalLayout>
               <NWCWDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/erpage"
+          element={
+            <HospitalLayout>
+              <ERpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-er"
+          element={
+            <HospitalLayout>
+              <ERDashboard />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/opdpage"
+          element={
+            <HospitalLayout>
+              <OPDpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/dashboard-opd"
+          element={
+            <HospitalLayout>
+              <OPDDashboard />
             </HospitalLayout>
           }
         />

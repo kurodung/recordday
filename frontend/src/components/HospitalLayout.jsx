@@ -46,6 +46,8 @@ const usernameToPageMap = {
   sl: () => "/slpage",
   pft: () => "/pftpage",
   nwcw: () => "/nwcwpage",
+  er: () => "/erpage",
+  opd: () => "/opdpage",
 
 };
 
@@ -377,6 +379,10 @@ export default function HospitalLayout({ children }) {
                   go("/dashboard-pft");
                 } else if (norm(wardname) === "ศูนย์พักนวชีวา" || norm(username) === "nwcw") {
                   go("/dashboard-nwcw");
+                } else if (norm(wardname) === "อุบัติเหตุ" || norm(username) === "er") {
+                  go("/dashboard-er");
+                } else if (norm(wardname) === "ผู้ป่วยนอก" || norm(username) === "opd") {
+                  go("/dashboard-opd");
                 } else {
                   go("/dashboard");
                 }
