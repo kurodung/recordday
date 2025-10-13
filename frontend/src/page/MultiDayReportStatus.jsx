@@ -100,7 +100,7 @@ export default function MultiDayReportStatus() {
 
     const controller = new AbortController();
     const params = new URLSearchParams({ start: startDate, end: endDate });
-    if (wardFilter) params.append("wardname", wardFilter);
+    if (wardFilter) params.append("wardname_like", wardFilter);
     if (department) params.append("department", department);
     if (includeSubward) params.append("includeSubward", "1");
 
@@ -151,11 +151,30 @@ export default function MultiDayReportStatus() {
 
   // กรองตาม onlyMissing
   const filteredNames = useMemo(() => {
-    if (!onlyMissing) return groupNames;
-    return groupNames.filter((g) => {
-      const days = dataByWard[g] || [];
-      return days.some((d) => !(d.morning && d.afternoon && d.night));
+    let names = groupNames;
+
+    // ✅ ถ้ามี subward ของ ward ไหน ให้ซ่อน ward หลักนั้นออก
+    const hasSubward = new Set();
+    groupNames.forEach((g) => {
+      const [ward, sub] = splitGroup(g);
+      if (sub) hasSubward.add(ward);
     });
+
+    names = names.filter((g) => {
+      const [ward, sub] = splitGroup(g);
+      // ถ้ามี subward อยู่แล้ว และอันนี้คือ ward รวม → ซ่อน
+      if (!sub && hasSubward.has(ward)) return false;
+      return true;
+    });
+
+    if (onlyMissing) {
+      names = names.filter((g) => {
+        const days = dataByWard[g] || [];
+        return days.some((d) => !(d.morning && d.afternoon && d.night));
+      });
+    }
+
+    return names;
   }, [onlyMissing, groupNames, dataByWard]);
 
   // รีเซ็ตหน้าให้เป็น 1 เมื่อมีการเปลี่ยนเงื่อนไข
@@ -204,9 +223,9 @@ export default function MultiDayReportStatus() {
         </button>
 
         <div className={styles.field}>
-          <label>เฉพาะ Ward</label>
+          <label>ค้นหา Ward</label>
           <input
-            placeholder="พิมพ์ชื่อ ward ตรงๆ (ไม่ใส่ก็ได้)"
+            placeholder="ชื่อที่ต้องการค้นหา"
             value={wardFilter}
             onChange={(e) => setWardFilter(e.target.value)}
           />

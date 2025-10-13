@@ -147,3 +147,43 @@
   color: #6b7280;
   font-size: 14px;
 }
+
+/* ========== ✅ เพิ่มส่วนสไตล์ช่องกรอก input / select ========== */
+
+/* ช่องกรอกทุกชนิดให้ดูเป็นฟอร์มเรียบหรู */
+.field input[type="text"],
+.field input[type="date"],
+.field select {
+  border: 1px solid #d1d5db;          /* เทาอ่อน */
+  border-radius: 8px;                 /* โค้งเล็กน้อย */
+  padding: 6px 10px;
+  font-size: 14px;
+  background-color: #fff;
+  color: #111827;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ขอบตอน hover */
+.field input:hover,
+.field select:hover {
+  border-color: #a78bfa;              /* ม่วงอ่อน (Tailwind purple-400) */
+}
+
+/* ขอบตอน focus */
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: #7c3aed;              /* ม่วงเข้ม (Tailwind purple-600) */
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); /* glow เบา ๆ */
+}
+
+/* ช่องเฉพาะ Ward */
+.wardInput {
+  min-width: 220px;                   /* ให้กว้างพอกรอกชื่อ ward */
+}
+
+/* ปรับ label ให้ชิดแนว input สวยขึ้น */
+.field label {
+  font-weight: 500;
+  color: #374151;
+}

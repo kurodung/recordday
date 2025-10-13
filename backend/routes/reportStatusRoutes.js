@@ -18,32 +18,47 @@ const listDays = (start, end) => {
   return out;
 };
 
-// ❌ อย่าใส่ /api ตรงนี้  ✅ ใช้เป็น "/report-status-range"
+// ✅ รองรับพารามิเตอร์ wardname_like
 router.get("/report-status-range", async (req, res) => {
-  let { start, end, wardname, department, includeSubward } = req.query;
+  let { start, end, wardname, wardname_like, department, includeSubward } = req.query;
   if (!isYMD(start) || !isYMD(end)) {
-    return res.status(400).json({ ok: false, message: "start & end (YYYY-MM-DD) required" });
+    return res
+      .status(400)
+      .json({ ok: false, message: "start & end (YYYY-MM-DD) required" });
   }
   if (start > end) [start, end] = [end, start];
 
-  const wantSub = String(includeSubward || "").toLowerCase() === "1"
-               || String(includeSubward || "").toLowerCase() === "true";
+  const wantSub =
+    String(includeSubward || "").toLowerCase() === "1" ||
+    String(includeSubward || "").toLowerCase() === "true";
 
   try {
-    // 1) รายชื่อ ward จากตาราง wards (ถ้ามี) สำหรับ filter department / สร้างบรรทัดว่าง
+    // 1) ดึงรายชื่อ ward จากตาราง wards (ใช้ department / wardname_like)
     let allowedWards = new Set();
     try {
       const args = [];
       const where = [];
-      if (department) { where.push("department = ?"); args.push(department); }
-      if (wardname)   { where.push("wardname = ?");  args.push(wardname); }
+      if (department) {
+        where.push("department = ?");
+        args.push(department);
+      }
+      if (wardname) {
+        where.push("wardname = ?");
+        args.push(wardname);
+      } else if (wardname_like) {
+        where.push("wardname LIKE ?");
+        args.push(`%${wardname_like}%`);
+      }
+
       const sqlW = `
         SELECT DISTINCT wardname
         FROM wards
         ${where.length ? "WHERE " + where.join(" AND ") : ""}
       `;
       const [wrows] = await db.query(sqlW, args);
-      allowedWards = new Set((wrows || []).map(r => r.wardname).filter(Boolean));
+      allowedWards = new Set(
+        (wrows || []).map((r) => r.wardname).filter(Boolean)
+      );
     } catch {}
 
     // 2) ดึงรายงานจาก ward_reports (รวม subward)
@@ -56,30 +71,40 @@ router.get("/report-status-range", async (req, res) => {
       FROM ward_reports
       WHERE date BETWEEN ? AND ?
     `;
-    if (wardname) { sqlR += " AND wardname = ?"; argsR.push(wardname); }
-    sqlR += " GROUP BY wardname, subward, date, shift";
 
-    let [rows] = await db.query(sqlR, argsR);
-
-    // ถ้ามี allowedWards (กรองตาม department)
-    if (allowedWards.size > 0) {
-      rows = rows.filter(r => allowedWards.has(r.wardname));
+    if (wardname) {
+      sqlR += " AND wardname = ?";
+      argsR.push(wardname);
+    } else if (wardname_like) {
+      sqlR += " AND wardname LIKE ?";
+      argsR.push(`%${wardname_like}%`);
     }
 
-    // รวมชื่อ ward จากรายงานด้วย (กันกรณี wards ไม่มีข้อมูล)
-    const wardsFromReports = Array.from(new Set(rows.map(r => r.wardname)));
+    sqlR += " GROUP BY wardname, subward, date, shift";
+    let [rows] = await db.query(sqlR, argsR);
+
+    // กรองตาม department ถ้ามี
+    if (allowedWards.size > 0) {
+      rows = rows.filter((r) => allowedWards.has(r.wardname));
+    }
+
+    // รวมชื่อ ward จากรายงานด้วย
+    const wardsFromReports = Array.from(new Set(rows.map((r) => r.wardname)));
     for (const w of wardsFromReports) allowedWards.add(w);
     if (wardname) allowedWards.add(wardname);
 
     const days = listDays(start, end);
-
-    // 3) สร้าง matrix
     const data = {};
     const dayIndex = Object.fromEntries(days.map((d, i) => [d, i]));
 
-    // บรรทัดรวม ward
+    // เตรียมบรรทัดรวม ward
     for (const w of Array.from(allowedWards)) {
-      data[w] = days.map(d => ({ date: d, morning:false, afternoon:false, night:false }));
+      data[w] = days.map((d) => ({
+        date: d,
+        morning: false,
+        afternoon: false,
+        night: false,
+      }));
     }
 
     // เติมข้อมูลจากรายงาน
@@ -87,28 +112,54 @@ router.get("/report-status-range", async (req, res) => {
       const i = dayIndex[r.date];
       if (i === undefined) continue;
 
-      // รวม ward
-      const arrWard = data[r.wardname] || (data[r.wardname] = days.map(d => ({ date: d, morning:false, afternoon:false, night:false })));
-      if (r.shift === "morning")   arrWard[i].morning = true;
-      else if (r.shift === "afternoon") arrWard[i].afternoon = true;
-      else if (r.shift === "night")     arrWard[i].night = true;
+      const arrWard =
+        data[r.wardname] ||
+        (data[r.wardname] = days.map((d) => ({
+          date: d,
+          morning: false,
+          afternoon: false,
+          night: false,
+        })));
 
-      // แยก subward ถ้าขอ
+      if (r.shift === "morning") arrWard[i].morning = true;
+      else if (r.shift === "afternoon") arrWard[i].afternoon = true;
+      else if (r.shift === "night") arrWard[i].night = true;
+
       if (wantSub && r.subward) {
         const key = `${r.wardname} / ${r.subward}`;
-        const arrSub = data[key] || (data[key] = days.map(d => ({ date: d, morning:false, afternoon:false, night:false })));
-        if (r.shift === "morning")   arrSub[i].morning = true;
+        const arrSub =
+          data[key] ||
+          (data[key] = days.map((d) => ({
+            date: d,
+            morning: false,
+            afternoon: false,
+            night: false,
+          })));
+        if (r.shift === "morning") arrSub[i].morning = true;
         else if (r.shift === "afternoon") arrSub[i].afternoon = true;
-        else if (r.shift === "night")     arrSub[i].night = true;
+        else if (r.shift === "night") arrSub[i].night = true;
       }
     }
 
-    // 4) summary
-    const summary = Object.entries(data).map(([k, arr]) => {
-      const total = arr.length * 3;
-      const sent = arr.reduce((acc, d) => acc + (d.morning?1:0) + (d.afternoon?1:0) + (d.night?1:0), 0);
-      return { wardname: k, sent, totalShifts: total, percent: total ? Math.round((sent/total)*100) : 0 };
-    }).sort((a,b)=>a.wardname.localeCompare(b.wardname, "th"));
+    const summary = Object.entries(data)
+      .map(([k, arr]) => {
+        const total = arr.length * 3;
+        const sent = arr.reduce(
+          (acc, d) =>
+            acc +
+            (d.morning ? 1 : 0) +
+            (d.afternoon ? 1 : 0) +
+            (d.night ? 1 : 0),
+          0
+        );
+        return {
+          wardname: k,
+          sent,
+          totalShifts: total,
+          percent: total ? Math.round((sent / total) * 100) : 0,
+        };
+      })
+      .sort((a, b) => a.wardname.localeCompare(b.wardname, "th"));
 
     res.json({ ok: true, start, end, data, summary });
   } catch (e) {
@@ -117,7 +168,7 @@ router.get("/report-status-range", async (req, res) => {
   }
 });
 
-// ✅ ไม่ต้องมี /api ตรงนี้เช่นกัน
+// ✅ เหมือนเดิม
 router.get("/report-status-departments", async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -126,7 +177,7 @@ router.get("/report-status-departments", async (req, res) => {
       WHERE department IS NOT NULL AND department <> ''
       ORDER BY department
     `);
-    const departments = (rows || []).map(r => r.department);
+    const departments = (rows || []).map((r) => r.department);
     return res.json({ departments });
   } catch (e) {
     console.warn("GET /report-status-departments fallback:", e?.code || e?.message);

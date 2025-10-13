@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { API_BASE } from "../config";
 import {
   FiMenu,
   FiX,
@@ -142,7 +143,7 @@ export default function HospitalLayout({ children }) {
       try {
         const token = localStorage.getItem("token") || "";
         const res = await fetch(
-          `http://localhost:5000/api/subwards?username=${encodeURIComponent(
+          `${API_BASE}/api/subwards?username=${encodeURIComponent(
             username
           )}`,
           { headers: { Authorization: `Bearer ${token}` } }
