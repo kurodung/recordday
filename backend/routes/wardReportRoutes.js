@@ -1,3 +1,4 @@
+// wardReportRoutes.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
@@ -7,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const toMysqlDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
-  if (Number.isNaN(d)) return null;
+  if (Number.isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 };
 const toInt = (v) => (v === "" || v == null ? 0 : Number(v) || 0);
@@ -19,7 +20,7 @@ const subwardCond = (subward) =>
     ? { clause: "subward = ?", params: [subward.trim()] }
     : { clause: "(subward IS NULL OR subward = '')", params: [] };
 
-/** map payload ด้วย whitelist และกัน bed_remain (generated) */
+/** whitelist ฟิลด์ที่อนุญาตให้บันทึก */
 const ALLOWED_INT = new Set([
   "bed_carry", "bed_new", "bed_transfer_in",
   "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
@@ -27,10 +28,11 @@ const ALLOWED_INT = new Set([
   "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
   "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner",
   "pre_op", "post_op",
-  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down",
+  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down"
 ]);
 const ALLOWED_TEXT = new Set(["incident", "head_nurse"]);
 
+/** สร้าง object record จาก body (กรอง whitelist และแปลงชนิดข้อมูล) */
 const buildRecord = (body) => {
   const b = body || {};
   const rec = {
@@ -40,11 +42,14 @@ const buildRecord = (body) => {
     shift: String(b.shift || ""),
     subward: isNonEmpty(b.subward) ? String(b.subward).trim() : null,
   };
+
   for (const [k, v] of Object.entries(b)) {
     if (ALLOWED_INT.has(k)) rec[k] = toInt(v);
     else if (ALLOWED_TEXT.has(k)) rec[k] = v ?? null;
   }
-  delete rec.bed_remain; // generated column
+
+  // ห้ามให้ client กำหนดค่า bed_remain (เป็น generated/calculated)
+  delete rec.bed_remain;
   return rec;
 };
 
@@ -57,6 +62,7 @@ const respondDbError = (res, err) => {
     code: err.code, errno: err.errno, sqlState: err.sqlState,
     sqlMessage: err.sqlMessage, message: err.message,
   });
+
   if (err.code === "ER_NON_DEFAULT_VALUE_FOR_GENERATED_COLUMN") {
     return res.status(400).json({ message: "bed_remain เป็น generated column ห้ามกำหนดค่า" });
   }
@@ -92,10 +98,13 @@ const requireBearer = (req, res, next) => {
 /* ===================== Routes ===================== */
 
 /** GET /api/ward-report
- *  ดึงรายงานของวัน/เวร/วอร์ด/ผู้ใช้ (+subward) */
+ *  ดึงรายงานของวัน/เวร/วอร์ด
+ *  - ถ้ามี username จะค้นด้วย username ด้วย (original behavior)
+ *  - ถ้าไม่มี username จะค้นเฉพาะ ward/date/shift/(subward)
+ */
 router.get("/", async (req, res) => {
   const { date, shift, wardname, username, subward } = req.query;
-  if (!date || !shift || !wardname || !username) {
+  if (!date || !shift || !wardname) {
     return res.status(400).json({
       message: "missing required query params",
       got: { date, shift, wardname, username, subward },
@@ -103,13 +112,23 @@ router.get("/", async (req, res) => {
   }
 
   const sw = subwardCond(subward);
-  const sql = `
-    SELECT * FROM ward_reports
-    WHERE date = ? AND shift = ? AND wardname = ? AND username = ?
-      AND ${sw.clause}
-    LIMIT 1
-  `;
-  const params = [date, shift, wardname, username, ...sw.params];
+
+  let sql, params;
+  if (isNonEmpty(username)) {
+    sql = `
+      SELECT * FROM ward_reports
+      WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND ${sw.clause}
+      LIMIT 1
+    `;
+    params = [date, shift, wardname, username, ...sw.params];
+  } else {
+    sql = `
+      SELECT * FROM ward_reports
+      WHERE date = ? AND shift = ? AND wardname = ? AND ${sw.clause}
+      LIMIT 1
+    `;
+    params = [date, shift, wardname, ...sw.params];
+  }
 
   try {
     const [rows] = await db.query(sql, params);
@@ -121,7 +140,8 @@ router.get("/", async (req, res) => {
 });
 
 /** GET /api/ward-report/bed-total
- *  ดึงจำนวนเตียงจากตาราง wards; ไม่เจอคืน 0 (200) */
+ *  ดึงจำนวนเตียงจากตาราง wards; ไม่เจอคืน 0 (200)
+ */
 router.get("/bed-total", async (req, res) => {
   const wardname = req.query.wardname;
   const subward = req.query.subward;
@@ -160,7 +180,9 @@ router.get("/bed-total", async (req, res) => {
 });
 
 /** POST /api/ward-report
- *  บันทึกรายงาน (upsert ด้วย UNIQUE KEY ถ้าตั้งไว้) */
+ *  บันทึกรายงาน (upsert ด้วย UNIQUE KEY ถ้าตั้งไว้)
+ *  คืน object ของแถวที่เป็นปัจจุบัน (row)
+ */
 router.post("/", requireBearer, async (req, res) => {
   try {
     const record = buildRecord(req.body);
@@ -181,16 +203,29 @@ router.post("/", requireBearer, async (req, res) => {
       VALUES (${placeholders})
       ${updates ? `ON DUPLICATE KEY UPDATE ${updates}` : ""}
     `;
-    await db.query(sql, values);
+    const [result] = await db.query(sql, values);
 
-    return res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
+    // เพื่อความแน่นอน ให้ select แถวกลับมาจาก unique key (ward/date/shift/subward)
+    const sw = subwardCond(record.subward);
+    const [rows] = await db.query(
+      `SELECT * FROM ward_reports WHERE date = ? AND shift = ? AND wardname = ? AND ${sw.clause} LIMIT 1`,
+      [record.date, record.shift, record.wardname, ...sw.params]
+    );
+
+    if (!rows || rows.length === 0) {
+      // unexpected, แต่รายงาน success แล้ว
+      return res.status(200).json({ message: "บันทึกสำเร็จ (แต่ไม่พบแถวหลัง insert)" });
+    }
+
+    return res.status(200).json({ message: "บันทึกสำเร็จ", row: rows[0] });
   } catch (err) {
     return respondDbError(res, err);
   }
 });
 
 /** PUT /api/ward-report/:id
- *  อัปเดตรายงานตาม id (ไม่อนุญาต bed_remain) */
+ *  อัปเดตรายงานตาม id (ไม่อนุญาต bed_remain)
+ */
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -226,7 +261,9 @@ router.put("/:id", async (req, res) => {
     const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ?`;
     await db.query(sql, [...values, id]);
 
-    return res.status(200).json({ message: "อัปเดตสำเร็จ" });
+    // คืน row ที่อัปเดตแล้วกลับ (เพื่อความสะดวก client)
+    const [rows] = await db.query(`SELECT * FROM ward_reports WHERE id = ? LIMIT 1`, [id]);
+    return res.status(200).json({ message: "อัปเดตสำเร็จ", row: rows && rows[0] ? rows[0] : null });
   } catch (err) {
     return respondDbError(res, err);
   }
