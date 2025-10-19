@@ -26,7 +26,7 @@ const ALLOWED_INT = new Set([
   "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
   "type1", "type2", "type3", "type4", "type5",
   "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
-  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner",
+  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner","palliative",
   "pre_op", "post_op",
   "rn", "pn", "na", "other_staff", "rn_extra", "rn_down"
 ]);

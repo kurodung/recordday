@@ -41,6 +41,7 @@ const NUMERIC_FIELDS = [
   "stroke",
   "psych",
   "prisoner",
+  "palliative",
 
   "pre_op",
   "post_op",
@@ -276,7 +277,6 @@ export default function HospitalUI({
 
     let remain = carry + newIn + trIn - out;
     if (remain < 0) remain = 0;
-    if (bedTotal !== null) remain = Math.min(remain, bedTotal);
     return remain;
   }, [
     formData.bed_carry,
@@ -706,6 +706,15 @@ export default function HospitalUI({
           </div>
           <div className="form-column">
             {" "}
+            <div className="section-header">การดูแลรอบการผ่าตัด</div>{" "}
+            <div className="horizontal-inputs">
+              {" "}
+              {renderInput("Pre OP:", "pre_op")}{" "}
+              {renderInput("Post OP:", "post_op")}{" "}
+            </div>
+          </div>
+          <div className="form-column">
+            {" "}
             <div className="section-header">
               ติดเชื้อดื้อยา(XDR/CRE/VRE)
             </div>{" "}
@@ -732,13 +741,8 @@ export default function HospitalUI({
             {renderInput("", "prisoner")}{" "}
           </div>
           <div className="form-column">
-            {" "}
-            <div className="section-header">การดูแลรอบการผ่าตัด</div>{" "}
-            <div className="horizontal-inputs">
-              {" "}
-              {renderInput("Pre OP:", "pre_op")}{" "}
-              {renderInput("Post OP:", "post_op")}{" "}
-            </div>
+            <div className="section-header">Palliative</div>
+            {renderInput("", "palliative")}
           </div>
         </div>
       </div>
