@@ -1,38 +1,64 @@
-// wardReportRoutes.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const jwt = require("jsonwebtoken");
+const { ICU_Ven } = require("../constants/wards");
 
 /* ----------------------- helpers ----------------------- */
 const toMysqlDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  return d.toISOString().slice(0, 10);
 };
 const toInt = (v) => (v === "" || v == null ? 0 : Number(v) || 0);
 const isNonEmpty = (v) => typeof v === "string" && v.trim() !== "";
 
-/** คืน { clause, params } สำหรับ WHERE subward */
+/* ------------------- helper: subward condition ------------------- */
 const subwardCond = (subward) =>
   isNonEmpty(subward)
     ? { clause: "subward = ?", params: [subward.trim()] }
     : { clause: "(subward IS NULL OR subward = '')", params: [] };
 
-/** whitelist ฟิลด์ที่อนุญาตให้บันทึก */
+/* ------------------- whitelist fields ------------------- */
 const ALLOWED_INT = new Set([
-  "bed_carry", "bed_new", "bed_transfer_in",
-  "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
-  "type1", "type2", "type3", "type4", "type5",
-  "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
-  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner","palliative",
-  "pre_op", "post_op",
-  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down"
+  "bed_carry",
+  "bed_new",
+  "bed_transfer_in",
+  "discharge_home",
+  "discharge_transfer_out",
+  "discharge_refer_out",
+  "discharge_refer_back",
+  "discharge_died",
+  "type1",
+  "type2",
+  "type3",
+  "type4",
+  "type5",
+  "vent_invasive",
+  "vent_noninvasive",
+  "hfnc",
+  "oxygen",
+  "extra_bed",
+  "pas",
+  "cpr",
+  "infection",
+  "gcs",
+  "stroke",
+  "psych",
+  "prisoner",
+  "palliative",
+  "pre_op",
+  "post_op",
+  "rn",
+  "pn",
+  "na",
+  "other_staff",
+  "rn_extra",
+  "rn_down",
 ]);
 const ALLOWED_TEXT = new Set(["incident", "head_nurse"]);
 
-/** สร้าง object record จาก body (กรอง whitelist และแปลงชนิดข้อมูล) */
 const buildRecord = (body) => {
   const b = body || {};
   const rec = {
@@ -42,136 +68,98 @@ const buildRecord = (body) => {
     shift: String(b.shift || ""),
     subward: isNonEmpty(b.subward) ? String(b.subward).trim() : null,
   };
-
   for (const [k, v] of Object.entries(b)) {
     if (ALLOWED_INT.has(k)) rec[k] = toInt(v);
     else if (ALLOWED_TEXT.has(k)) rec[k] = v ?? null;
   }
-
-  // ห้ามให้ client กำหนดค่า bed_remain (เป็น generated/calculated)
   delete rec.bed_remain;
   return rec;
 };
-
 const requireCore = (rec) =>
   !!(rec.username && rec.wardname && rec.date && rec.shift);
-
-/** จัดการ error DB ให้สถานะ/ข้อความสม่ำเสมอ */
 const respondDbError = (res, err) => {
-  console.error("DB error:", {
-    code: err.code, errno: err.errno, sqlState: err.sqlState,
-    sqlMessage: err.sqlMessage, message: err.message,
-  });
-
-  if (err.code === "ER_NON_DEFAULT_VALUE_FOR_GENERATED_COLUMN") {
-    return res.status(400).json({ message: "bed_remain เป็น generated column ห้ามกำหนดค่า" });
-  }
-  if (err.code === "ER_BAD_FIELD_ERROR") {
-    return res.status(400).json({ message: "Unknown column in payload" });
-  }
-  if (err.code === "ER_BAD_NULL_ERROR") {
-    return res.status(400).json({ message: "Null not allowed for some field" });
-  }
-  if (err.code === "ER_NO_DEFAULT_FOR_FIELD") {
-    return res.status(400).json({ message: "Required DB field missing (no default)" });
-  }
-  if (err.code === "ER_DUP_ENTRY") {
-    return res.status(409).json({ message: "Duplicate entry (unique key)" });
-  }
+  console.error("DB error:", err);
+  if (err.code === "ER_DUP_ENTRY")
+    return res.status(409).json({ message: "Duplicate entry" });
   return res.status(500).json({ message: "Database error" });
 };
 
 /* ------------------- auth middleware ------------------- */
 const requireBearer = (req, res, next) => {
   const auth = req.headers.authorization || "";
-  if (!auth.startsWith("Bearer ")) {
+  if (!auth.startsWith("Bearer "))
     return res.status(401).json({ message: "No token" });
-  }
   try {
     jwt.verify(auth.slice(7), process.env.JWT_SECRET);
     return next();
-  } catch (e) {
+  } catch {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
-/* ===================== Routes ===================== */
+/* ---------- ฟังก์ชันคำนวณ productivity ---------- */
+function calcProductivity(row, subSum, isICU) {
+  const t = (v) => (v == null ? 0 : Number(v));
+  const type1 = t(row.type1) + t(subSum?.type1 || 0);
+  const type2 = t(row.type2) + t(subSum?.type2 || 0);
+  const type3 = t(row.type3) + t(subSum?.type3 || 0);
+  const type4 = t(row.type4) + t(subSum?.type4 || 0);
+  const type5 = t(row.type5) + t(subSum?.type5 || 0);
+  const rn = t(row.rn);
 
-/** GET /api/ward-report
- *  ดึงรายงานของวัน/เวร/วอร์ด
- *  - ถ้ามี username จะค้นด้วย username ด้วย (original behavior)
- *  - ถ้าไม่มี username จะค้นเฉพาะ ward/date/shift/(subward)
- */
+  const weight5 = isICU ? 4.8 : 4;
+  const numerator =
+    type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
+  const denom = rn * 7;
+  return denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
+}
+
+/* ---------- หาว่า subward ไหนมียอดยกมามากที่สุด ---------- */
+async function findMainSubward(date, shift, wardname) {
+  const [rows] = await db.query(
+    `SELECT id, subward, bed_carry, rn 
+     FROM ward_reports 
+     WHERE date=? AND shift=? AND wardname=?`,
+    [date, shift, wardname]
+  );
+  if (!rows.length) return null;
+  rows.sort((a, b) => (b.bed_carry || 0) - (a.bed_carry || 0));
+  return rows[0];
+}
+
+/* ========== Routes ========== */
+
 router.get("/", async (req, res) => {
-  const { date, shift, wardname, username, subward } = req.query;
-  if (!date || !shift || !wardname) {
-    return res.status(400).json({
-      message: "missing required query params",
-      got: { date, shift, wardname, username, subward },
-    });
-  }
+  const { date, shift, wardname, subward } = req.query;
+  if (!date || !shift || !wardname)
+    return res.status(400).json({ message: "missing query params" });
 
   const sw = subwardCond(subward);
-
-  let sql, params;
-  if (isNonEmpty(username)) {
-    sql = `
-      SELECT * FROM ward_reports
-      WHERE date = ? AND shift = ? AND wardname = ? AND username = ? AND ${sw.clause}
-      LIMIT 1
-    `;
-    params = [date, shift, wardname, username, ...sw.params];
-  } else {
-    sql = `
-      SELECT * FROM ward_reports
-      WHERE date = ? AND shift = ? AND wardname = ? AND ${sw.clause}
-      LIMIT 1
-    `;
-    params = [date, shift, wardname, ...sw.params];
-  }
-
+  const sql = `
+    SELECT * FROM ward_reports
+    WHERE date=? AND shift=? AND wardname=? AND ${sw.clause}
+    LIMIT 1`;
+  const params = [date, shift, wardname, ...sw.params];
   try {
     const [rows] = await db.query(sql, params);
-    if (!rows || rows.length === 0) return res.status(204).send();
+    if (!rows.length) return res.status(204).send();
     return res.json(rows[0]);
   } catch (err) {
     return respondDbError(res, err);
   }
 });
 
-/** GET /api/ward-report/bed-total
- *  ดึงจำนวนเตียงจากตาราง wards; ไม่เจอคืน 0 (200)
- */
 router.get("/bed-total", async (req, res) => {
-  const wardname = req.query.wardname;
-  const subward = req.query.subward;
-
-  if (!isNonEmpty(wardname)) {
+  const { wardname, subward } = req.query;
+  if (!isNonEmpty(wardname))
     return res.status(400).json({ message: "wardname required" });
-  }
-
   try {
-    // 1) ลองหาแบบตรงตัวก่อน (มี subward ก็ใช้ subward)
     const sw = subwardCond(subward);
     const [rows] = await db.query(
-      `SELECT bed_total FROM wards WHERE wardname = ? AND ${sw.clause} LIMIT 1`,
+      `SELECT bed_total FROM wards WHERE wardname=? AND ${sw.clause} LIMIT 1`,
       [wardname, ...sw.params]
     );
-
-    // 2) ไม่พบและมี subward → ลองระดับ ward (subward IS NULL)
-    if ((!rows || rows.length === 0) && isNonEmpty(subward)) {
-      const [rows2] = await db.query(
-        `SELECT bed_total FROM wards WHERE wardname = ? AND subward IS NULL LIMIT 1`,
-        [wardname]
-      );
-      if (rows2 && rows2.length) {
-        return res.json({ bed_total: Number(rows2[0].bed_total) || 0 });
-      }
-      return res.json({ bed_total: 0 });
-    }
-
-    // 3) พบหรือไม่พบตั้งแต่รอบแรก
-    if (!rows || rows.length === 0) return res.json({ bed_total: 0 });
+    if (!rows.length) return res.json({ bed_total: 0 });
     return res.json({ bed_total: Number(rows[0].bed_total) || 0 });
   } catch (err) {
     console.error("GET /ward-report/bed-total error:", err);
@@ -179,91 +167,197 @@ router.get("/bed-total", async (req, res) => {
   }
 });
 
-/** POST /api/ward-report
- *  บันทึกรายงาน (upsert ด้วย UNIQUE KEY ถ้าตั้งไว้)
- *  คืน object ของแถวที่เป็นปัจจุบัน (row)
- */
+/** 🔹 ฟังก์ชันอัปเดต productivity ของแถวหลัก โดยรวม subward ทั้งหมดหลังบันทึก */
+async function updateMainProductivity(record) {
+  try {
+    const { date, shift, wardname } = record;
+
+    // ✅ ดึงข้อมูลทุก subward ของ ward เดียวกันวันเดียวกัน
+    const [rows] = await db.query(
+      `SELECT subward, rn, type1, type2, type3, type4, type5 
+       FROM ward_reports 
+       WHERE date=? AND shift=? AND wardname=?`,
+      [date, shift, wardname]
+    );
+
+    if (!rows.length) {
+      console.log(`⚠️ ไม่มีข้อมูลใน ward ${wardname} สำหรับอัปเดต productivity`);
+      return;
+    }
+
+    // ✅ รวมค่า type ทั้งหมดของทุก subward
+    const total = rows.reduce(
+      (acc, r) => ({
+        type1: acc.type1 + (r.type1 || 0),
+        type2: acc.type2 + (r.type2 || 0),
+        type3: acc.type3 + (r.type3 || 0),
+        type4: acc.type4 + (r.type4 || 0),
+        type5: acc.type5 + (r.type5 || 0),
+      }),
+      { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
+    );
+
+    // ✅ หาว่าแถวหลักคืออันไหน (bed_carry มากสุด)
+    const [mainRow] = await db.query(
+      `SELECT id, subward, rn, bed_carry 
+       FROM ward_reports 
+       WHERE date=? AND shift=? AND wardname=? 
+       ORDER BY bed_carry DESC LIMIT 1`,
+      [date, shift, wardname]
+    );
+    if (!mainRow || !mainRow.length) {
+      console.log(`⚠️ ไม่มี main row ของ ward ${wardname}`);
+      return;
+    }
+    const main = mainRow[0];
+
+    // ✅ ใช้ RN ของแถวหลัก (ไม่รวมของ subward)
+    const rn = Number(main.rn) || 0;
+    const isICU = ICU_Ven.includes(wardname);
+    const weight5 = isICU ? 4.8 : 4;
+    const numerator =
+      total.type5 * weight5 +
+      total.type4 * 3 +
+      total.type3 * 2.2 +
+      total.type2 * 1.4 +
+      total.type1 * 0.6;
+    const denom = rn * 7;
+    const productivity = denom > 0 ? Math.round((numerator * 100 / denom) * 100) / 100 : 0;
+
+    if (productivity <= 0) {
+      console.log(`⚠️ Productivity คำนวณได้ ${productivity}, ข้ามการอัปเดต`);
+      return;
+    }
+
+    // ✅ อัปเดตค่า productivity ในแถวหลักจริง
+    await db.query(
+      `UPDATE ward_reports 
+       SET productivity=? 
+       WHERE date=? AND shift=? AND wardname=? 
+         AND (subward <=> ?)`,
+      [productivity, date, shift, wardname, main.subward || null]
+    );
+
+    console.log(
+      `✅ Productivity recalculated from DB = ${productivity} for main row ${wardname} (${main.subward || "หลัก"})`
+    );
+  } catch (err) {
+    console.error("❌ updateMainProductivity error:", err);
+  }
+}
+
+/** POST /api/ward-report */
 router.post("/", requireBearer, async (req, res) => {
   try {
     const record = buildRecord(req.body);
-    if (!requireCore(record)) {
-      return res.status(400).json({ message: "username, wardname, date, shift are required" });
-    }
+    if (!requireCore(record))
+      return res.status(400).json({ message: "missing core fields" });
+
+    const [subs] = await db.query(
+      `SELECT type1,type2,type3,type4,type5
+       FROM ward_reports
+       WHERE date=? AND shift=? AND wardname=? AND subward<>?`,
+      [record.date, record.shift, record.wardname, record.subward || ""]
+    );
+
+    const subSum = subs.reduce(
+      (acc, r) => ({
+        type1: acc.type1 + (r.type1 || 0),
+        type2: acc.type2 + (r.type2 || 0),
+        type3: acc.type3 + (r.type3 || 0),
+        type4: acc.type4 + (r.type4 || 0),
+        type5: acc.type5 + (r.type5 || 0),
+      }),
+      { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
+    );
+
+    const isICU = ICU_Ven.includes(record.wardname);
+    record.productivity = calcProductivity(record, subSum, isICU);
 
     const cols = Object.keys(record);
     const placeholders = cols.map(() => "?").join(",");
-    const values = cols.map((c) => record[c]);
     const updates = cols
-      .filter((c) => !["username", "wardname", "date", "shift", "subward"].includes(c))
+      .filter(
+        (c) => !["username", "wardname", "date", "shift", "subward"].includes(c)
+      )
       .map((c) => `${c}=VALUES(${c})`)
       .join(", ");
-
     const sql = `
       INSERT INTO ward_reports (${cols.join(",")})
       VALUES (${placeholders})
-      ${updates ? `ON DUPLICATE KEY UPDATE ${updates}` : ""}
-    `;
-    const [result] = await db.query(sql, values);
-
-    // เพื่อความแน่นอน ให้ select แถวกลับมาจาก unique key (ward/date/shift/subward)
-    const sw = subwardCond(record.subward);
-    const [rows] = await db.query(
-      `SELECT * FROM ward_reports WHERE date = ? AND shift = ? AND wardname = ? AND ${sw.clause} LIMIT 1`,
-      [record.date, record.shift, record.wardname, ...sw.params]
+      ON DUPLICATE KEY UPDATE ${updates}`;
+    await db.query(
+      sql,
+      cols.map((c) => record[c])
     );
 
-    if (!rows || rows.length === 0) {
-      // unexpected, แต่รายงาน success แล้ว
-      return res.status(200).json({ message: "บันทึกสำเร็จ (แต่ไม่พบแถวหลัง insert)" });
-    }
+    // ✅ รอ 200ms แล้วค่อยอัปเดต productivity อีกครั้ง (เพื่อให้ข้อมูล subward ใหม่ถูก commit แล้ว)
+    setTimeout(async () => {
+      try {
+        await updateMainProductivity(record);
+      } catch (err) {
+        console.warn("⚠️ Delayed updateMainProductivity failed:", err);
+      }
+    }, 200);
 
-    return res.status(200).json({ message: "บันทึกสำเร็จ", row: rows[0] });
+    return res.status(200).json({
+      message: "บันทึกสำเร็จ",
+      productivity: record.productivity,
+    });
   } catch (err) {
     return respondDbError(res, err);
   }
 });
 
-/** PUT /api/ward-report/:id
- *  อัปเดตรายงานตาม id (ไม่อนุญาต bed_remain)
- */
+/** PUT /api/ward-report/:id */
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ message: "id required" });
+    const record = buildRecord(req.body);
 
-    const b = req.body || {};
-    const allowed = {};
+    const [subs] = await db.query(
+      `SELECT type1,type2,type3,type4,type5
+       FROM ward_reports
+       WHERE date=? AND shift=? AND wardname=? AND subward<>?`,
+      [record.date, record.shift, record.wardname, record.subward || ""]
+    );
 
-    // core (optional)
-    if (b.date !== undefined) allowed.date = toMysqlDate(b.date);
-    if (b.shift !== undefined) allowed.shift = String(b.shift);
-    if (b.wardname !== undefined) allowed.wardname = String(b.wardname);
-    if (b.username !== undefined) allowed.username = String(b.username);
-    if (b.subward !== undefined) {
-      allowed.subward = isNonEmpty(b.subward) ? String(b.subward).trim() : null;
-    }
+    const subSum = subs.reduce(
+      (acc, r) => ({
+        type1: acc.type1 + (r.type1 || 0),
+        type2: acc.type2 + (r.type2 || 0),
+        type3: acc.type3 + (r.type3 || 0),
+        type4: acc.type4 + (r.type4 || 0),
+        type5: acc.type5 + (r.type5 || 0),
+      }),
+      { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
+    );
 
-    // numeric/text
-    for (const [k, v] of Object.entries(b)) {
-      if (ALLOWED_INT.has(k)) allowed[k] = toInt(v);
-      else if (ALLOWED_TEXT.has(k)) allowed[k] = v ?? null;
-    }
-    delete allowed.bed_remain;
+    const isICU = ICU_Ven.includes(record.wardname);
+    record.productivity = calcProductivity(record, subSum, isICU);
 
-    const fields = Object.keys(allowed);
-    if (fields.length === 0) {
-      return res.status(400).json({ message: "no fields to update" });
-    }
+    const setClause = Object.keys(record)
+      .map((k) => `${k}=?`)
+      .join(", ");
+    await db.query(`UPDATE ward_reports SET ${setClause} WHERE id=?`, [
+      ...Object.values(record),
+      id,
+    ]);
 
-    const setClause = fields.map((f) => `${f} = ?`).join(", ");
-    const values = fields.map((f) => allowed[f]);
+    // ✅ รอ 200ms แล้วค่อยอัปเดต productivity อีกครั้ง (เพื่อให้ข้อมูล subward ใหม่ถูก commit แล้ว)
+    setTimeout(async () => {
+      try {
+        await updateMainProductivity(record);
+      } catch (err) {
+        console.warn("⚠️ Delayed updateMainProductivity failed:", err);
+      }
+    }, 200);
 
-    const sql = `UPDATE ward_reports SET ${setClause} WHERE id = ?`;
-    await db.query(sql, [...values, id]);
-
-    // คืน row ที่อัปเดตแล้วกลับ (เพื่อความสะดวก client)
-    const [rows] = await db.query(`SELECT * FROM ward_reports WHERE id = ? LIMIT 1`, [id]);
-    return res.status(200).json({ message: "อัปเดตสำเร็จ", row: rows && rows[0] ? rows[0] : null });
+    return res.status(200).json({
+      message: "อัพเดทสำเร็จ",
+      productivity: record.productivity,
+    });
   } catch (err) {
     return respondDbError(res, err);
   }

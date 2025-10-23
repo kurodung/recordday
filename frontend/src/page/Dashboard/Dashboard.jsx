@@ -359,13 +359,20 @@ export default function Dashboard({ username, wardname }) {
       (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
       0
     );
-    const totalProductivity = filteredData.reduce(
-      (s, r) => s + (parseFloat(r.productivity) || 0),
+    // ✅ เอาเฉพาะแถวที่ productivity > 0
+    const validProdRows = filteredData.filter(
+      (r) => r.productivity !== null && parseFloat(r.productivity) > 0
+    );
+
+    const totalProductivity = validProdRows.reduce(
+      (s, r) => s + parseFloat(r.productivity || 0),
       0
     );
-    const avgProductivity = filteredData.length
-      ? totalProductivity / filteredData.length
+
+    const avgProductivity = validProdRows.length
+      ? totalProductivity / validProdRows.length
       : 0;
+
     return {
       recordCount: filteredData.length,
       totalAdmissions,
@@ -1657,7 +1664,6 @@ export default function Dashboard({ username, wardname }) {
           </ResponsiveContainer>
         </div>
       </div>
-
 
       {/* Movement (local) */}
       <Block
