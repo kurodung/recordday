@@ -8,23 +8,6 @@ import { API_BASE } from "../config";
 const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
 const toInt = (v) => (v === "" || v === undefined || v === null ? 0 : Number(v) || 0);
 
-/** ✅ เพิ่มฟังก์ชันคำนวณ productivity (ใช้ใน frontend ตอนยังไม่มีข้อมูล backend) */
-function calcProductivity(fd, wardname) {
-  const isICU = /ICU|CCU|RCU|PICU|NICU/i.test(wardname || "");
-  const base5 = isICU ? 4.8 : 4;
-
-  const numerator =
-    toInt(fd.type5) * base5 +
-    toInt(fd.type4) * 3 +
-    toInt(fd.type3) * 2.2 +
-    toInt(fd.type2) * 1.4 +
-    toInt(fd.type1) * 0.6;
-
-  const denominator = toInt(fd.rn) * 7;
-  const val = denominator > 0 ? (numerator * 100) / denominator : 0;
-  return Math.round(val * 100) / 100;
-}
-
 const NUMERIC_FIELDS = [
   "bed_carry", "bed_new", "bed_transfer_in",
   "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
@@ -174,23 +157,26 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
   }, [wardname, subward]);
 
   /* ✅ ------------------- ดึง productivity จาก backend ------------------- */
-  useEffect(() => {
-    if (!wardname || !selectedDate || !shift) return;
-    const fetchProductivity = async () => {
-      try {
-        const params = new URLSearchParams({ date: selectedDate, shift, wardname });
-        const res = await fetch(`${API_BASE}/api/ward-report/productivity?${params.toString()}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setProductivity(data.productivity ?? 0);
-        setFormData((prev) => ({ ...prev, productivity: data.productivity ?? 0 }));
-      } catch (err) {
-        console.error("Failed to fetch productivity:", err);
-        setProductivity(0);
-      }
-    };
-    fetchProductivity();
-  }, [wardname, subward, selectedDate, shift]);
+useEffect(() => {
+  if (!wardname || !selectedDate || !shift) return;
+  const fetchProductivity = async () => {
+    try {
+      const params = new URLSearchParams({ date: selectedDate, shift, wardname });
+      const res = await fetch(
+        `${API_BASE}/api/ward-report/productivity?${params.toString()}&_=${Date.now()}`,
+        { headers: { "Cache-Control": "no-cache" } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setProductivity(data.productivity ?? 0); // ✅ แก้ให้มีแค่บรรทัดนี้
+    } catch (err) {
+      console.error("Failed to fetch productivity:", err);
+    }
+  };
+  fetchProductivity();
+}, [wardname, subward, selectedDate, shift]);
+
+
 
   /* ----------------------- คำนวณ bed_remain ----------------------- */
   const computedRemain = useMemo(() => {
@@ -216,15 +202,6 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
       prev.bed_remain === computedRemain ? prev : { ...prev, bed_remain: computedRemain }
     );
   }, [computedRemain]);
-
-  /* ✅ ------------------- productivity local (ถ้ายังไม่มีจาก backend) ------------------- */
-  useEffect(() => {
-    if (productivity !== null) return;
-    setFormData((prev) => {
-      const newProd = calcProductivity(prev, wardname);
-      return prev.productivity === newProd ? prev : { ...prev, productivity: newProd };
-    });
-  }, [formData.type1, formData.type2, formData.type3, formData.type4, formData.type5, formData.rn, wardname]);
 
   /* ---------- handle change ---------- */
   const handleChange = (e) => {

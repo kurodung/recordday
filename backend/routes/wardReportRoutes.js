@@ -112,38 +112,20 @@ function calcProductivity(row, subSum, isICU, shift) {
     case "morning":
       weight5 = isICU ? 4.2 : 3.5;
       numerator =
-        type5 * weight5 +
-        type4 * 2.6 +
-        type3 * 1.9 +
-        type2 * 1.2 +
-        type1 * 0.5;
+        type5 * weight5 + type4 * 2.6 + type3 * 1.9 + type2 * 1.2 + type1 * 0.5;
       break;
     case "afternoon":
       weight5 = isICU ? 4.8 : 4;
       numerator =
-        type5 * weight5 +
-        type4 * 3 +
-        type3 * 2.2 +
-        type2 * 1.4 +
-        type1 * 0.6;
+        type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
       break;
     case "night":
       weight5 = isICU ? 3 : 2.5;
       numerator =
-        type5 * weight5 +
-        type4 * 1.9 +
-        type3 * 1.4 +
-        type2 * 0.9 +
-        type1 * 0.4;
+        type5 * weight5 + type4 * 1.9 + type3 * 1.4 + type2 * 0.9 + type1 * 0.4;
       break;
     default:
-      weight5 = isICU ? 4 : 3.5;
-      numerator =
-        type5 * weight5 +
-        type4 * 2.5 +
-        type3 * 1.8 +
-        type2 * 1.1 +
-        type1 * 0.5;
+      return 0;
   }
 
   const denom = rn * 7;
@@ -154,78 +136,65 @@ function calcProductivity(row, subSum, isICU, shift) {
 async function updateMainProductivity(record) {
   try {
     const { date, shift, wardname } = record;
-    const [mainRows] = await db.query(
-      `SELECT id FROM ward_reports 
-       WHERE date=? AND shift=? AND wardname=? 
-         AND (subward IS NULL OR subward='') 
-       LIMIT 1`,
+
+    // ดึงข้อมูลทุก subward (รวมทั้งหลัก)
+    const [rows] = await db.query(
+      `SELECT id, subward, bed_carry, rn, type1, type2, type3, type4, type5
+       FROM ward_reports
+       WHERE date=? AND shift=? AND wardname=?`,
       [date, shift, wardname]
     );
-    if (!mainRows.length) return;
-    const mainId = mainRows[0].id;
-    const productivity = record.productivity || 0;
-    if (productivity <= 0) return;
-    await db.query(`UPDATE ward_reports SET productivity=? WHERE id=?`, [
-      productivity,
-      mainId,
-    ]);
-  } catch (err) {
-    console.error("updateMainProductivity error:", err);
-  }
-}
+    if (!rows.length) return;
 
-/* ========== Routes ========== */
-router.get("/", async (req, res) => {
-  const { date, shift, wardname, subward } = req.query;
-  if (!date || !shift || !wardname)
-    return res.status(400).json({ message: "missing query params" });
-  const sw = subwardCond(subward);
-  try {
-    const [rows] = await db.query(
-      `SELECT * FROM ward_reports
-       WHERE date=? AND shift=? AND wardname=? AND ${sw.clause}
-       LIMIT 1`,
-      [date, shift, wardname, ...sw.params]
-    );
-    if (!rows.length) return res.status(204).send();
-    return res.json(rows[0]);
-  } catch (err) {
-    return respondDbError(res, err);
-  }
-});
+    // ถ้าไม่มี subward จริงๆ → ใช้แถวเดียวคำนวณตามปกติ
+    const hasSub = rows.some((r) => r.subward && r.subward.trim() !== "");
+    if (!hasSub) {
+      const row = rows[0];
+      const isICU = ICU_Ven.includes(wardname);
+      let weight5, numerator;
+      switch (shift) {
+        case "morning":
+          weight5 = isICU ? 4.8 : 4;
+          numerator =
+            row.type5 * weight5 +
+            row.type4 * 3 +
+            row.type3 * 2.2 +
+            row.type2 * 1.4 +
+            row.type1 * 0.6;
+          break;
+        case "afternoon":
+          weight5 = isICU ? 4.2 : 3.5;
+          numerator =
+            row.type5 * weight5 +
+            row.type4 * 2.6 +
+            row.type3 * 1.9 +
+            row.type2 * 1.2 +
+            row.type1 * 0.5;
+          break;
+        case "night":
+          weight5 = isICU ? 3 : 2.5;
+          numerator =
+            row.type5 * weight5 +
+            row.type4 * 1.9 +
+            row.type3 * 1.4 +
+            row.type2 * 0.9 +
+            row.type1 * 0.4;
+          break;
+        default:
+          return;
+      }
+      const denom = (row.rn || 0) * 7;
+      const productivity =
+        denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 
-router.get("/bed-total", async (req, res) => {
-  const { wardname, subward } = req.query;
-  if (!isNonEmpty(wardname))
-    return res.status(400).json({ message: "wardname required" });
-  try {
-    const sw = subwardCond(subward);
-    const [rows] = await db.query(
-      `SELECT bed_total FROM wards WHERE wardname=? AND ${sw.clause} LIMIT 1`,
-      [wardname, ...sw.params]
-    );
-    if (!rows.length) return res.json({ bed_total: 0 });
-    return res.json({ bed_total: Number(rows[0].bed_total) || 0 });
-  } catch (err) {
-    console.error("GET /ward-report/bed-total error:", err);
-    return res.status(500).json({ message: "Error fetching bed total" });
-  }
-});
+      await db.query(
+        `UPDATE ward_reports SET productivity=? WHERE id=?`,
+        [productivity, row.id]
+      );
+      return;
+    }
 
-/** คำนวณ productivity แบบรวมทุก subward */
-router.get("/productivity", async (req, res) => {
-  try {
-    const { date, shift, wardname } = req.query;
-    if (!date || !shift || !wardname)
-      return res.status(400).json({ message: "missing query params" });
-
-    const [rows] = await db.query(
-      `SELECT subward, rn, type1, type2, type3, type4, type5
-       FROM ward_reports WHERE date=? AND shift=? AND wardname=?`,
-      [date, shift, wardname]
-    );
-    if (!rows.length) return res.status(404).json({ message: "no data" });
-
+    // 🧮 รวมทุก subward
     const total = rows.reduce(
       (acc, r) => ({
         type1: acc.type1 + (r.type1 || 0),
@@ -233,23 +202,12 @@ router.get("/productivity", async (req, res) => {
         type3: acc.type3 + (r.type3 || 0),
         type4: acc.type4 + (r.type4 || 0),
         type5: acc.type5 + (r.type5 || 0),
+        rn: acc.rn + (r.rn || 0),
       }),
-      { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
+      { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0, rn: 0 }
     );
 
-    const [mainRows] = await db.query(
-      `SELECT rn FROM ward_reports 
-       WHERE date=? AND shift=? AND wardname=? 
-         AND (subward IS NULL OR subward='') LIMIT 1`,
-      [date, shift, wardname]
-    );
-    if (!mainRows.length)
-      return res.status(404).json({ message: "no main row" });
-
-    const rn = Number(mainRows[0].rn) || 0;
     const isICU = ICU_Ven.includes(wardname);
-
-    // ✅ สูตรคำนวณแยกตามเวร
     let weight5, numerator;
     switch (shift) {
       case "morning":
@@ -280,22 +238,48 @@ router.get("/productivity", async (req, res) => {
           total.type1 * 0.4;
         break;
       default:
-        weight5 = isICU ? 4 : 3.5;
-        numerator =
-          total.type5 * weight5 +
-          total.type4 * 2.5 +
-          total.type3 * 1.8 +
-          total.type2 * 1.1 +
-          total.type1 * 0.5;
+        return;
     }
 
-    const denom = rn * 7;
+    const denom = (total.rn || 0) * 7;
     const productivity =
       denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 
-    return res.json({ productivity });
+    // 🔍 หาว่า subward ไหนคือหลัก (bed_carry มากสุด)
+    const mainRow = rows.reduce((prev, cur) =>
+      (cur.bed_carry || 0) > (prev.bed_carry || 0) ? cur : prev
+    );
+
+    if (mainRow) {
+      await db.query(
+        `UPDATE ward_reports SET productivity=? WHERE id=?`,
+        [productivity, mainRow.id]
+      );
+    }
   } catch (err) {
-    return res.status(500).json({ message: "Server error" });
+    console.error("updateMainProductivity error:", err);
+  }
+}
+
+
+
+/* ========== Routes ========== */
+router.get("/", async (req, res) => {
+  const { date, shift, wardname, subward } = req.query;
+  if (!date || !shift || !wardname)
+    return res.status(400).json({ message: "missing query params" });
+  const sw = subwardCond(subward);
+  try {
+    const [rows] = await db.query(
+      `SELECT * FROM ward_reports
+       WHERE date=? AND shift=? AND wardname=? AND ${sw.clause}
+       LIMIT 1`,
+      [date, shift, wardname, ...sw.params]
+    );
+    if (!rows.length) return res.status(204).send();
+    return res.json(rows[0]);
+  } catch (err) {
+    return respondDbError(res, err);
   }
 });
 
@@ -324,12 +308,7 @@ router.post("/", requireBearer, async (req, res) => {
     );
 
     const isICU = ICU_Ven.includes(record.wardname);
-    record.productivity = calcProductivity(
-      record,
-      subSum,
-      isICU,
-      record.shift
-    );
+    record.productivity = calcProductivity(record, subSum, isICU, record.shift);
 
     const cols = Object.keys(record);
     const placeholders = cols.map(() => "?").join(",");
@@ -345,6 +324,34 @@ router.post("/", requireBearer, async (req, res) => {
        ON DUPLICATE KEY UPDATE ${updates}`,
       cols.map((c) => record[c])
     );
+
+    // 🟢 อัปเดตเวรถัดไป (carry forward)
+    const SHIFT_ORDER = ["morning", "afternoon", "night"];
+    const curIndex = SHIFT_ORDER.indexOf(record.shift);
+    if (curIndex !== -1) {
+      let nextDate = record.date;
+      let nextShift = SHIFT_ORDER[curIndex + 1];
+      if (!nextShift) {
+        const d = new Date(record.date);
+        d.setDate(d.getDate() + 1);
+        nextDate = d.toISOString().slice(0, 10);
+        nextShift = "morning";
+      }
+
+      await db.query(
+        `UPDATE ward_reports 
+         SET bed_carry=? 
+         WHERE date=? AND shift=? AND wardname=? 
+           AND COALESCE(subward,'')=COALESCE(?, '')`,
+        [
+          record.bed_remain || 0,
+          nextDate,
+          nextShift,
+          record.wardname,
+          record.subward || null,
+        ]
+      );
+    }
 
     setTimeout(() => updateMainProductivity(record), 200);
     return res.status(200).json({
@@ -381,12 +388,7 @@ router.put("/:id", async (req, res) => {
     );
 
     const isICU = ICU_Ven.includes(record.wardname);
-    record.productivity = calcProductivity(
-      record,
-      subSum,
-      isICU,
-      record.shift
-    );
+    record.productivity = calcProductivity(record, subSum, isICU, record.shift);
 
     const setClause = Object.keys(record)
       .map((k) => `${k}=?`)
@@ -395,6 +397,34 @@ router.put("/:id", async (req, res) => {
       ...Object.values(record),
       id,
     ]);
+
+    // 🟢 อัปเดตเวรถัดไป (carry forward)
+    const SHIFT_ORDER = ["morning", "afternoon", "night"];
+    const curIndex = SHIFT_ORDER.indexOf(record.shift);
+    if (curIndex !== -1) {
+      let nextDate = record.date;
+      let nextShift = SHIFT_ORDER[curIndex + 1];
+      if (!nextShift) {
+        const d = new Date(record.date);
+        d.setDate(d.getDate() + 1);
+        nextDate = d.toISOString().slice(0, 10);
+        nextShift = "morning";
+      }
+
+      await db.query(
+        `UPDATE ward_reports 
+         SET bed_carry=? 
+         WHERE date=? AND shift=? AND wardname=? 
+           AND COALESCE(subward,'')=COALESCE(?, '')`,
+        [
+          record.bed_remain || 0,
+          nextDate,
+          nextShift,
+          record.wardname,
+          record.subward || null,
+        ]
+      );
+    }
 
     setTimeout(() => updateMainProductivity(record), 200);
     return res.status(200).json({
