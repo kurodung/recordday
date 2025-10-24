@@ -350,36 +350,40 @@ export default function Dashboard({ username, wardname }) {
     return Object.entries(wardCounts).map(([name, value]) => ({ name, value }));
   }, [filteredData, filters.department, departmentDistribution]);
 
-  const summaryStats = useMemo(() => {
-    const totalAdmissions = filteredData.reduce(
-      (s, r) => s + (r.bed_new || 0),
-      0
-    );
-    const totalDischarges = filteredData.reduce(
-      (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
-      0
-    );
-    // ✅ เอาเฉพาะแถวที่ productivity > 0
-    const validProdRows = filteredData.filter(
-      (r) => r.productivity !== null && parseFloat(r.productivity) > 0
-    );
+const summaryStats = useMemo(() => {
+  // รวมรับใหม่และจำหน่ายตามปกติ
+  const totalAdmissions = filteredData.reduce(
+    (s, r) => s + (r.bed_new || 0),
+    0
+  );
+  const totalDischarges = filteredData.reduce(
+    (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
+    0
+  );
 
-    const totalProductivity = validProdRows.reduce(
-      (s, r) => s + parseFloat(r.productivity || 0),
-      0
-    );
+  // ✅ เอาเฉพาะแถวที่ productivity มีค่ามากกว่า 0
+  const validRows = filteredData.filter(
+    (r) => r.productivity !== null && parseFloat(r.productivity) > 0
+  );
 
-    const avgProductivity = validProdRows.length
-      ? totalProductivity / validProdRows.length
-      : 0;
+  const totalProductivity = validRows.reduce(
+    (s, r) => s + parseFloat(r.productivity || 0),
+    0
+  );
 
-    return {
-      recordCount: filteredData.length,
-      totalAdmissions,
-      totalDischarges,
-      avgProductivity: avgProductivity.toFixed(2),
-    };
-  }, [filteredData]);
+  const avgProductivity = validRows.length
+    ? totalProductivity / validRows.length
+    : 0;
+
+  return {
+    recordCount: filteredData.length,
+    totalAdmissions,
+    totalDischarges,
+    avgProductivity: avgProductivity.toFixed(2),
+  };
+}, [filteredData]);
+
+
 
   /** --------------------------- Movement (local data) -------------------------- **/
   const movement = useMemo(() => {
