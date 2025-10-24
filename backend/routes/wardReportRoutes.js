@@ -98,7 +98,7 @@ const requireBearer = (req, res, next) => {
 };
 
 /* ---------- ฟังก์ชันคำนวณ productivity ---------- */
-function calcProductivity(row, subSum, isICU) {
+function calcProductivity(row, subSum, isICU, shift) {
   const t = (v) => (v == null ? 0 : Number(v));
   const type1 = t(row.type1) + t(subSum?.type1 || 0);
   const type2 = t(row.type2) + t(subSum?.type2 || 0);
@@ -106,9 +106,46 @@ function calcProductivity(row, subSum, isICU) {
   const type4 = t(row.type4) + t(subSum?.type4 || 0);
   const type5 = t(row.type5) + t(subSum?.type5 || 0);
   const rn = t(row.rn);
-  const weight5 = isICU ? 4.8 : 4;
-  const numerator =
-    type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
+
+  let weight5, numerator;
+  switch (shift) {
+    case "morning":
+      weight5 = isICU ? 4.2 : 3.5;
+      numerator =
+        type5 * weight5 +
+        type4 * 2.6 +
+        type3 * 1.9 +
+        type2 * 1.2 +
+        type1 * 0.5;
+      break;
+    case "afternoon":
+      weight5 = isICU ? 4.8 : 4;
+      numerator =
+        type5 * weight5 +
+        type4 * 3 +
+        type3 * 2.2 +
+        type2 * 1.4 +
+        type1 * 0.6;
+      break;
+    case "night":
+      weight5 = isICU ? 3 : 2.5;
+      numerator =
+        type5 * weight5 +
+        type4 * 1.9 +
+        type3 * 1.4 +
+        type2 * 0.9 +
+        type1 * 0.4;
+      break;
+    default:
+      weight5 = isICU ? 4 : 3.5;
+      numerator =
+        type5 * weight5 +
+        type4 * 2.5 +
+        type3 * 1.8 +
+        type2 * 1.1 +
+        type1 * 0.5;
+  }
+
   const denom = rn * 7;
   return denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 }
@@ -181,12 +218,14 @@ router.get("/productivity", async (req, res) => {
     const { date, shift, wardname } = req.query;
     if (!date || !shift || !wardname)
       return res.status(400).json({ message: "missing query params" });
+
     const [rows] = await db.query(
       `SELECT subward, rn, type1, type2, type3, type4, type5
        FROM ward_reports WHERE date=? AND shift=? AND wardname=?`,
       [date, shift, wardname]
     );
     if (!rows.length) return res.status(404).json({ message: "no data" });
+
     const total = rows.reduce(
       (acc, r) => ({
         type1: acc.type1 + (r.type1 || 0),
@@ -197,6 +236,7 @@ router.get("/productivity", async (req, res) => {
       }),
       { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
     );
+
     const [mainRows] = await db.query(
       `SELECT rn FROM ward_reports 
        WHERE date=? AND shift=? AND wardname=? 
@@ -205,18 +245,54 @@ router.get("/productivity", async (req, res) => {
     );
     if (!mainRows.length)
       return res.status(404).json({ message: "no main row" });
+
     const rn = Number(mainRows[0].rn) || 0;
     const isICU = ICU_Ven.includes(wardname);
-    const weight5 = isICU ? 4.8 : 4;
-    const numerator =
-      total.type5 * weight5 +
-      total.type4 * 3 +
-      total.type3 * 2.2 +
-      total.type2 * 1.4 +
-      total.type1 * 0.6;
+
+    // ✅ สูตรคำนวณแยกตามเวร
+    let weight5, numerator;
+    switch (shift) {
+      case "morning":
+        weight5 = isICU ? 4.8 : 4;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 3 +
+          total.type3 * 2.2 +
+          total.type2 * 1.4 +
+          total.type1 * 0.6;
+        break;
+      case "afternoon":
+        weight5 = isICU ? 4.2 : 3.5;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 2.6 +
+          total.type3 * 1.9 +
+          total.type2 * 1.2 +
+          total.type1 * 0.5;
+        break;
+      case "night":
+        weight5 = isICU ? 3 : 2.5;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 1.9 +
+          total.type3 * 1.4 +
+          total.type2 * 0.9 +
+          total.type1 * 0.4;
+        break;
+      default:
+        weight5 = isICU ? 4 : 3.5;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 2.5 +
+          total.type3 * 1.8 +
+          total.type2 * 1.1 +
+          total.type1 * 0.5;
+    }
+
     const denom = rn * 7;
     const productivity =
       denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
+
     return res.json({ productivity });
   } catch (err) {
     return res.status(500).json({ message: "Server error" });
@@ -229,11 +305,13 @@ router.post("/", requireBearer, async (req, res) => {
     const record = buildRecord(req.body);
     if (!requireCore(record))
       return res.status(400).json({ message: "missing core fields" });
+
     const [subs] = await db.query(
       `SELECT type1,type2,type3,type4,type5 FROM ward_reports
        WHERE date=? AND shift=? AND wardname=? AND subward<>?`,
       [record.date, record.shift, record.wardname, record.subward || ""]
     );
+
     const subSum = subs.reduce(
       (acc, r) => ({
         type1: acc.type1 + (r.type1 || 0),
@@ -244,8 +322,15 @@ router.post("/", requireBearer, async (req, res) => {
       }),
       { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
     );
+
     const isICU = ICU_Ven.includes(record.wardname);
-    record.productivity = calcProductivity(record, subSum, isICU);
+    record.productivity = calcProductivity(
+      record,
+      subSum,
+      isICU,
+      record.shift
+    );
+
     const cols = Object.keys(record);
     const placeholders = cols.map(() => "?").join(",");
     const updates = cols
@@ -260,6 +345,7 @@ router.post("/", requireBearer, async (req, res) => {
        ON DUPLICATE KEY UPDATE ${updates}`,
       cols.map((c) => record[c])
     );
+
     setTimeout(() => updateMainProductivity(record), 200);
     return res.status(200).json({
       message: "บันทึกสำเร็จ",
@@ -276,11 +362,13 @@ router.put("/:id", async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ message: "id required" });
     const record = buildRecord(req.body);
+
     const [subs] = await db.query(
       `SELECT type1,type2,type3,type4,type5 FROM ward_reports
        WHERE date=? AND shift=? AND wardname=? AND subward<>?`,
       [record.date, record.shift, record.wardname, record.subward || ""]
     );
+
     const subSum = subs.reduce(
       (acc, r) => ({
         type1: acc.type1 + (r.type1 || 0),
@@ -291,8 +379,15 @@ router.put("/:id", async (req, res) => {
       }),
       { type1: 0, type2: 0, type3: 0, type4: 0, type5: 0 }
     );
+
     const isICU = ICU_Ven.includes(record.wardname);
-    record.productivity = calcProductivity(record, subSum, isICU);
+    record.productivity = calcProductivity(
+      record,
+      subSum,
+      isICU,
+      record.shift
+    );
+
     const setClause = Object.keys(record)
       .map((k) => `${k}=?`)
       .join(", ");
@@ -300,6 +395,7 @@ router.put("/:id", async (req, res) => {
       ...Object.values(record),
       id,
     ]);
+
     setTimeout(() => updateMainProductivity(record), 200);
     return res.status(200).json({
       message: "อัพเดทสำเร็จ",
