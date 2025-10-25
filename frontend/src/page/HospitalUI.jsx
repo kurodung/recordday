@@ -6,7 +6,8 @@ import { API_BASE } from "../config";
 
 /* ----------------------- helpers ----------------------- */
 const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
-const toInt = (v) => (v === "" || v === undefined || v === null ? 0 : Number(v) || 0);
+const toInt = (v) =>
+  v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
 
 /** ✅ เพิ่มฟังก์ชันคำนวณ productivity (ใช้ใน frontend ตอนยังไม่มีข้อมูล backend) */
 function calcProductivity(fd, wardname) {
@@ -26,14 +27,41 @@ function calcProductivity(fd, wardname) {
 }
 
 const NUMERIC_FIELDS = [
-  "bed_carry", "bed_new", "bed_transfer_in",
-  "discharge_home", "discharge_transfer_out", "discharge_refer_out", "discharge_refer_back", "discharge_died",
+  "bed_carry",
+  "bed_new",
+  "bed_transfer_in",
+  "discharge_home",
+  "discharge_transfer_out",
+  "discharge_refer_out",
+  "discharge_refer_back",
+  "discharge_died",
   "bed_remain",
-  "type1", "type2", "type3", "type4", "type5",
-  "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
-  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner", "palliative",
-  "pre_op", "post_op",
-  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down",
+  "type1",
+  "type2",
+  "type3",
+  "type4",
+  "type5",
+  "vent_invasive",
+  "vent_noninvasive",
+  "hfnc",
+  "oxygen",
+  "extra_bed",
+  "pas",
+  "cpr",
+  "infection",
+  "gcs",
+  "stroke",
+  "psych",
+  "prisoner",
+  "palliative",
+  "pre_op",
+  "post_op",
+  "rn",
+  "pn",
+  "na",
+  "other_staff",
+  "rn_extra",
+  "rn_down",
 ];
 const TEXT_FIELDS = ["incident", "head_nurse"];
 
@@ -60,7 +88,12 @@ function nextShiftInfo(dateStr, curShift) {
 }
 
 /* ======================================================== */
-export default function HospitalUI({ username, wardname, selectedDate, shift }) {
+export default function HospitalUI({
+  username,
+  wardname,
+  selectedDate,
+  shift,
+}) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
@@ -82,7 +115,10 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
 
       if (wardname.toLowerCase() === "admin") {
         setFormData({
-          username, wardname, date: selectedDate, shift,
+          username,
+          wardname,
+          date: selectedDate,
+          shift,
           ...(subward ? { subward } : {}),
         });
         setLoading(false);
@@ -91,33 +127,55 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
 
       try {
         const token = localStorage.getItem("token");
-        const effectiveUsername = username || localStorage.getItem("username") || "";
-        const queryParams = new URLSearchParams({ date: selectedDate, shift, wardname });
-        if (subward) queryParams.append("subward", subward);
-        if (effectiveUsername) queryParams.append("username", effectiveUsername);
-
-        const res = await fetch(`${API_BASE}/api/ward-report?${queryParams.toString()}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const effectiveUsername =
+          username || localStorage.getItem("username") || "";
+        const queryParams = new URLSearchParams({
+          date: selectedDate,
+          shift,
+          wardname,
         });
+        if (subward) queryParams.append("subward", subward);
+        if (effectiveUsername)
+          queryParams.append("username", effectiveUsername);
+
+        const res = await fetch(
+          `${API_BASE}/api/ward-report?${queryParams.toString()}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
 
         if (res.status === 204) {
           const prev = prevShiftInfo(selectedDate, shift);
-          const prevParams = new URLSearchParams({ date: prev.date, shift: prev.shift, wardname });
-          if (subward) prevParams.append("subward", subward);
-          if (effectiveUsername) prevParams.append("username", effectiveUsername);
-
-          const r2 = await fetch(`${API_BASE}/api/ward-report?${prevParams.toString()}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          const prevParams = new URLSearchParams({
+            date: prev.date,
+            shift: prev.shift,
+            wardname,
           });
+          if (subward) prevParams.append("subward", subward);
+          if (effectiveUsername)
+            prevParams.append("username", effectiveUsername);
+
+          const r2 = await fetch(
+            `${API_BASE}/api/ward-report?${prevParams.toString()}`,
+            {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            }
+          );
 
           if (r2.ok) {
             const ct2 = r2.headers.get("content-type") || "";
             const text2 = await r2.text();
-            const prevData = ct2.includes("application/json") && text2 ? JSON.parse(text2) : null;
+            const prevData =
+              ct2.includes("application/json") && text2
+                ? JSON.parse(text2)
+                : null;
             if (prevData) {
               setFormData({
                 username: effectiveUsername || username,
-                wardname, date: selectedDate, shift,
+                wardname,
+                date: selectedDate,
+                shift,
                 ...(subward ? { subward } : {}),
                 bed_carry: prevData.bed_remain ?? prevData.bed_carry ?? 0,
               });
@@ -127,7 +185,10 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
           }
 
           setFormData({
-            username: effectiveUsername || username, wardname, date: selectedDate, shift,
+            username: effectiveUsername || username,
+            wardname,
+            date: selectedDate,
+            shift,
             ...(subward ? { subward } : {}),
           });
           setLoading(false);
@@ -136,17 +197,23 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
 
         const ct = res.headers.get("content-type") || "";
         const text = await res.text();
-        const data = ct.includes("application/json") && text ? JSON.parse(text) : {};
+        const data =
+          ct.includes("application/json") && text ? JSON.parse(text) : {};
         setFormData({
           ...data,
-          username: effectiveUsername || username, wardname, date: selectedDate, shift,
+          username: effectiveUsername || username,
+          wardname,
+          date: selectedDate,
+          shift,
           ...(subward ? { subward } : {}),
         });
       } catch (err) {
         console.error("โหลดข้อมูลเดิมล้มเหลว", err);
         setFormData({
           username: username || localStorage.getItem("username") || "",
-          wardname, date: selectedDate, shift,
+          wardname,
+          date: selectedDate,
+          shift,
           ...(subward ? { subward } : {}),
         });
       } finally {
@@ -174,23 +241,40 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
   }, [wardname, subward]);
 
   /* ✅ ------------------- ดึง productivity จาก backend ------------------- */
-  useEffect(() => {
-    if (!wardname || !selectedDate || !shift) return;
-    const fetchProductivity = async () => {
-      try {
-        const params = new URLSearchParams({ date: selectedDate, shift, wardname });
-        const res = await fetch(`${API_BASE}/api/ward-report/productivity?${params.toString()}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setProductivity(data.productivity ?? 0);
-        setFormData((prev) => ({ ...prev, productivity: data.productivity ?? 0 }));
-      } catch (err) {
-        console.error("Failed to fetch productivity:", err);
+useEffect(() => {
+  // ถ้าเป็น subward (มีค่า subward) → ไม่ต้องดึง productivity
+  if (!wardname || !selectedDate || !shift || subward) return;
+
+  const fetchProductivity = async () => {
+    try {
+      const params = new URLSearchParams({
+        date: selectedDate,
+        shift,
+        wardname,
+      });
+      const res = await fetch(
+        `${API_BASE}/api/ward-report/productivity?${params.toString()}`
+      );
+      if (res.status === 204 || res.status === 404) {
         setProductivity(0);
+        return;
       }
-    };
-    fetchProductivity();
-  }, [wardname, subward, selectedDate, shift]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setProductivity(data.productivity ?? 0);
+      setFormData((prev) => ({
+        ...prev,
+        productivity: data.productivity ?? 0,
+      }));
+    } catch (err) {
+      console.error("Failed to fetch productivity:", err);
+      setProductivity(0);
+    }
+  };
+
+  fetchProductivity();
+}, [wardname, subward, selectedDate, shift]);
+
 
   /* ----------------------- คำนวณ bed_remain ----------------------- */
   const computedRemain = useMemo(() => {
@@ -206,14 +290,23 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     let remain = carry + newIn + trIn - out;
     if (remain < 0) remain = 0;
     return remain;
-  }, [formData.bed_carry, formData.bed_new, formData.bed_transfer_in,
-      formData.discharge_home, formData.discharge_transfer_out,
-      formData.discharge_refer_out, formData.discharge_refer_back,
-      formData.discharge_died, bedTotal]);
+  }, [
+    formData.bed_carry,
+    formData.bed_new,
+    formData.bed_transfer_in,
+    formData.discharge_home,
+    formData.discharge_transfer_out,
+    formData.discharge_refer_out,
+    formData.discharge_refer_back,
+    formData.discharge_died,
+    bedTotal,
+  ]);
 
   useEffect(() => {
     setFormData((prev) =>
-      prev.bed_remain === computedRemain ? prev : { ...prev, bed_remain: computedRemain }
+      prev.bed_remain === computedRemain
+        ? prev
+        : { ...prev, bed_remain: computedRemain }
     );
   }, [computedRemain]);
 
@@ -222,9 +315,19 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     if (productivity !== null) return;
     setFormData((prev) => {
       const newProd = calcProductivity(prev, wardname);
-      return prev.productivity === newProd ? prev : { ...prev, productivity: newProd };
+      return prev.productivity === newProd
+        ? prev
+        : { ...prev, productivity: newProd };
     });
-  }, [formData.type1, formData.type2, formData.type3, formData.type4, formData.type5, formData.rn, wardname]);
+  }, [
+    formData.type1,
+    formData.type2,
+    formData.type3,
+    formData.type4,
+    formData.type5,
+    formData.rn,
+    wardname,
+  ]);
 
   /* ---------- handle change ---------- */
   const handleChange = (e) => {
@@ -235,7 +338,8 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
   /* ---------- build payload ---------- */
   const buildPayload = () => {
     const base = {
-      username: formData.username || username || localStorage.getItem("username") || "",
+      username:
+        formData.username || username || localStorage.getItem("username") || "",
       wardname,
       date:
         formData.date instanceof Date
@@ -288,11 +392,16 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
         shift: payload.shift,
         wardname: payload.wardname,
       });
-      const prodRes = await fetch(`${API_BASE}/api/ward-report/productivity?${params.toString()}`);
+      const prodRes = await fetch(
+        `${API_BASE}/api/ward-report/productivity?${params.toString()}`
+      );
       if (prodRes.ok) {
         const prodData = await prodRes.json();
         setProductivity(prodData.productivity ?? 0);
-        setFormData((prev) => ({ ...prev, productivity: prodData.productivity ?? 0 }));
+        setFormData((prev) => ({
+          ...prev,
+          productivity: prodData.productivity ?? 0,
+        }));
       }
 
       window.location.reload();
@@ -303,7 +412,13 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
   };
 
   /* ---------- render input ---------- */
-  const renderInput = (label, name, type = "number", width = null, isReadOnly = false) => {
+  const renderInput = (
+    label,
+    name,
+    type = "number",
+    width = null,
+    isReadOnly = false
+  ) => {
     const raw = formData[name];
     const display = displayZeroAsBlank(raw);
     return (
@@ -477,7 +592,13 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
               {renderInput("เฉพาะ RN ขึ้นเสริม:", "rn_extra")}
               {renderInput("RN ปรับลด:", "rn_down")}
               <div className="input-group highlighted">
-                {renderInput("productivity:", "productivity", "number", "100px", true)}
+                {renderInput(
+                  "productivity:",
+                  "productivity",
+                  "number",
+                  "100px",
+                  true
+                )}
               </div>
             </div>
           </div>

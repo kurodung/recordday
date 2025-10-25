@@ -106,10 +106,50 @@ function calcProductivity(row, subSum, isICU) {
   const type4 = t(row.type4) + t(subSum?.type4 || 0);
   const type5 = t(row.type5) + t(subSum?.type5 || 0);
   const rn = t(row.rn);
+  const shift = row.shift;
 
-  const weight5 = isICU ? 4.8 : 4;
-  const numerator =
-    type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
+  let weight5 = 0;
+  let numerator = 0;
+
+  switch (shift) {
+    case "morning":
+      weight5 = isICU ? 4.8 : 4.0;
+      numerator =
+        type5 * weight5 +
+        type4 * 3.0 +
+        type3 * 2.2 +
+        type2 * 1.4 +
+        type1 * 0.6;
+      break;
+    case "afternoon":
+      weight5 = isICU ? 4.2 : 3.5;
+      numerator =
+        type5 * weight5 +
+        type4 * 2.6 +
+        type3 * 1.9 +
+        type2 * 1.2 +
+        type1 * 0.5;
+      break;
+    case "night":
+      weight5 = isICU ? 3.0 : 2.5;
+      numerator =
+        type5 * weight5 +
+        type4 * 1.9 +
+        type3 * 1.4 +
+        type2 * 0.9 +
+        type1 * 0.4;
+      break;
+    default:
+      // fallback ใช้สูตรเวรเช้า
+      weight5 = isICU ? 4.8 : 4.0;
+      numerator =
+        type5 * weight5 +
+        type4 * 3.0 +
+        type3 * 2.2 +
+        type2 * 1.4 +
+        type1 * 0.6;
+  }
+
   const denom = rn * 7;
   return denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 }
@@ -168,6 +208,7 @@ router.get("/bed-total", async (req, res) => {
 });
 
 /** 🔹 ฟังก์ชันอัปเดต productivity ของแถวหลัก โดยรวม subward ทั้งหมดหลังบันทึก */
+/** 🔹 ฟังก์ชันอัปเดต productivity ของแถวหลัก โดยรวม subward ทั้งหมดหลังบันทึก */
 async function updateMainProductivity(record) {
   try {
     const { date, shift, wardname } = record;
@@ -211,18 +252,55 @@ async function updateMainProductivity(record) {
     }
     const main = mainRow[0];
 
-    // ✅ ใช้ RN ของแถวหลัก (ไม่รวมของ subward)
+    // ✅ ใช้ RN ของแถวหลัก
     const rn = Number(main.rn) || 0;
     const isICU = ICU_Ven.includes(wardname);
-    const weight5 = isICU ? 4.8 : 4;
-    const numerator =
-      total.type5 * weight5 +
-      total.type4 * 3 +
-      total.type3 * 2.2 +
-      total.type2 * 1.4 +
-      total.type1 * 0.6;
+
+    // ✅ เลือกสูตรตาม shift
+    let weight5 = 0;
+    let numerator = 0;
+
+    switch (shift) {
+      case "morning":
+        weight5 = isICU ? 4.8 : 4.0;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 3.0 +
+          total.type3 * 2.2 +
+          total.type2 * 1.4 +
+          total.type1 * 0.6;
+        break;
+      case "afternoon":
+        weight5 = isICU ? 4.2 : 3.5;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 2.6 +
+          total.type3 * 1.9 +
+          total.type2 * 1.2 +
+          total.type1 * 0.5;
+        break;
+      case "night":
+        weight5 = isICU ? 3.0 : 2.5;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 1.9 +
+          total.type3 * 1.4 +
+          total.type2 * 0.9 +
+          total.type1 * 0.4;
+        break;
+      default:
+        weight5 = isICU ? 4.8 : 4.0;
+        numerator =
+          total.type5 * weight5 +
+          total.type4 * 3.0 +
+          total.type3 * 2.2 +
+          total.type2 * 1.4 +
+          total.type1 * 0.6;
+    }
+
     const denom = rn * 7;
-    const productivity = denom > 0 ? Math.round((numerator * 100 / denom) * 100) / 100 : 0;
+    const productivity =
+      denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 
     if (productivity <= 0) {
       console.log(`⚠️ Productivity คำนวณได้ ${productivity}, ข้ามการอัปเดต`);
@@ -239,12 +317,13 @@ async function updateMainProductivity(record) {
     );
 
     console.log(
-      `✅ Productivity recalculated from DB = ${productivity} for main row ${wardname} (${main.subward || "หลัก"})`
+      `✅ Productivity recalculated (${shift}) = ${productivity} for main row ${wardname} (${main.subward || "หลัก"})`
     );
   } catch (err) {
     console.error("❌ updateMainProductivity error:", err);
   }
 }
+
 
 /** POST /api/ward-report */
 router.post("/", requireBearer, async (req, res) => {
@@ -362,5 +441,31 @@ router.put("/:id", async (req, res) => {
     return respondDbError(res, err);
   }
 });
+
+/* ✅ ดึง productivity เวอร์ชัน production (ไม่ส่ง 404) */
+router.get("/productivity", async (req, res) => {
+  try {
+    const { date, shift, wardname } = req.query;
+    if (!date || !shift || !wardname)
+      return res.status(400).json({ message: "Missing required params" });
+
+    const [rows] = await db.query(
+      `SELECT productivity 
+       FROM ward_reports 
+       WHERE date=? AND shift=? AND wardname=? 
+       ORDER BY rn DESC, bed_carry DESC LIMIT 1`,
+      [date, shift, wardname]
+    );
+
+    if (!rows.length || rows[0].productivity == null)
+      return res.status(200).json({ productivity: 0 });
+
+    return res.status(200).json({ productivity: Number(rows[0].productivity) });
+  } catch (err) {
+    console.error("❌ Error in GET /ward-report/productivity:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 module.exports = router;
