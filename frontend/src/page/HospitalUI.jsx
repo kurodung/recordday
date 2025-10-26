@@ -1,5 +1,5 @@
-// HospitalUI.jsx (เวอร์ชันเต็ม + ระบบ productivity ครบ)
-import { useState, useRef, useEffect, useMemo } from "react";
+// HospitalUI.jsx (เวอร์ชันแก้ reload → fetchExistingData)
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
@@ -9,24 +9,22 @@ const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
 const toInt = (v) =>
   v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
 
-/** ✅ เพิ่มฟังก์ชันคำนวณ productivity (ใช้ใน frontend ตอนยังไม่มีข้อมูล backend) */
 function calcProductivity(fd, wardname) {
   const isICU = /ICU|CCU|RCU|PICU|NICU/i.test(wardname || "");
   const base5 = isICU ? 4.8 : 4;
-
   const numerator =
     toInt(fd.type5) * base5 +
     toInt(fd.type4) * 3 +
     toInt(fd.type3) * 2.2 +
     toInt(fd.type2) * 1.4 +
     toInt(fd.type1) * 0.6;
-
   const denominator = toInt(fd.rn) * 7;
   const val = denominator > 0 ? (numerator * 100) / denominator : 0;
   return Math.round(val * 100) / 100;
 }
 
 const NUMERIC_FIELDS = [
+  "bed_total",
   "bed_carry",
   "bed_new",
   "bed_transfer_in",
@@ -76,16 +74,6 @@ function prevShiftInfo(dateStr, curShift) {
   }
   return { date: dateStr, shift: SHIFT_ORDER[idx - 1] };
 }
-function nextShiftInfo(dateStr, curShift) {
-  const idx = SHIFT_ORDER.indexOf(curShift);
-  if (idx === -1) return { date: dateStr, shift: curShift };
-  if (idx === SHIFT_ORDER.length - 1) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + 1);
-    return { date: d.toISOString().slice(0, 10), shift: SHIFT_ORDER[0] };
-  }
-  return { date: dateStr, shift: SHIFT_ORDER[idx + 1] };
-}
 
 /* ======================================================== */
 export default function HospitalUI({
@@ -97,118 +85,113 @@ export default function HospitalUI({
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
-  const subward = searchParams.get("subward");
+
+  // ✅ จำ subward ล่าสุดไว้
+  const subwardFromURL = searchParams.get("subward");
+  const savedSubward = localStorage.getItem("lastSubward");
+  const subward = subwardFromURL || savedSubward || null;
+  useEffect(() => {
+    const currentWard = localStorage.getItem("lastWard");
+    if (currentWard !== wardname) {
+      localStorage.removeItem("lastSubward");
+      localStorage.setItem("lastWard", wardname);
+    }
+  }, [wardname]);
+
+  useEffect(() => {
+    if (subward) localStorage.setItem("lastSubward", subward);
+  }, [subward]);
 
   const [bedTotal, setBedTotal] = useState(null);
-  const [productivity, setProductivity] = useState(null); // ✅ เพิ่ม
+  const [productivity, setProductivity] = useState(null);
   const [loading, setLoading] = useState(false);
 
   /* ----------------------- โหลดข้อมูลเวร ----------------------- */
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      setFormData({});
-      setLoading(true);
-      if (!wardname || !selectedDate || !shift) {
-        setLoading(false);
-        return;
-      }
+  const fetchExistingData = useCallback(async () => {
+    setFormData({});
+    setLoading(true);
+    if (!wardname || !selectedDate || !shift) {
+      setLoading(false);
+      return;
+    }
 
-      if (wardname.toLowerCase() === "admin") {
-        setFormData({
-          username,
+    try {
+      const token = localStorage.getItem("token");
+      const effectiveUsername =
+        username || localStorage.getItem("username") || "";
+      const queryParams = new URLSearchParams({
+        date: selectedDate,
+        shift,
+        wardname,
+      });
+      if (subward) queryParams.append("subward", subward);
+      if (effectiveUsername) queryParams.append("username", effectiveUsername);
+
+      const res = await fetch(`${API_BASE}/api/ward-report?${queryParams}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (res.status === 204) {
+        const prev = prevShiftInfo(selectedDate, shift);
+        const prevParams = new URLSearchParams({
+          date: prev.date,
+          shift: prev.shift,
           wardname,
-          date: selectedDate,
-          shift,
-          ...(subward ? { subward } : {}),
         });
-        setLoading(false);
-        return;
-      }
+        if (subward) prevParams.append("subward", subward);
+        if (effectiveUsername) prevParams.append("username", effectiveUsername);
 
-      try {
-        const token = localStorage.getItem("token");
-        const effectiveUsername =
-          username || localStorage.getItem("username") || "";
-        const queryParams = new URLSearchParams({
-          date: selectedDate,
-          shift,
-          wardname,
-        });
-        if (subward) queryParams.append("subward", subward);
-        if (effectiveUsername)
-          queryParams.append("username", effectiveUsername);
-
-        const res = await fetch(
-          `${API_BASE}/api/ward-report?${queryParams.toString()}`,
+        const r2 = await fetch(
+          `${API_BASE}/api/ward-report?${prevParams.toString()}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           }
         );
 
-        if (res.status === 204) {
-          const prev = prevShiftInfo(selectedDate, shift);
-          const prevParams = new URLSearchParams({
-            date: prev.date,
-            shift: prev.shift,
-            wardname,
-          });
-          if (subward) prevParams.append("subward", subward);
-          if (effectiveUsername)
-            prevParams.append("username", effectiveUsername);
-
-          const r2 = await fetch(
-            `${API_BASE}/api/ward-report?${prevParams.toString()}`,
-            {
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            }
-          );
-
-          if (r2.ok) {
-            const ct2 = r2.headers.get("content-type") || "";
-            const text2 = await r2.text();
-            const prevData =
-              ct2.includes("application/json") && text2
-                ? JSON.parse(text2)
-                : null;
-            if (prevData) {
-              setFormData({
-                username: effectiveUsername || username,
-                wardname,
-                date: selectedDate,
-                shift,
-                ...(subward ? { subward } : {}),
-                bed_carry: prevData.bed_remain ?? prevData.bed_carry ?? 0,
-              });
-              setLoading(false);
-              return;
-            }
+        if (r2.ok) {
+          const text2 = await r2.text();
+          const prevData = text2 ? JSON.parse(text2) : null;
+          if (prevData) {
+            setFormData({
+              username: effectiveUsername || username,
+              wardname,
+              date: selectedDate,
+              shift,
+              ...(subward ? { subward } : {}),
+              bed_carry: prevData.bed_remain ?? prevData.bed_carry ?? 0,
+            });
+            setLoading(false);
+            return;
           }
-
-          setFormData({
-            username: effectiveUsername || username,
-            wardname,
-            date: selectedDate,
-            shift,
-            ...(subward ? { subward } : {}),
-          });
-          setLoading(false);
-          return;
         }
 
-        const ct = res.headers.get("content-type") || "";
-        const text = await res.text();
-        const data =
-          ct.includes("application/json") && text ? JSON.parse(text) : {};
         setFormData({
-          ...data,
           username: effectiveUsername || username,
           wardname,
           date: selectedDate,
           shift,
           ...(subward ? { subward } : {}),
         });
-      } catch (err) {
-        console.error("โหลดข้อมูลเดิมล้มเหลว", err);
+        setLoading(false);
+        return;
+      }
+
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
+      setFormData({
+        ...data,
+        username: effectiveUsername || username,
+        wardname,
+        date: selectedDate,
+        shift,
+        ...(subward ? { subward } : {}),
+      });
+    } catch (err) {
+      console.error("โหลดข้อมูลเดิมล้มเหลว", err);
+      const cached = localStorage.getItem("latestWardData");
+      if (cached) {
+        setFormData(JSON.parse(cached));
+      } else {
         setFormData({
           username: username || localStorage.getItem("username") || "",
           wardname,
@@ -216,12 +199,15 @@ export default function HospitalUI({
           shift,
           ...(subward ? { subward } : {}),
         });
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchExistingData();
+    } finally {
+      setLoading(false);
+    }
   }, [username, wardname, selectedDate, shift, subward]);
+
+  useEffect(() => {
+    fetchExistingData();
+  }, [fetchExistingData]);
 
   /* ----------------------- ดึงจำนวนเตียง ----------------------- */
   useEffect(() => {
@@ -229,52 +215,45 @@ export default function HospitalUI({
       setBedTotal(0);
       return;
     }
+
     const params = new URLSearchParams({ wardname });
-    if (subward) params.append("subward", subward);
-    fetch(`${API_BASE}/api/ward-report/bed-total?${params.toString()}`)
+    if (subward && subward.trim() !== "" && subward !== "null") {
+      params.append("subward", subward);
+    }
+
+    fetch(`${API_BASE}/api/ward-report/bed-total?${params}`)
       .then((res) => res.json())
       .then((data) => setBedTotal(data.bed_total ?? 0))
-      .catch((err) => {
-        console.error("Failed to fetch bed total:", err);
-        setBedTotal(0);
-      });
+      .catch(() => setBedTotal(0));
   }, [wardname, subward]);
 
-  /* ✅ ------------------- ดึง productivity จาก backend ------------------- */
-useEffect(() => {
-  // ถ้าเป็น subward (มีค่า subward) → ไม่ต้องดึง productivity
-  if (!wardname || !selectedDate || !shift || subward) return;
-
-  const fetchProductivity = async () => {
-    try {
-      const params = new URLSearchParams({
-        date: selectedDate,
-        shift,
-        wardname,
-      });
-      const res = await fetch(
-        `${API_BASE}/api/ward-report/productivity?${params.toString()}`
-      );
-      if (res.status === 204 || res.status === 404) {
+  /* ------------------- ดึง productivity จาก backend ------------------- */
+  useEffect(() => {
+    if (!wardname || !selectedDate || !shift || subward) return;
+    const fetchProductivity = async () => {
+      try {
+        const params = new URLSearchParams({
+          date: selectedDate,
+          shift,
+          wardname,
+        });
+        const res = await fetch(
+          `${API_BASE}/api/ward-report/productivity?${params}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setProductivity(data.productivity ?? 0);
+        setFormData((prev) => ({
+          ...prev,
+          productivity: data.productivity ?? 0,
+        }));
+      } catch (err) {
+        console.error("Failed to fetch productivity:", err);
         setProductivity(0);
-        return;
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setProductivity(data.productivity ?? 0);
-      setFormData((prev) => ({
-        ...prev,
-        productivity: data.productivity ?? 0,
-      }));
-    } catch (err) {
-      console.error("Failed to fetch productivity:", err);
-      setProductivity(0);
-    }
-  };
-
-  fetchProductivity();
-}, [wardname, subward, selectedDate, shift]);
-
+    };
+    fetchProductivity();
+  }, [wardname, subward, selectedDate, shift]);
 
   /* ----------------------- คำนวณ bed_remain ----------------------- */
   const computedRemain = useMemo(() => {
@@ -290,17 +269,7 @@ useEffect(() => {
     let remain = carry + newIn + trIn - out;
     if (remain < 0) remain = 0;
     return remain;
-  }, [
-    formData.bed_carry,
-    formData.bed_new,
-    formData.bed_transfer_in,
-    formData.discharge_home,
-    formData.discharge_transfer_out,
-    formData.discharge_refer_out,
-    formData.discharge_refer_back,
-    formData.discharge_died,
-    bedTotal,
-  ]);
+  }, [formData]);
 
   useEffect(() => {
     setFormData((prev) =>
@@ -309,25 +278,6 @@ useEffect(() => {
         : { ...prev, bed_remain: computedRemain }
     );
   }, [computedRemain]);
-
-  /* ✅ ------------------- productivity local (ถ้ายังไม่มีจาก backend) ------------------- */
-  useEffect(() => {
-    if (productivity !== null) return;
-    setFormData((prev) => {
-      const newProd = calcProductivity(prev, wardname);
-      return prev.productivity === newProd
-        ? prev
-        : { ...prev, productivity: newProd };
-    });
-  }, [
-    formData.type1,
-    formData.type2,
-    formData.type3,
-    formData.type4,
-    formData.type5,
-    formData.rn,
-    wardname,
-  ]);
 
   /* ---------- handle change ---------- */
   const handleChange = (e) => {
@@ -348,21 +298,28 @@ useEffect(() => {
       shift,
       subward: subward && String(subward).trim() !== "" ? subward : null,
     };
+
+    // ✅ รวมค่าจาก NUMERIC_FIELDS
     const numeric = {};
-    for (const k of NUMERIC_FIELDS) numeric[k] = toInt(formData[k]);
-    const text = {};
-    for (const k of TEXT_FIELDS) {
-      const v = formData[k];
-      if (v !== undefined) text[k] = v;
+    for (const k of NUMERIC_FIELDS) {
+      if (k === "bed_total")
+        numeric[k] = toInt(bedTotal); // ✅ ใช้ค่าจาก state โดยตรง
+      else numeric[k] = toInt(formData[k]);
     }
+
+    const text = {};
+    for (const k of TEXT_FIELDS)
+      if (formData[k] !== undefined) text[k] = formData[k];
+
     return { ...base, ...numeric, ...text };
   };
 
-  /* ---------- handle submit (เดิมของคุณ + อัปเดต productivity หลังบันทึก) ---------- */
+  /* ---------- handle submit ---------- */
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem("token");
       const payload = buildPayload();
+      localStorage.setItem("latestWardData", JSON.stringify(payload));
 
       const method = formData.id ? "PUT" : "POST";
       const url = formData.id
@@ -386,25 +343,8 @@ useEffect(() => {
 
       alert("✅ บันทึกสำเร็จ");
 
-      // ✅ ดึง productivity ใหม่หลังบันทึก
-      const params = new URLSearchParams({
-        date: payload.date,
-        shift: payload.shift,
-        wardname: payload.wardname,
-      });
-      const prodRes = await fetch(
-        `${API_BASE}/api/ward-report/productivity?${params.toString()}`
-      );
-      if (prodRes.ok) {
-        const prodData = await prodRes.json();
-        setProductivity(prodData.productivity ?? 0);
-        setFormData((prev) => ({
-          ...prev,
-          productivity: prodData.productivity ?? 0,
-        }));
-      }
-
-      window.location.reload();
+      // ✅ รอ 500 ms เพื่อให้ backend update ทัน แล้วค่อยโหลดใหม่
+      setTimeout(() => fetchExistingData(), 500);
     } catch (err) {
       console.error("Error:", err);
       alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
@@ -417,10 +357,9 @@ useEffect(() => {
     name,
     type = "number",
     width = null,
-    isReadOnly = false
+    readOnly = false
   ) => {
-    const raw = formData[name];
-    const display = displayZeroAsBlank(raw);
+    const display = displayZeroAsBlank(formData[name]);
     return (
       <div className="input-group" key={name}>
         {label ? <label className="input-label">{label}</label> : null}
@@ -432,7 +371,7 @@ useEffect(() => {
           value={display}
           onChange={handleChange}
           style={width ? { width } : {}}
-          readOnly={isReadOnly}
+          readOnly={readOnly}
         />
       </div>
     );

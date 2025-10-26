@@ -22,6 +22,7 @@ const subwardCond = (subward) =>
 
 /* ------------------- whitelist fields ------------------- */
 const ALLOWED_INT = new Set([
+  "bed_total",
   "bed_carry",
   "bed_new",
   "bed_transfer_in",
@@ -174,14 +175,24 @@ router.get("/", async (req, res) => {
   if (!date || !shift || !wardname)
     return res.status(400).json({ message: "missing query params" });
 
-  const sw = subwardCond(subward);
-  const sql = `
-    SELECT * FROM ward_reports
-    WHERE date=? AND shift=? AND wardname=? AND ${sw.clause}
-    LIMIT 1`;
-  const params = [date, shift, wardname, ...sw.params];
   try {
-    const [rows] = await db.query(sql, params);
+    const sw = subwardCond(subward);
+    console.log("🟣 GET ward-report:", wardname, "subward=", subward);
+
+    const [rows] = await db.query(
+      `SELECT * FROM ward_reports WHERE date=? AND shift=? AND wardname=? AND ${sw.clause} LIMIT 1`,
+      [date, shift, wardname, ...sw.params]
+    );
+
+    // ✅ fallback กรณีไม่มี subward แต่ใน DB เก็บเป็น null
+    if (!rows.length && (!isNonEmpty(subward) || subward === "null")) {
+      const [fallback] = await db.query(
+        `SELECT * FROM ward_reports WHERE date=? AND shift=? AND wardname=? AND (subward IS NULL OR subward='') LIMIT 1`,
+        [date, shift, wardname]
+      );
+      if (fallback.length) return res.json(fallback[0]);
+    }
+
     if (!rows.length) return res.status(204).send();
     return res.json(rows[0]);
   } catch (err) {
@@ -189,17 +200,39 @@ router.get("/", async (req, res) => {
   }
 });
 
+
 router.get("/bed-total", async (req, res) => {
   const { wardname, subward } = req.query;
   if (!isNonEmpty(wardname))
     return res.status(400).json({ message: "wardname required" });
+
   try {
-    const sw = subwardCond(subward);
+    // ✅ ถ้าไม่มี subward หรือเป็น "null" หรือว่าง — ใช้เงื่อนไข IS NULL/=''
+    if (!isNonEmpty(subward) || subward === "null" || subward === "undefined") {
+      const [rows] = await db.query(
+        `SELECT bed_total FROM wards WHERE wardname=? AND (subward IS NULL OR subward='') LIMIT 1`,
+        [wardname]
+      );
+      if (!rows.length) return res.json({ bed_total: 0 });
+      return res.json({ bed_total: Number(rows[0].bed_total) || 0 });
+    }
+
+    // ✅ ถ้ามี subward จริง
     const [rows] = await db.query(
-      `SELECT bed_total FROM wards WHERE wardname=? AND ${sw.clause} LIMIT 1`,
-      [wardname, ...sw.params]
+      `SELECT bed_total FROM wards WHERE wardname=? AND subward=? LIMIT 1`,
+      [wardname, subward.trim()]
     );
-    if (!rows.length) return res.json({ bed_total: 0 });
+    if (!rows.length) {
+      // 🩶 fallback กรณี subward ไม่ตรง (เช่นพิมพ์ผิด)
+      const [fallback] = await db.query(
+        `SELECT bed_total FROM wards WHERE wardname=? AND (subward IS NULL OR subward='') LIMIT 1`,
+        [wardname]
+      );
+      return res.json({
+        bed_total: fallback.length ? Number(fallback[0].bed_total) || 0 : 0,
+      });
+    }
+
     return res.json({ bed_total: Number(rows[0].bed_total) || 0 });
   } catch (err) {
     console.error("GET /ward-report/bed-total error:", err);
@@ -207,7 +240,7 @@ router.get("/bed-total", async (req, res) => {
   }
 });
 
-/** 🔹 ฟังก์ชันอัปเดต productivity ของแถวหลัก โดยรวม subward ทั้งหมดหลังบันทึก */
+
 /** 🔹 ฟังก์ชันอัปเดต productivity ของแถวหลัก โดยรวม subward ทั้งหมดหลังบันทึก */
 async function updateMainProductivity(record) {
   try {
