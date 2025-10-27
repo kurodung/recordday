@@ -12,8 +12,9 @@ router.get("/nwcw-report/list", async (req, res) => {
         id, date AS report_date, shift, wardname, subward,
         special, general, genspecial, specialgen, gengen,
         echo, cath_lab, dialysis, physio_new, xray,
-        stay, refer_back, refer_out, nurse, pn, stretcher, employee,
-        incident, username
+        stay, refer_back, refer_out,
+        pn, stretcher, employee,
+        incident, head_nurse, username
       FROM nwcw_reports
       WHERE 1=1
     `;
@@ -81,8 +82,8 @@ router.post("/nwcw-report", async (req, res) => {
       special = 0, general = 0, genspecial = 0, specialgen = 0, gengen = 0,
       echo = 0, cath_lab = 0, dialysis = 0, physio_new = 0, xray = 0,
       stay = 0, refer_back = 0, refer_out = 0,
-      nurse = 0, pn = 0, stretcher = 0, employee = 0,
-      incident = ""
+      pn = 0, stretcher = 0, employee = 0,
+      incident = "", head_nurse = ""
     } = req.body;
 
     if (!username || !wardname || !date || !shift) {
@@ -95,16 +96,17 @@ router.post("/nwcw-report", async (req, res) => {
         special, general, genspecial, specialgen, gengen,
         echo, cath_lab, dialysis, physio_new, xray,
         stay, refer_back, refer_out,
-        nurse, pn, stretcher, employee,
-        incident)
+        pn, stretcher, employee,
+        incident, head_nurse)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+
       [
         username, wardname, subward, date, shift,
         special, general, genspecial, specialgen, gengen,
         echo, cath_lab, dialysis, physio_new, xray,
         stay, refer_back, refer_out,
-        nurse, pn, stretcher, employee,
-        incident
+        pn, stretcher, employee,
+        incident, head_nurse
       ]
     );
 
@@ -124,8 +126,8 @@ router.put("/nwcw-report/:id", async (req, res) => {
       "special","general","genspecial","specialgen","gengen",
       "echo","cath_lab","dialysis","physio_new","xray",
       "stay","refer_back","refer_out",
-      "nurse","pn","stretcher","employee",
-      "incident"
+      "pn","stretcher","employee",
+      "incident","head_nurse"
     ];
 
     const fields = [];

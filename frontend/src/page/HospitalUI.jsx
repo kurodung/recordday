@@ -366,18 +366,18 @@ export default function HospitalUI({
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดยกมา</div>
+            <div className="section-header general">ยอดยกมา</div>
             {renderInput("", "bed_carry")}
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดรับ</div>
+            <div className="section-header general">ยอดรับ</div>
             <div className="horizontal-inputs">
               {renderInput("รับใหม่:", "bed_new")}
               {renderInput("รับย้าย:", "bed_transfer_in")}
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดจำหน่าย</div>
+            <div className="section-header general">ยอดจำหน่าย</div>
             <div className="horizontal-inputs">
               {renderInput("กลับบ้าน:", "discharge_home")}
               {renderInput("ย้ายตึก:", "discharge_transfer_out")}
@@ -388,7 +388,9 @@ export default function HospitalUI({
           </div>
           <div className="form-column">
             <div className="section-label">คงพยาบาล</div>
-            {renderInput("", "bed_remain", "number", null, true)}
+            <div className="input-group highlighted">
+              {renderInput("", "bed_remain", "number", null, true)}
+            </div>
           </div>
         </div>
       </div>
@@ -397,7 +399,7 @@ export default function HospitalUI({
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">ประเภทผู้ป่วย</div>
+            <div className="section-header patient">ประเภทผู้ป่วย</div>
             <div className="horizontal-inputs">
               {["5", "4", "3", "2", "1"].map((n) =>
                 renderInput(`ประเภท ${n}:`, `type${n}`, "number")
@@ -406,7 +408,7 @@ export default function HospitalUI({
           </div>
 
           <div className="form-column">
-            <div className="section-header">Ventilator</div>
+            <div className="section-header eqiment">Ventilator</div>
             <div className="horizontal-inputs">
               {renderInput("Invasive:", "vent_invasive")}
               {renderInput("Non invasive:", "vent_noninvasive")}
@@ -414,7 +416,7 @@ export default function HospitalUI({
           </div>
 
           <div className="form-column">
-            <div className="section-header">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
+            <div className="section-header eqiment">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
             <div className="horizontal-inputs">
               {renderInput("ใช้เครื่อง HFNC:", "hfnc")}
               {renderInput("ให้ออกซิเจน:", "oxygen")}
@@ -440,7 +442,7 @@ export default function HospitalUI({
           </div>
           <div className="form-column">
             {" "}
-            <div className="section-header">การดูแลรอบการผ่าตัด</div>{" "}
+            <div className="section-header note">การดูแลรอบการผ่าตัด</div>{" "}
             <div className="horizontal-inputs">
               {" "}
               {renderInput("Pre OP:", "pre_op")}{" "}
@@ -461,17 +463,17 @@ export default function HospitalUI({
           </div>
           <div className="form-column">
             {" "}
-            <div className="section-header">Strokeในตึก</div>{" "}
+            <div className="section-header note">Strokeในตึก</div>{" "}
             {renderInput("", "stroke")}{" "}
           </div>
           <div className="form-column">
             {" "}
-            <div className="section-header">จิตเวชในตึก</div>{" "}
+            <div className="section-header note">จิตเวชในตึก</div>{" "}
             {renderInput("", "psych")}{" "}
           </div>
           <div className="form-column">
             {" "}
-            <div className="section-header">นักโทษในตึก</div>{" "}
+            <div className="section-header note">นักโทษในตึก</div>{" "}
             {renderInput("", "prisoner")}{" "}
           </div>
           <div className="form-column">
@@ -484,7 +486,7 @@ export default function HospitalUI({
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">อัตรากำลังทั้งหมด</div>
+            <div className="section-header staff">อัตรากำลังทั้งหมด</div>
             <div className="horizontal-inputs">
               {renderInput("RN:", "rn")}
               {renderInput("PN:", "pn")}

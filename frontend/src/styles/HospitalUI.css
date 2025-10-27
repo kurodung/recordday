@@ -1,20 +1,17 @@
 /* src/styles/HospitalUI.css */
-/* --- UPDATED FOR BETTER CLARITY AND ACCESSIBILITY --- */
 
 /* General Styles */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #f9fafb; /* UPDATED: Softer background color */
-  color: #212529; /* UPDATED: Darker default text for contrast */
+  background-color: #f8f0ff;
 }
 
 /* Main Container */
@@ -28,7 +25,7 @@ body {
 /* Sidebar */
 .sidebar {
   width: 160px;
-  background-color: #1d4ed8; /* UPDATED: Changed primary color to blue */
+  background-color: #7e3cbd;
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -55,7 +52,7 @@ body {
 }
 
 .avatar-letter {
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
   font-size: 32px;
   font-weight: bold;
 }
@@ -64,9 +61,9 @@ body {
 .avatar-circle {
   width: 70px;
   height: 70px;
-  background-color: #eff6ff; /* UPDATED: Light blue */
+  background-color: #f8edfd;
   border-radius: 50%;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
   font-weight: bold;
   font-size: 28px;
   text-align: center;
@@ -76,6 +73,7 @@ body {
   align-items: center;
   justify-content: center;
 }
+
 
 .sidebar-title {
   font-weight: bold;
@@ -139,7 +137,7 @@ body {
 
 /* Sidebar Badge */
 .badge {
-  background: #60a5fa; /* UPDATED: Lighter blue */
+  background: #c084fc;
   color: white;
   font-size: 0.75rem;
   padding: 0 6px;
@@ -162,7 +160,7 @@ body {
   border: none;
   border-radius: 6px;
   background-color: white;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -176,8 +174,8 @@ body {
 }
 
 .sidebar-button.active {
-  background-color: #dbeafe; /* UPDATED: Light blue */
-  color: #1e3a8a; /* UPDATED: Darker blue */
+  background-color: #ffe066;
+  color: #111;
 }
 
 /* Logout */
@@ -218,9 +216,8 @@ body {
 .top-nav {
   display: flex;
   width: 100%;
-  background-color: #ffffff; /* UPDATED: Changed to white */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* UPDATED: Softer shadow */
-  border-bottom: 1px solid #dee2e6; /* UPDATED: Added bottom border */
+  background-color: #d9c2f0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -230,21 +227,21 @@ body {
   padding: 12px 24px;
   font-weight: 600;
   border: none;
-  background-color: #ffffff; /* UPDATED: White */
-  color: #495057; /* UPDATED: Grayer text */
+  background-color: #d9c2f0;
+  color: #333;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .nav-tab:hover {
-  background-color: #f8f9fa; /* UPDATED: Light gray hover */
+  background-color: #e9dcf7;
 }
 
 .nav-tab.active {
-  background-color: #f9fafb; /* UPDATED: Match body background */
-  border-bottom: 3px solid #1d4ed8; /* UPDATED: Thicker blue border */
-  color: #1d4ed8; /* UPDATED: Blue */
+  background-color: #f8f0ff;
+  border-bottom: 2px solid #7e3cbd;
+  color: #7e3cbd;
 }
 
 .date-selector {
@@ -259,13 +256,13 @@ body {
 .calendar-icon {
   height: 20px;
   width: 20px;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
 }
 
 .date-text {
   margin-left: 8px;
   font-weight: 600;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #4a2570;
 }
 
 /* Form Container */
@@ -281,8 +278,7 @@ body {
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* UPDATED: Softer shadow */
-  border: 1px solid #e9ecef; /* UPDATED: Light border */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .horizontal-inputs {
@@ -306,15 +302,60 @@ body {
   margin-right: 8px;
 }
 
-.section-header,
-.section-header-one {
+.section-header, .section-header-one {
   font-weight: 600;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
   padding-bottom: 8px;
   margin-bottom: 12px;
-  border-bottom: 1px solid #dee2e6; /* UPDATED: Grayer border */
-  font-size: 1.1rem; /* NEW: Larger font */
+  border-bottom: 1px solid #e0d0f5;
 }
+
+.section-header {
+  font-weight: 600;
+  font-size: 1rem;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid transparent;
+  letter-spacing: 0.3px;
+}
+
+/* 💙 หมวดข้อมูลทั่วไป */
+.section-header.general {
+  color: #1976d2;
+  border-color: #bbdefb;
+}
+
+/* 💚 หมวดอัตรากำลัง */
+.section-header.staff {
+  color: #2e7d32;
+  border-color: #c8e6c9;
+}
+
+/* 💜 หมวดข้อมูลผู้ป่วย */
+.section-header.patient {
+  color: #7e3cbd;
+  border-color: #e0d0f5;
+}
+
+/* 💛 หมวดสรุป */
+.section-header.summary {
+  color: #b78900;
+  border-color: #ffe58f;
+}
+
+/* 💛 หมวดสรุป */
+.section-header.eqiment {
+  color: #b75200;
+  border-color: #ffd28f;
+}
+
+/* 💗 หมวดหมายเหตุ / หัวหน้าพยาบาล */
+.section-header.note {
+  color: #d81b60;
+  border-color: #f8bbd0;
+}
+
+
 
 .flex-grid {
   display: flex;
@@ -327,9 +368,10 @@ body {
   width: fit-content;
   min-width: auto;
   padding: 12px;
-  background-color: #f8f9fa; /* UPDATED: Light gray */
+  background-color: #f9f5ff;
   border-radius: 6px;
 }
+
 
 .discharge-grid {
   display: grid;
@@ -353,45 +395,41 @@ body {
 
 .section-label {
   font-weight: 600;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #7e3cbd;
   padding-bottom: 8px;
   margin-bottom: 8px;
-  border-bottom: 1px solid #dee2e6; /* UPDATED: Grayer border */
-  font-size: 1rem; /* NEW: Larger font */
+  border-bottom: 1px solid #e0d0f5;
 }
 
 .input-label {
   min-width: auto;
   margin-right: 10px;
-  color: #343a40; /* UPDATED: Darker text */
+  color: #333;
   white-space: nowrap;
-  font-size: 0.95rem; /* NEW: Slightly larger */
-  font-weight: 500; /* NEW: Bolder label */
 }
 
 .input-field {
   width: 72px;
   padding: 8px;
-  border: 1px solid #adb5bd; /* UPDATED: Clearer border */
+  border: 1px solid #d9c2f0;
   border-radius: 4px;
-  color: #212529; /* UPDATED: Dark text */
-  background-color: #ffffff; /* UPDATED: White background */
+  color: #111;
+  background-color: #fbf8ff;
   text-align: center;
-  font-size: 1rem; /* UPDATED: Larger font */
-  font-weight: 600; /* NEW: Make entered number bold */
+  font-size: 15px;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #1d4ed8; /* UPDATED: Blue */
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.2); /* UPDATED: Blue focus ring */
+  border-color: #7e3cbd;
+  box-shadow: 0 0 0 2px rgba(126, 60, 189, 0.2);
 }
 
 .highlighted {
-  background-color: #eff6ff; /* UPDATED: Light blue */
+  background-color: #f0e6ff;
   padding: 8px;
   border-radius: 6px;
-  border-left: 4px solid #1d4ed8; /* UPDATED: Blue */
+  border-left: 3px solid #7e3cbd;
 }
 
 .highlighted .input-field {
@@ -407,10 +445,10 @@ body {
 }
 
 .sidebar .input-group.highlighted {
-  background-color: #dbeafe; /* UPDATED: Brighter light blue */
-  border-left: 4px solid #1d4ed8; /* UPDATED: Blue */
-  font-weight: 700; /* UPDATED: Bolder */
-  color: #1e3a8a; /* UPDATED: Darker blue text */
+  background-color: #f0e6ff;
+  border-left: 4px solid #7e3cbd;
+  font-weight: 600;
+  color: #7e3cbd;
 }
 
 .sidebar .input-group:hover {
@@ -418,9 +456,10 @@ body {
 }
 
 .sidebar .input-group.highlighted:hover {
-  background-color: #dbeafe; /* คงสีเดิมไว้ */
+  background-color: #f0e6ff;  /* คงสีเดิมไว้ */
   cursor: default;
 }
+
 
 .summary-cards {
   display: flex;
@@ -445,7 +484,7 @@ body {
 .summary-value {
   font-size: 24px;
   font-weight: bold;
-  color: #1d4ed8; /* UPDATED: Blue */
+  color: #007bff;
 }
 
 .filter-section {
@@ -473,6 +512,7 @@ body {
   font-size: 14px;
 }
 
+
 .section-title {
   font-size: 16px;
   font-weight: 600;
@@ -490,22 +530,21 @@ body {
 }
 
 .save-button {
-  padding: 14px 32px; /* UPDATED: Larger button */
-  background-color: #1d4ed8; /* UPDATED: Blue */
+  padding: 12px 32px;
+  background-color: #7e3cbd;
   color: white;
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 1.1rem; /* UPDATED: Larger font */
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.3); /* UPDATED: Blue shadow */
+  box-shadow: 0 2px 6px rgba(126, 60, 189, 0.3);
 }
 
 .save-button:hover {
-  background-color: #1e40af; /* UPDATED: Darker blue hover */
+  background-color: #6a2ea6;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(29, 78, 216, 0.4); /* UPDATED: Blue shadow */
+  box-shadow: 0 4px 8px rgba(126, 60, 189, 0.4);
 }
 
 /* Responsive */
@@ -533,7 +572,7 @@ body {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0,0,0,.1);
   background: #fff;
   color: #333;
   cursor: pointer;
@@ -553,23 +592,19 @@ body {
   padding: 0 8px;
   scrollbar-width: thin;
 }
-.tabs-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-.tabs-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-}
+.tabs-scroll::-webkit-scrollbar { height: 6px; }
+.tabs-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 6px; }
 
 /* อินพุตวันที่ */
 .date-input {
   height: 38px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0,0,0,.15);
   background: #fff;
   color: #333;
   padding: 0 10px;
 }
+
 
 /* ---------- มือถือ (<= 768px): ทำ Sidebar เป็น Drawer ---------- */
 @media (max-width: 768px) {
@@ -581,7 +616,7 @@ body {
     height: 100dvh;
     width: min(86vw, 320px);
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    transition: transform .25s ease;
     z-index: 1000;
   }
   .sidebar.mobile.open {
@@ -592,50 +627,37 @@ body {
   .sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0,0,0,.45);
     z-index: 999;
   }
 
   /* เนื้อหา main กว้างเต็มหน้าจอ */
-  .main-content {
-    width: 100%;
-  }
+  .main-content { width: 100%; }
 
   /* ปรับขนาดให้แตะง่าย */
-  .top-nav {
-    padding: 8px;
-  }
-  .nav-tab {
-    height: 42px;
-    padding: 0 12px;
-    font-size: 14px;
-  }
-  .date-input {
-    height: 42px;
-  }
+  .top-nav { padding: 8px; }
+  .nav-tab { height: 42px; padding: 0 12px; font-size: 14px; }
+  .date-input { height: 42px; }
 }
 
 /* หน้าจอเล็กมาก (<= 420px): แท็บชิดขึ้นนิด */
 @media (max-width: 420px) {
-  .tabs-scroll {
-    gap: 6px;
-  }
-  .date-input {
-    width: 120px;
-  }
+  .tabs-scroll { gap: 6px; }
+  .date-input { width: 120px; }
 }
 
-/* บังคับให้ไอคอนปฏิทินของ Chrome/Edge แสดงเป็นสีที่อัปเดต */
+
+/* บังคับให้ไอคอนปฏิทินของ Chrome/Edge แสดงเป็นสีม่วง */
 /* ใช้ไอคอนปฏิทินเป็นพื้นหลังของ input แทน และเผื่อที่ด้านขวา */
 .top-nav .date-input,
-.filter-item input[type='date'] {
-  color-scheme: light; /* กันไอคอนขาวใน Dark Mode */
+.filter-item input[type="date"] {
+  color-scheme: light;             /* กันไอคอนขาวใน Dark Mode */
   background-color: #fff;
-  color: #111; /* เว้นที่ให้ไอคอน */
+  color: #111;            /* เว้นที่ให้ไอคอน */
   border-radius: 10px;
 
-  /* ไอคอนปฏิทิน (percent-encode, 1 บรรทัด) - UPDATED to blue */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d4ed8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  /* ไอคอนปฏิทิน (percent-encode, 1 บรรทัด) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e3cbd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 18px 18px;
@@ -643,6 +665,10 @@ body {
 
 /* ซ่อนไอคอน native แต่ยังคลิกพื้นที่เดิมเพื่อเปิดปฏิทินได้ */
 .top-nav .date-input::-webkit-calendar-picker-indicator,
-.filter-item input[type='date']::-webkit-calendar-picker-indicator {
+.filter-item input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0;
 }
+
+
+
+
