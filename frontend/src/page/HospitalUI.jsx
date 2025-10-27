@@ -19,18 +19,48 @@ const calcProductivity = (fd, wardname) => {
     toInt(fd.type2) * 1.4 +
     toInt(fd.type1) * 0.6;
   const denominator = (toInt(fd.rn) + toInt(fd.pn)) * 7;
-  return denominator > 0 ? Math.round(((numerator * 100) / denominator) * 100) / 100 : 0;
+  return denominator > 0
+    ? Math.round(((numerator * 100) / denominator) * 100) / 100
+    : 0;
 };
 
 const NUMERIC_FIELDS = [
-  "bed_total", "bed_carry", "bed_new", "bed_transfer_in",
-  "discharge_home", "discharge_transfer_out", "discharge_refer_out",
-  "discharge_refer_back", "discharge_died", "bed_remain",
-  "type1", "type2", "type3", "type4", "type5",
-  "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
-  "extra_bed", "pas", "cpr", "infection", "gcs", "stroke",
-  "psych", "prisoner", "palliative", "pre_op", "post_op",
-  "rn", "pn", "na", "other_staff", "rn_extra", "rn_down"
+  "bed_total",
+  "bed_carry",
+  "bed_new",
+  "bed_transfer_in",
+  "discharge_home",
+  "discharge_transfer_out",
+  "discharge_refer_out",
+  "discharge_refer_back",
+  "discharge_died",
+  "bed_remain",
+  "type1",
+  "type2",
+  "type3",
+  "type4",
+  "type5",
+  "vent_invasive",
+  "vent_noninvasive",
+  "hfnc",
+  "oxygen",
+  "extra_bed",
+  "pas",
+  "cpr",
+  "infection",
+  "gcs",
+  "stroke",
+  "psych",
+  "prisoner",
+  "palliative",
+  "pre_op",
+  "post_op",
+  "rn",
+  "pn",
+  "na",
+  "other_staff",
+  "rn_extra",
+  "rn_down",
 ];
 const TEXT_FIELDS = ["incident", "head_nurse"];
 const SHIFT_ORDER = ["morning", "afternoon", "night"];
@@ -47,7 +77,12 @@ const prevShiftInfo = (dateStr, curShift) => {
 };
 
 /* ================================================================ */
-export default function HospitalUI({ username, wardname, selectedDate, shift }) {
+export default function HospitalUI({
+  username,
+  wardname,
+  selectedDate,
+  shift,
+}) {
   const [formData, setFormData] = useState({});
   const [bedTotal, setBedTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -80,8 +115,13 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     }
 
     const token = localStorage.getItem("token");
-    const effectiveUsername = username || localStorage.getItem("username") || "";
-    const queryParams = new URLSearchParams({ date: selectedDate, shift, wardname });
+    const effectiveUsername =
+      username || localStorage.getItem("username") || "";
+    const queryParams = new URLSearchParams({
+      date: selectedDate,
+      shift,
+      wardname,
+    });
     if (subward) queryParams.append("subward", subward);
     if (effectiveUsername) queryParams.append("username", effectiveUsername);
 
@@ -94,14 +134,19 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
       if (res.status === 204) {
         const prev = prevShiftInfo(selectedDate, shift);
         const prevParams = new URLSearchParams({
-          date: prev.date, shift: prev.shift, wardname,
+          date: prev.date,
+          shift: prev.shift,
+          wardname,
         });
         if (subward) prevParams.append("subward", subward);
         if (effectiveUsername) prevParams.append("username", effectiveUsername);
 
-        const prevRes = await fetch(`${API_BASE}/api/ward-report?${prevParams}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const prevRes = await fetch(
+          `${API_BASE}/api/ward-report?${prevParams}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
 
         if (prevRes.ok) {
           const text = await prevRes.text();
@@ -160,9 +205,18 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     }
   }, [username, wardname, selectedDate, shift, subward]);
 
+  // ✅ ป้องกัน React เรียก API ก่อน props พร้อม
   useEffect(() => {
-    fetchExistingData();
-  }, [fetchExistingData]);
+    // ถ้าข้อมูลหลักยังไม่พร้อม (เช่น wardname, shift, date ยังเป็น undefined)
+    if (!wardname || !selectedDate || !shift) return;
+
+    // ✅ delay 150ms เพื่อให้ localStorage, token และ subward โหลดทัน
+    const timer = setTimeout(() => {
+      fetchExistingData();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [wardname, selectedDate, shift, subward, fetchExistingData]);
 
   /* -------------------- Fetch bed total -------------------- */
   useEffect(() => {
@@ -197,7 +251,9 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
 
   useEffect(() => {
     setFormData((prev) =>
-      prev.bed_remain === computedRemain ? prev : { ...prev, bed_remain: computedRemain }
+      prev.bed_remain === computedRemain
+        ? prev
+        : { ...prev, bed_remain: computedRemain }
     );
   }, [computedRemain]);
 
@@ -221,7 +277,10 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     };
 
     const numeric = Object.fromEntries(
-      NUMERIC_FIELDS.map((k) => [k, k === "bed_total" ? toInt(bedTotal) : toInt(formData[k])])
+      NUMERIC_FIELDS.map((k) => [
+        k,
+        k === "bed_total" ? toInt(bedTotal) : toInt(formData[k]),
+      ])
     );
     const text = Object.fromEntries(
       TEXT_FIELDS.map((k) => [k, formData[k] ?? ""])
@@ -260,7 +319,13 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
   };
 
   /* -------------------- Render -------------------- */
-  const renderInput = (label, name, type = "number", width, readOnly = false) => (
+  const renderInput = (
+    label,
+    name,
+    type = "number",
+    width,
+    readOnly = false
+  ) => (
     <div className="input-group" key={name}>
       {label && <label className="input-label">{label}</label>}
       <input
@@ -276,10 +341,12 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
     </div>
   );
 
-   /* -------------------- UI -------------------- */
+  /* -------------------- UI -------------------- */
   return (
     <div className="form-container" ref={formRef}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
+      <h2
+        style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}
+      >
         กลุ่ม: {subward || "-"}
       </h2>
 
@@ -290,7 +357,12 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
             <div className="section-label">ข้อมูลเตียง</div>
             <div className="input-group highlighted">
               <label className="input-label">จำนวนเตียง:</label>
-              <input type="number" value={bedTotal ?? ""} className="input-field" readOnly />
+              <input
+                type="number"
+                value={bedTotal ?? ""}
+                className="input-field"
+                readOnly
+              />
             </div>
           </div>
           <div className="form-column">
@@ -450,8 +522,13 @@ export default function HospitalUI({ username, wardname, selectedDate, shift }) 
         </div>
       </div>
 
-       <div className="button-container">
-        <button type="button" className="save-button" onClick={handleSubmit} disabled={loading}>
+      <div className="button-container">
+        <button
+          type="button"
+          className="save-button"
+          onClick={handleSubmit}
+          disabled={loading}
+        >
           {loading ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
         </button>
       </div>

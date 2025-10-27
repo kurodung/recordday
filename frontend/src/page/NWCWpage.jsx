@@ -24,7 +24,6 @@ const NUMERIC_FIELDS = [
   "stay",
   "refer_back",
   "refer_out",
-  "nurse",
   "pn",
   "stretcher",
   "employee",
@@ -292,10 +291,6 @@ export default function NWCWpage({ username, wardname, selectedDate, shift }) {
             <div className="section-header">Refer out</div>
             {renderInput("", "refer_out")}
           </div>
-          <div className="form-column">
-            <div className="section-header">พยาบาลเวร</div>
-            {renderInput("", "nurse")}
-          </div>
 
         </div>
       </div>
@@ -308,6 +303,14 @@ export default function NWCWpage({ username, wardname, selectedDate, shift }) {
               {renderInput("PN:", "pn")}
               {renderInput("พนักงานเปล:", "stretcher")}
               {renderInput("พนักงานทั่วไป:", "employee")}
+            </div>
+          </div>
+                    <div className="form-column">
+            <div className="section-header" style={{ color: "green" }}>
+              พยาบาลหัวหน้าเวร
+            </div>
+            <div className="horizontal-inputs">
+              {renderInput("", "head_nurse", "text", 150)}
             </div>
           </div>
 
