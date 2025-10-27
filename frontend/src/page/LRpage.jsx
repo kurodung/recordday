@@ -293,6 +293,13 @@ const handleSubmit = async () => {
             <div className="section-header">CPR</div>
             {renderInput("", "cpr")}
           </div>
+          <div className="form-column">
+            <div className="section-header">การดูแลรอบการผ่าตัด</div>
+            <div className="horizontal-inputs">
+              {renderInput("Pre OP:", "pre_op")}
+              {renderInput("Post OP:", "post_op")}
+            </div>
+          </div>
           <div className="form-column" style={{}}>
             <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
             {renderInput("", "infection", "number", "180px")}
@@ -312,13 +319,6 @@ const handleSubmit = async () => {
           <div className="form-column">
             <div className="section-header">นักโทษในตึก</div>
             {renderInput("", "prisoner")}
-          </div>
-          <div className="form-column">
-            <div className="section-header">การดูแลรอบการผ่าตัด</div>
-            <div className="horizontal-inputs">
-              {renderInput("Pre OP:", "pre_op")}
-              {renderInput("Post OP:", "post_op")}
-            </div>
           </div>
         </div>
       </div>
