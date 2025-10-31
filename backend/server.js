@@ -32,6 +32,7 @@ const pftReportRoutes = require("./routes/pftReport");
 const nwcwReportRoutes = require("./routes/nwcwReport");
 const erReportRoutes = require("./routes/erReport");
 const opdReportRoutes = require("./routes/opdReport");
+const wardsRoute = require("./routes/wardsRoute");
 
 
 
@@ -58,6 +59,8 @@ app.use("/api", pftReportRoutes);
 app.use("/api", nwcwReportRoutes);
 app.use("/api", erReportRoutes);
 app.use("/api", opdReportRoutes);
+app.use("/api/admin/users", require("./routes/adminUsers"));
+app.use("/api/wards", wardsRoute);
 
 
 const toMysqlDate = (value) => {
