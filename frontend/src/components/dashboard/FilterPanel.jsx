@@ -1,15 +1,13 @@
 import React, { useMemo } from "react";
 import { Filter, X } from "lucide-react";
-import styles from "../../styles/Dashboard.module.css";
+import styles from "../../styles/Dashboard.module.css"; // 👈 ใช้ CSS module โดยตรง
 
-/* ------------------------- Helper: map options ------------------------- */
 function toOptions(list) {
   return (list || []).map((it) =>
     typeof it === "object" ? it : { value: it, label: String(it) }
   );
 }
 
-/* ---------------------------- Component ---------------------------- */
 export default function FilterPanel({
   filters,
   filterOptions,
@@ -17,9 +15,7 @@ export default function FilterPanel({
   onChangeFilter,
   onChangeDate,
   onClear,
-  disabledFields = {}, // ✅ รองรับ prop disabledFields
 }) {
-  /* -------------------------- Static options -------------------------- */
   const shiftOptions = useMemo(
     () => [
       { value: "morning", label: "เวรเช้า" },
@@ -52,7 +48,6 @@ export default function FilterPanel({
     [filterOptions?.subwards]
   );
 
-  /* -------------------------- Field list -------------------------- */
   const fields = [
     {
       name: "startDate",
@@ -94,7 +89,6 @@ export default function FilterPanel({
       type: "select",
       value: filters.department,
       options: deptOptions,
-      disabled: disabledFields.department, // ✅ ล็อกเมื่อเป็น user
     },
     {
       name: "ward",
@@ -102,7 +96,6 @@ export default function FilterPanel({
       type: "select",
       value: filters.ward,
       options: wardOptions,
-      disabled: disabledFields.ward, // ✅ ล็อกเมื่อเป็น user
     },
     {
       name: "subward",
@@ -110,14 +103,10 @@ export default function FilterPanel({
       type: "select",
       value: filters.subward,
       options: subwardOpts,
-      disabled:
-        !filters.ward ||
-        (filterOptions?.subwards || []).length === 0 ||
-        disabledFields.subward, // ✅ เพิ่มด้วย เผื่ออนาคตอยากล็อก subward
+      disabled: !filters.ward || (filterOptions?.subwards || []).length === 0,
     },
   ];
 
-  /* --------------------------- Render --------------------------- */
   return (
     <div className={styles.filterSection}>
       <div className={styles.filterHeader}>
@@ -127,12 +116,7 @@ export default function FilterPanel({
 
       <div className={styles.filterGrid}>
         {fields.map((field) => (
-          <div
-            key={field.name}
-            className={`${styles.filterItem} ${
-              field.disabled ? styles.disabledField : ""
-            }`}
-          >
+          <div key={field.name} className={styles.filterItem}>
             <label className={styles.filterLabel}>{field.label}</label>
             {field.type === "date" ? (
               <input
@@ -149,10 +133,9 @@ export default function FilterPanel({
                 className={styles.filterInput}
                 onFocus={(e) => {
                   if (typeof e.target.showPicker === "function") {
-                    e.target.showPicker();
+                    e.target.showPicker(); // 👉 กดครั้งเดียว popup ปฏิทินเด้งขึ้นทันที
                   }
                 }}
-                disabled={field.disabled}
               />
             ) : (
               <select

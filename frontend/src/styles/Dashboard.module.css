@@ -617,35 +617,6 @@ input[name="cleaner"] {
   width: 140px !important;
 }
 
-/* --- ปรับตารางผู้ใช้ในหน้า Admin --- */
-.logTable th,
-.logTable td {
-  padding: 6px 8px !important; /* ลด padding */
-  font-size: 14px;             /* ขนาดตัวอักษรเล็กลง */
-  line-height: 1.2;
-}
-
-.logTable tbody tr:nth-child(even) {
-  background-color: #faf5ff;   /* สีพื้นบาง ๆ แยกบรรทัด */
-}
-
-.clearFiltersBtn {
-  padding: 8px 14px !important; /* ปุ่มเล็กลง */
-  font-size: 13px !important;
-}
-
-/* ช่องที่ถูกปิดการใช้งาน */
-.disabledField select:disabled,
-.disabledField input:disabled {
-  background-color: #f3f3f3 !important;
-  color: #999 !important;
-  border-color: #e0e0e0 !important;
-  cursor: not-allowed;
-  opacity: 0.8;
-}
-
-
-
 
 
 

@@ -29,9 +29,8 @@ function logQuery(label, sql, params) {
 /** ใช้ subward (ไม่ใช่ sub_ward) และตัดซ้ำด้วย DISTINCT */
 const JOIN_WARDS = `
 LEFT JOIN (
-  SELECT DISTINCT w.wardname, w.subward, d.department_name AS department
-  FROM wards w
-  LEFT JOIN departments d ON w.department_id = d.id
+  SELECT DISTINCT wardname, subward, TRIM(department) AS department
+  FROM wards
 ) w
   ON w.wardname = vu.wardname
  AND COALESCE(TRIM(vu.subward),'') = COALESCE(TRIM(w.subward),'')
@@ -120,7 +119,7 @@ router.get("/", requireBearer, async (req, res) => {
 
     const joinWards = needsJoinWards ? JOIN_WARDS : "";
     if (needsJoinWards && department) {
-      where.push(`TRIM(d.department_name) = TRIM(?)`);
+      where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
     }
     const selectDepartment = needsJoinWards
@@ -189,7 +188,7 @@ router.get("/summary", requireBearer, async (req, res) => {
 
     const joinWards = needsJoinWards ? JOIN_WARDS : "";
     if (needsJoinWards && department) {
-      where.push(`TRIM(d.department_name) = TRIM(?)`);
+      where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
     }
 
@@ -248,8 +247,7 @@ router.get("/summary", requireBearer, async (req, res) => {
           "extra_bed",
           "psych",
           "prisoner",
-          "rn",
-          "rn_extra",
+          "rn","rn_extra",
         ]) {
           t[k] = (t[k] || 0) + (Number(r[k]) || 0);
         }
@@ -268,9 +266,8 @@ router.get("/summary", requireBearer, async (req, res) => {
 /** --------- JOIN สำหรับ dengue (ใช้ตอนกรอง department) --------- **/
 const JOIN_WARDS_DENGUE = `
 LEFT JOIN (
-  SELECT DISTINCT w.wardname, w.subward, d.department_name AS department
-  FROM wards w
-  LEFT JOIN departments d ON w.department_id = d.id
+  SELECT DISTINCT wardname, subward, TRIM(department) AS department
+  FROM wards
 ) w
   ON w.wardname = dr.wardname
  AND COALESCE(TRIM(dr.subward),'') = COALESCE(TRIM(w.subward),'')
@@ -282,16 +279,8 @@ function buildDengueFilters(req, { forceWardLimit = false } = {}) {
   const isAdmin = String(user.username || "").toLowerCase() === "admin";
 
   const {
-    start,
-    end,
-    date,
-    dateFrom,
-    dateTo,
-    shift,
-    ward,
-    wardname,
-    subward,
-    department,
+    start, end, date, dateFrom, dateTo,
+    shift, ward, wardname, subward, department,
   } = req.query;
 
   const where = ["1=1"];
@@ -299,7 +288,7 @@ function buildDengueFilters(req, { forceWardLimit = false } = {}) {
 
   // NOTE: ตารางนี้ใช้คอลัมน์วันที่ชื่อ 'date'
   const _start = start || dateFrom || date || null;
-  const _end = end || dateTo || date || null;
+  const _end   = end   || dateTo   || date || null;
 
   if (_start && _end) {
     where.push(`dr.date >= ? AND dr.date < DATE_ADD(?, INTERVAL 1 DAY)`);
@@ -352,16 +341,13 @@ function buildDengueFilters(req, { forceWardLimit = false } = {}) {
  * ----------------------------------------------- */
 router.get("/dengue-summary", requireBearer, async (req, res) => {
   try {
-    const { where, params, needsJoinWards, department } = buildDengueFilters(
-      req,
-      {
-        forceWardLimit: false, // อยากรวมทั้ง รพ. ได้เว้นแต่ส่ง ward มากรอง
-      }
-    );
+    const { where, params, needsJoinWards, department } = buildDengueFilters(req, {
+      forceWardLimit: false, // อยากรวมทั้ง รพ. ได้เว้นแต่ส่ง ward มากรอง
+    });
 
     const joinWards = needsJoinWards ? JOIN_WARDS_DENGUE : "";
     if (needsJoinWards && department) {
-      where.push(`TRIM(d.department_name) = TRIM(?)`);
+      where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
     }
 
@@ -393,42 +379,36 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
     const data = [
       {
         dengue_type: "DF",
-        admit_new: Number(r.new_df || 0),
-        discharge_home: Number(r.dis_df || 0),
+        admit_new:      Number(r.new_df  || 0),
+        discharge_home: Number(r.dis_df  || 0),
         discharge_died: Number(r.died_df || 0),
-        bed_remain: Number(r.rem_df || 0),
+        bed_remain:     Number(r.rem_df  || 0),
       },
       {
         dengue_type: "DHF",
-        admit_new: Number(r.new_dhf || 0),
-        discharge_home: Number(r.dis_dhf || 0),
+        admit_new:      Number(r.new_dhf  || 0),
+        discharge_home: Number(r.dis_dhf  || 0),
         discharge_died: Number(r.died_dhf || 0),
-        bed_remain: Number(r.rem_dhf || 0),
+        bed_remain:     Number(r.rem_dhf  || 0),
       },
       {
         dengue_type: "DSS",
-        admit_new: Number(r.new_dss || 0),
-        discharge_home: Number(r.dis_dss || 0),
+        admit_new:      Number(r.new_dss  || 0),
+        discharge_home: Number(r.dis_dss  || 0),
         discharge_died: Number(r.died_dss || 0),
-        bed_remain: Number(r.rem_dss || 0),
+        bed_remain:     Number(r.rem_dss  || 0),
       },
     ];
 
     const total = data.reduce(
       (a, x) => ({
         dengue_type: "รวม",
-        admit_new: a.admit_new + x.admit_new,
+        admit_new:      a.admit_new      + x.admit_new,
         discharge_home: a.discharge_home + x.discharge_home,
         discharge_died: a.discharge_died + x.discharge_died,
-        bed_remain: a.bed_remain + x.bed_remain,
+        bed_remain:     a.bed_remain     + x.bed_remain,
       }),
-      {
-        dengue_type: "รวม",
-        admit_new: 0,
-        discharge_home: 0,
-        discharge_died: 0,
-        bed_remain: 0,
-      }
+      { dengue_type: "รวม", admit_new: 0, discharge_home: 0, discharge_died: 0, bed_remain: 0 }
     );
 
     res.json({ ok: true, data, total });
@@ -437,6 +417,8 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
     res.status(500).json({ ok: false, message: "Database error" });
   }
 });
+
+
 
 /** ------------------------------------------------
  * GET /api/dashboard/summary/movement  (รวมทั้ง รพ.)
@@ -449,7 +431,7 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
 
     const joinWards = needsJoinWards ? JOIN_WARDS : "";
     if (needsJoinWards && department) {
-      where.push(`TRIM(d.department_name) = TRIM(?)`);
+      where.push(`TRIM(w.department) = TRIM(?)`);
       params.push(department);
     }
 
@@ -511,12 +493,12 @@ router.get("/summary/movement", requireBearer, async (req, res) => {
  * ----------------------------------------------- */
 router.get("/departments", requireBearer, async (_req, res) => {
   try {
-    const [rows] = await db.query(`
-  SELECT DISTINCT d.id, d.department_name AS department
-  FROM departments d
-  JOIN wards w ON d.id = w.department_id
-  ORDER BY d.department_name
-`);
+    const [rows] = await db.query(
+      `SELECT DISTINCT TRIM(department) AS department
+         FROM wards
+        WHERE department IS NOT NULL AND TRIM(department) <> ''
+        ORDER BY department`
+    );
     res.json(rows);
   } catch (e) {
     console.error("GET /dashboard/departments error:", e);
@@ -533,7 +515,7 @@ router.get("/wards-by-department", requireBearer, async (req, res) => {
     const where = [];
     const params = [];
     if (has(department)) {
-      where.push("d.department_name = TRIM(?)");
+      where.push("TRIM(department) = TRIM(?)");
       params.push(department.trim());
     }
 
