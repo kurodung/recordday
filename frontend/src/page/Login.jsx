@@ -3,7 +3,6 @@ import api from "../api";
 import styles from "../styles/Login.module.css";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode"; // ✅ 1. Import jwt-decode
 
 // คืนค่า YYYY-MM-DD แบบ Local time (กัน -1 วัน)
 const localISODate = (d = new Date()) => {
@@ -70,7 +69,6 @@ const Login = () => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // ✅ 2. อัปเดต handleSubmit ทั้งหมด
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -78,42 +76,19 @@ const Login = () => {
 
     try {
       const res = await api.post("/api/login", form);
-      const token = res.data.token;
 
       // เก็บ token
       if (remember) {
-        localStorage.setItem("token", token);
+        localStorage.setItem("token", res.data.token);
       } else {
-        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("token", res.data.token);
       }
 
-      // --- 💡 ตรรกะใหม่เริ่มตรงนี้ 💡 ---
-      
-      // ถอดรหัส token เพื่อดูข้อมูล Role
-      const user = jwtDecode(token); 
-      
+      const username = form.username.trim().toLowerCase();
       const shift = "morning";
       const date = localISODate();
 
-      // 1. ตรวจสอบ Role พิเศษก่อน (Admin, Supervisor)
-      if (user.role === 'Admin' || user.role === 'Supervisor') {
-        // ❗️ คุณต้องสร้างหน้า /admindashboard เอง
-        navigate(`/admindashboard?shift=${shift}&date=${date}`); 
-        return;
-      }
-
-      // 2. ตรวจสอบ GroupLeader
-      if (user.role === 'GroupLeader') {
-        // ❗️ คุณต้องสร้างหน้า /departmentdashboard เอง
-        // เราส่ง departmentId ที่เราเก็บไว้ใน token ไป
-        navigate(`/departmentdashboard/${user.departmentId}?shift=${shift}&date=${date}`); 
-        return;
-      }
-
-      // 3. ถ้าเป็น Role 'User' (หรือ Role อื่นๆ) ให้ใช้ตรรกะเดิม
-      const username = user.username.trim().toLowerCase();
-      
-      // ✅ 3.1 ใช้ userPageMap (เหมือนเดิม)
+      // ✅ ถ้ามี mapping user → page
       if (userPageMap[username]) {
         navigate(
           `${userPageMap[username]}?shift=${encodeURIComponent(
@@ -123,16 +98,18 @@ const Login = () => {
         return;
       }
 
-      // ✅ 3.2 ไปหน้า /main (ลบการเรียก /api/subwards ที่ไม่จำเป็น)
-      // เราดึง subward มาจาก token ได้เลย (ที่ตั้งค่าไว้ใน authRoutes.js)
-      const subward = user.subWard || ""; 
+      // ✅ ไม่เจอใน mapping → ไป main โดยดึง subward
+      const subRes = await api.get("/api/subwards", { params: { username } });
+      const subwards = Array.isArray(subRes.data?.subwards)
+        ? subRes.data.subwards
+        : [];
+      const subward = subwards[0] || "";
 
       navigate(
         `/main?shift=${encodeURIComponent(shift)}&date=${encodeURIComponent(
           date
         )}&subward=${encodeURIComponent(subward)}`
       );
-
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
