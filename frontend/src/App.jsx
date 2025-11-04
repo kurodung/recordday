@@ -37,7 +37,7 @@ import ERpage from "./page/ERpage";
 import ERDashboard from "./page/Dashboard/ERDashboard";
 import OPDpage from "./page/OPDpage";
 import OPDDashboard from "./page/Dashboard/OPDDashboard";
-import Adminpage from "./page/Adminpage";
+
 
 const App = () => {
   return (
@@ -313,14 +313,6 @@ const App = () => {
           element={
             <HospitalLayout>
               <OPDDashboard />
-            </HospitalLayout>
-          }
-        />
-        <Route
-          path="/adminpage"
-          element={
-            <HospitalLayout>
-              <Adminpage />
             </HospitalLayout>
           }
         />

@@ -98,7 +98,7 @@ const Login = () => {
       // 1. ตรวจสอบ Role พิเศษก่อน (Admin, Supervisor)
       if (user.role === 'Admin' || user.role === 'Supervisor') {
         // ❗️ คุณต้องสร้างหน้า /admindashboard เอง
-        navigate(`/adminpage`);
+        navigate(`/admindashboard?shift=${shift}&date=${date}`); 
         return;
       }
 
