@@ -111,9 +111,8 @@ export default function FilterPanel({
       value: filters.subward,
       options: subwardOpts,
       disabled:
-        !filters.ward ||
-        (filterOptions?.subwards || []).length === 0 ||
-        disabledFields.subward, // ✅ เพิ่มด้วย เผื่ออนาคตอยากล็อก subward
+        ((filterOptions?.subwards || []).length === 0 && !filters.ward) ||
+        disabledFields.subward,
     },
   ];
 
