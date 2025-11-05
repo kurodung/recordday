@@ -58,6 +58,9 @@ app.use("/api", pftReportRoutes);
 app.use("/api", nwcwReportRoutes);
 app.use("/api", erReportRoutes);
 app.use("/api", opdReportRoutes);
+app.use("/api/users", require("./routes/users.js"));
+app.use("/api/wards", require("./routes/wards"));
+app.use("/api/departments", require("./routes/departments"));
 
 
 const toMysqlDate = (value) => {

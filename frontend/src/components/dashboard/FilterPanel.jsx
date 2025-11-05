@@ -103,7 +103,9 @@ export default function FilterPanel({
       type: "select",
       value: filters.subward,
       options: subwardOpts,
-      disabled: !filters.ward || (filterOptions?.subwards || []).length === 0,
+      disabled:
+        ((filterOptions?.subwards || []).length === 0 && !filters.ward) ||
+        disabledFields.subward,
     },
   ];
 
