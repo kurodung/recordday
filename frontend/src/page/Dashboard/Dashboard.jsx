@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { jwtDecode } from "jwt-decode";
 import { useSearchParams } from "react-router-dom";
 import { API_BASE } from "../../config";
 import {
@@ -52,7 +53,41 @@ const LOG_PAGE_SIZE = 10;
 
 /** ------------------------------- Component ------------------------------ **/
 export default function Dashboard({ username, wardname }) {
-  const isAdmin = String(username || "").toLowerCase() === "admin";
+  // 🔑 อ่านสิทธิ์จาก token
+  const token = localStorage.getItem("token");
+  let role_id = 1;
+  let ward_id = null;
+  let department_id = null;
+
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+
+      // ✅ รองรับทั้งชื่อคีย์แบบ snake_case และ camelCase
+      role_id = decoded.role_id || decoded.role || 1;
+      ward_id = decoded.ward_id || decoded.wardId || null;
+      department_id = decoded.department_id || decoded.departmentId || null;
+
+      // ✅ ถ้า role เป็น string (เช่น "HeadNurse") ให้แปลงเป็นตัวเลข
+      if (typeof role_id === "string") {
+        const roleMap = {
+          Admin: 4,
+          Supervisor: 3,
+          HeadNurse: 2,
+          User: 1,
+        };
+        role_id = roleMap[role_id] || 1;
+      }
+    } catch (e) {
+      console.warn("JWT decode error:", e);
+    }
+  }
+
+  const isAdmin = role_id === 4;
+  const isSupervisor = role_id === 3;
+  const isHeadNurse = role_id === 2;
+  const isUser = role_id === 1;
+
   const [searchParams] = useSearchParams();
   const qpShift = searchParams.get("shift") || "";
 
@@ -92,9 +127,17 @@ export default function Dashboard({ username, wardname }) {
   });
 
   // non-admin: ล็อก ward เป็นของตัวเอง
+  // 🔒 จำกัดสิทธิ์การดูข้อมูลตาม role
   useEffect(() => {
-    if (!isAdmin) setFilters((f) => ({ ...f, ward: wardname || "" }));
-  }, [isAdmin, wardname]);
+    setFilters((f) => {
+      if (isAdmin || isSupervisor) return f; // ดูได้ทั้งหมด
+      if (isHeadNurse)
+        return { ...f, department: department_id || "", ward: "", subward: "" };
+      if (isUser)
+        return { ...f, ward: wardname || "", department: "", subward: "" };
+      return f;
+    });
+  }, [isAdmin, isSupervisor, isHeadNurse, isUser, wardname, department_id]);
 
   // sync จาก URL (?shift=...)
   useEffect(() => {
@@ -169,10 +212,12 @@ export default function Dashboard({ username, wardname }) {
         const qs = buildDateRange(filters);
         if (filters.shift) qs.set("shift", filters.shift);
         if (isAdmin && filters.ward) qs.set("ward", filters.ward);
-        if (filters.subward) qs.set("subward", filters.subward);
         if (filters.department) qs.set("department", filters.department);
+        if (filters.subward) qs.set("subward", filters.subward);
 
         if (isUser && wardname) qs.set("ward", wardname);
+        if (isHeadNurse && department_id)
+          qs.set("department", department_id.toString());
 
         const url = `${API_BASE}/api/dashboard${qs.toString() ? `?${qs}` : ""}`;
         const res = await fetch(url, {
@@ -191,7 +236,7 @@ export default function Dashboard({ username, wardname }) {
         setLoading(false);
       }
     },
-    [isAdmin]
+    [isAdmin, isUser, isHeadNurse, wardname, department_id]
   );
 
   useEffect(() => {
@@ -352,40 +397,38 @@ export default function Dashboard({ username, wardname }) {
     return Object.entries(wardCounts).map(([name, value]) => ({ name, value }));
   }, [filteredData, filters.department, departmentDistribution]);
 
-const summaryStats = useMemo(() => {
-  // รวมรับใหม่และจำหน่ายตามปกติ
-  const totalAdmissions = filteredData.reduce(
-    (s, r) => s + (r.bed_new || 0),
-    0
-  );
-  const totalDischarges = filteredData.reduce(
-    (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
-    0
-  );
+  const summaryStats = useMemo(() => {
+    // รวมรับใหม่และจำหน่ายตามปกติ
+    const totalAdmissions = filteredData.reduce(
+      (s, r) => s + (r.bed_new || 0),
+      0
+    );
+    const totalDischarges = filteredData.reduce(
+      (s, r) => s + (r.discharge_home || 0) + (r.discharge_transfer_out || 0),
+      0
+    );
 
-  // ✅ เอาเฉพาะแถวที่ productivity มีค่ามากกว่า 0
-  const validRows = filteredData.filter(
-    (r) => r.productivity !== null && parseFloat(r.productivity) > 0
-  );
+    // ✅ เอาเฉพาะแถวที่ productivity มีค่ามากกว่า 0
+    const validRows = filteredData.filter(
+      (r) => r.productivity !== null && parseFloat(r.productivity) > 0
+    );
 
-  const totalProductivity = validRows.reduce(
-    (s, r) => s + parseFloat(r.productivity || 0),
-    0
-  );
+    const totalProductivity = validRows.reduce(
+      (s, r) => s + parseFloat(r.productivity || 0),
+      0
+    );
 
-  const avgProductivity = validRows.length
-    ? totalProductivity / validRows.length
-    : 0;
+    const avgProductivity = validRows.length
+      ? totalProductivity / validRows.length
+      : 0;
 
-  return {
-    recordCount: filteredData.length,
-    totalAdmissions,
-    totalDischarges,
-    avgProductivity: avgProductivity.toFixed(2),
-  };
-}, [filteredData]);
-
-
+    return {
+      recordCount: filteredData.length,
+      totalAdmissions,
+      totalDischarges,
+      avgProductivity: avgProductivity.toFixed(2),
+    };
+  }, [filteredData]);
 
   /** --------------------------- Movement (local data) -------------------------- **/
   const movement = useMemo(() => {
@@ -1477,16 +1520,16 @@ const summaryStats = useMemo(() => {
   };
 
   const clearFilters = () => {
-    setFilters((prev) => ({
+    setFilters({
       startDate: "",
       endDate: "",
       shift: "",
-      department: isAdmin || isHeadNurse ? "" : prev.department,
-      ward: isAdmin || isHeadNurse ? "" : prev.ward, // ✅ ไม่ล้าง ward ของ user/supervisor
+      department: "",
+      ward: "",
       subward: "",
       month: "",
       year: "",
-    }));
+    });
   };
 
   /** --------------------------------- Styles --------------------------------- **/
@@ -1518,6 +1561,13 @@ const summaryStats = useMemo(() => {
             <h1 className={styles.dashboardTitle}>📊 ภาพรวมข้อมูลโรงพยาบาล</h1>
             <p className={styles.dashboardSubtitle}>
               ระบบติดตามและวิเคราะห์ข้อมูลการดำเนินงาน
+            </p>
+            <p className={styles.dashboardSubtitle}>
+              สิทธิ์ผู้ใช้งาน:
+              {isAdmin && " Admin"}
+              {isSupervisor && " ผู้ตรวจการ"}
+              {isHeadNurse && " หัวหน้าตึก"}
+              {isUser && " พยาบาลประจำ Ward"}
             </p>
           </div>
         </div>
@@ -1576,6 +1626,10 @@ const summaryStats = useMemo(() => {
         onChangeFilter={handleFilterChange}
         onChangeDate={handleDateChange}
         onClear={clearFilters}
+        disabledFields={{
+          department: isUser, // user ปกติเปลี่ยนตึกไม่ได้
+          ward: isUser, // user ปกติเปลี่ยน ward ไม่ได้
+        }}
       />
 
       {/* กราฟเดิม */}
@@ -1710,7 +1764,7 @@ const summaryStats = useMemo(() => {
       {/* View: รวมทั้งหมด + วอร์ดพิเศษ */}
       <Block
         styles={styles}
-        title="รวมคงพยาบาลทั้งหมด ทุกวอร์ด"
+        title="รวมคงพยาบาลทั้งหมด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}

@@ -118,7 +118,7 @@ export default function HospitalLayout({ children }) {
       const decoded = jwtDecode(token);
       if (decoded?.username) {
         setUsername(decoded.username);
-        setWardname(decoded.wardname);
+        setWardname(decoded.wardName || decoded.wardname || "");
       } else throw new Error("Username not found in token");
     } catch (error) {
       console.error("Invalid token:", error);
@@ -184,7 +184,7 @@ export default function HospitalLayout({ children }) {
 
   useEffect(() => {
   // หน้าที่ไม่ควรบังคับ redirect
-  const skipPaths = ["/dashboard", "/dashboard-or", "/dashboard-hd", "/covid", "/dengue", "/multi-day", "/settings"];
+  const skipPaths = ["/dashboard", "/dashboard-or", "/dashboard-hd", "/covid", "/dengue", "/multi-day", "/adminpage"];
   if (skipPaths.some((p) => location.pathname.startsWith(p))) return;
 
   const sub = norm(subward);
@@ -259,7 +259,7 @@ export default function HospitalLayout({ children }) {
 
         <div className="sidebar-section">
           {username === "admin" && (
-            <div className="sidebar-item" onClick={() => go("/settings")}>
+            <div className="sidebar-item" onClick={() => navigate("/adminpage")}>
               <FiSettings className="sidebar-icon" /> Settings
             </div>
           )}

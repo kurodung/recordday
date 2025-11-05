@@ -71,12 +71,11 @@ export default function Adminpage() {
   const handleAddUser = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/users`, {
+      const res = await fetch(`${API_BASE}/api/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
       const data = await res.json();
       alert(data.message);
       fetchUsers();
@@ -96,7 +95,7 @@ export default function Adminpage() {
 
   const handleDeleteUser = async (id) => {
     if (!window.confirm("ต้องการลบผู้ใช้นี้หรือไม่?")) return;
-    await fetch(`${API_BASE}/api/users/${id}`, { method: "DELETE" });
+    await fetch(`${API_BASE}/api/admin/users/${id}`, { method: "DELETE" });
     fetchUsers();
   };
 
@@ -117,7 +116,8 @@ export default function Adminpage() {
 
   const nextWardPage = () =>
     setWardPage((p) => (p < totalWardPages ? p + 1 : p));
-  const prevWardPage = () => setWardPage((p) => (p > 1 ? p - 1 : p));
+  const prevWardPage = () =>
+    setWardPage((p) => (p > 1 ? p - 1 : p));
 
   // -------------------- Access (user_wards) --------------------
   const fetchUserWards = async (userId) => {
@@ -544,9 +544,7 @@ export default function Adminpage() {
                           padding: "6px 12px",
                         }}
                         onClick={async () => {
-                          if (
-                            window.confirm("ต้องการลบ Department นี้หรือไม่?")
-                          ) {
+                          if (window.confirm("ต้องการลบ Department นี้หรือไม่?")) {
                             await fetch(`${API_BASE}/api/departments/${d.id}`, {
                               method: "DELETE",
                             });
@@ -570,9 +568,7 @@ export default function Adminpage() {
         <>
           <div className={styles.filterSection}>
             <div className={styles.filterHeader}>
-              <h2 className={styles.filterTitle}>
-                สิทธิ์การเข้าถึง Ward ของผู้ใช้
-              </h2>
+              <h2 className={styles.filterTitle}>สิทธิ์การเข้าถึง Ward ของผู้ใช้</h2>
             </div>
             <div className={styles.filterGrid}>
               <div className={styles.filterItem}>

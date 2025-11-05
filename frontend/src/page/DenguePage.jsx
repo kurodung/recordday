@@ -142,49 +142,6 @@ const DenguePage = ({ username, wardname, selectedDate, shift }) => {
     }
   }, []);
 
-  // 🧮 คำนวณ remain_* อัตโนมัติทุกครั้งที่ค่าเปลี่ยน
-useEffect(() => {
-  const calcRemain = (carry, newly, transfer, discharge, move, died) =>
-    (Number(carry) || 0) + (Number(newly) || 0) + (Number(transfer) || 0) -
-    ((Number(discharge) || 0) + (Number(move) || 0) + (Number(died) || 0));
-
-  setFormData((prev) => ({
-    ...prev,
-    remain_df: calcRemain(
-      prev.carry_df,
-      prev.new_df,
-      prev.transfer_df,
-      prev.discharge_df,
-      prev.move_df,
-      prev.died_df
-    ),
-    remain_dhf: calcRemain(
-      prev.carry_dhf,
-      prev.new_dhf,
-      prev.transfer_dhf,
-      prev.discharge_dhf,
-      prev.move_dhf,
-      prev.died_dhf
-    ),
-    remain_dss: calcRemain(
-      prev.carry_dss,
-      prev.new_dss,
-      prev.transfer_dss,
-      prev.discharge_dss,
-      prev.move_dss,
-      prev.died_dss
-    ),
-  }));
-}, [
-  formData.carry_df, formData.new_df, formData.transfer_df,
-  formData.discharge_df, formData.move_df, formData.died_df,
-  formData.carry_dhf, formData.new_dhf, formData.transfer_dhf,
-  formData.discharge_dhf, formData.move_dhf, formData.died_dhf,
-  formData.carry_dss, formData.new_dss, formData.transfer_dss,
-  formData.discharge_dss, formData.move_dss, formData.died_dss,
-]);
-
-
   return (
     <div className="form-container" ref={formRef}>
       <h2 style={{ textAlign: "center", marginBottom: "1rem", color: "#6b21a8" }}>
@@ -255,8 +212,6 @@ useEffect(() => {
           </div>
         </div>
       </div>
-
-      
 
       <div className="button-container">
         <button className="save-button" onClick={handleSubmit}>
