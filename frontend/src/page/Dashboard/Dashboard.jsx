@@ -212,12 +212,10 @@ export default function Dashboard({ username, wardname }) {
         const qs = buildDateRange(filters);
         if (filters.shift) qs.set("shift", filters.shift);
         if (isAdmin && filters.ward) qs.set("ward", filters.ward);
-        if (filters.department) qs.set("department", filters.department);
         if (filters.subward) qs.set("subward", filters.subward);
+        if (filters.department) qs.set("department", filters.department);
 
         if (isUser && wardname) qs.set("ward", wardname);
-        if (isHeadNurse && department_id)
-          qs.set("department", department_id.toString());
 
         const url = `${API_BASE}/api/dashboard${qs.toString() ? `?${qs}` : ""}`;
         const res = await fetch(url, {
@@ -1520,16 +1518,16 @@ export default function Dashboard({ username, wardname }) {
   };
 
   const clearFilters = () => {
-    setFilters({
+    setFilters((prev) => ({
       startDate: "",
       endDate: "",
       shift: "",
-      department: "",
-      ward: "",
+      department: isAdmin || isHeadNurse ? "" : prev.department,
+      ward: isAdmin || isHeadNurse ? "" : prev.ward, // ✅ ไม่ล้าง ward ของ user/supervisor
       subward: "",
       month: "",
       year: "",
-    });
+    }));
   };
 
   /** --------------------------------- Styles --------------------------------- **/
@@ -1764,7 +1762,7 @@ export default function Dashboard({ username, wardname }) {
       {/* View: รวมทั้งหมด + วอร์ดพิเศษ */}
       <Block
         styles={styles}
-        title="รวมคงพยาบาลทั้งหมด"
+        title="รวมคงพยาบาลทั้งหมด ทุกวอร์ด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}
