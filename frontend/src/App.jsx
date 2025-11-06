@@ -38,6 +38,7 @@ import ERDashboard from "./page/Dashboard/ERDashboard";
 import OPDpage from "./page/OPDpage";
 import OPDDashboard from "./page/Dashboard/OPDDashboard";
 import Adminpage from "./page/Adminpage";
+import CompareDashboard from "./page/Dashboard/CompareDashboard";
 
 const App = () => {
   return (
@@ -321,6 +322,14 @@ const App = () => {
           element={
             <HospitalLayout>
               <Adminpage />
+            </HospitalLayout>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <HospitalLayout>
+              <CompareDashboard />
             </HospitalLayout>
           }
         />

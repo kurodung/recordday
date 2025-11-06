@@ -38,9 +38,15 @@ router.post("/", async (req, res) => {
         .json({ message: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" });
 
     const hashed = await bcrypt.hash(password, 10);
+
+    // ✅ ปรับให้ค่าว่างกลายเป็น null เพื่อป้องกัน foreign key error
+    const safeWardId = ward_id && ward_id !== "" ? ward_id : null;
+    const safeDeptId =
+      department_id && department_id !== "" ? department_id : null;
+
     await db.query(
       "INSERT INTO users (username, password, role_id, ward_id, department_id) VALUES (?, ?, ?, ?, ?)",
-      [username, hashed, role_id, ward_id, department_id]
+      [username, hashed, role_id, safeWardId, safeDeptId]
     );
 
     res.json({ message: "เพิ่มผู้ใช้สำเร็จ" });

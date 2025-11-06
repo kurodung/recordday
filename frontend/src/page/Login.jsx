@@ -96,7 +96,7 @@ const Login = () => {
       const date = localISODate();
 
       // 1. ตรวจสอบ Role พิเศษก่อน (Admin, Supervisor)
-      if (user.role === 'Admin' || user.role === 'Supervisor') {
+      if ((user.role === 'Admin' || user.role === 'Supervisor') && user.username === "admin") {
         // ❗️ คุณต้องสร้างหน้า /admindashboard เอง
         navigate(`/adminpage`);
         return;

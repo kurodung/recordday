@@ -49,7 +49,6 @@ const usernameToPageMap = {
   nwcw: () => "/nwcwpage",
   er: () => "/erpage",
   opd: () => "/opdpage",
-
 };
 
 // -----------------------------------------
@@ -143,9 +142,7 @@ export default function HospitalLayout({ children }) {
       try {
         const token = localStorage.getItem("token") || "";
         const res = await fetch(
-          `${API_BASE}/api/subwards?username=${encodeURIComponent(
-            username
-          )}`,
+          `${API_BASE}/api/subwards?username=${encodeURIComponent(username)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await res.json();
@@ -180,34 +177,58 @@ export default function HospitalLayout({ children }) {
     if (current.toString() !== want.toString()) {
       navigate(`${location.pathname}?${want.toString()}`, { replace: true });
     }
-  }, [activeShift, selectedDate, subward, username, wardname, location.pathname, location.search, navigate]);
+  }, [
+    activeShift,
+    selectedDate,
+    subward,
+    username,
+    wardname,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   useEffect(() => {
-  // หน้าที่ไม่ควรบังคับ redirect
-  const skipPaths = ["/dashboard", "/dashboard-or", "/dashboard-hd", "/covid", "/dengue", "/multi-day", "/adminpage"];
-  if (skipPaths.some((p) => location.pathname.startsWith(p))) return;
+    // หน้าที่ไม่ควรบังคับ redirect
+    const skipPaths = [
+      "/dashboard",
+      "/dashboard-or",
+      "/dashboard-hd",
+      "/covid",
+      "/dengue",
+      "/multi-day",
+      "/adminpage",
+    ];
+    if (skipPaths.some((p) => location.pathname.startsWith(p))) return;
 
-  const sub = norm(subward);
-  const qs = new URLSearchParams({
-    shift: activeShift,
-    date: selectedDate,
-    subward,
-  });
+    const sub = norm(subward);
+    const qs = new URLSearchParams({
+      shift: activeShift,
+      date: selectedDate,
+      subward,
+    });
 
-  let target = null;
-  if (sub === "ห้องคลอด") {
-    target = `/lrpage?${qs.toString()}`;
-  } else if (sub === "รอคลอด") {
-    target = `/main?${qs.toString()}`;
-  }
-
-  if (target) {
-    const current = `${location.pathname}${location.search}`;
-    if (current !== target) {
-      navigate(target, { replace: true });
+    let target = null;
+    if (sub === "ห้องคลอด") {
+      target = `/lrpage?${qs.toString()}`;
+    } else if (sub === "รอคลอด") {
+      target = `/main?${qs.toString()}`;
     }
-  }
-}, [subward, activeShift, selectedDate, location.pathname, location.search, navigate]);
+
+    if (target) {
+      const current = `${location.pathname}${location.search}`;
+      if (current !== target) {
+        navigate(target, { replace: true });
+      }
+    }
+  }, [
+    subward,
+    activeShift,
+    selectedDate,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   const isActiveTab = (paths) => {
     if (Array.isArray(paths))
@@ -238,11 +259,16 @@ export default function HospitalLayout({ children }) {
   return (
     <div className="hospital-container">
       {isMobile && sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       <aside
-        className={`sidebar custom-sidebar ${isMobile ? "mobile" : ""} ${sidebarOpen ? "open" : ""}`}
+        className={`sidebar custom-sidebar ${isMobile ? "mobile" : ""} ${
+          sidebarOpen ? "open" : ""
+        }`}
         aria-hidden={isMobile && !sidebarOpen}
       >
         <div className="sidebar-header">
@@ -251,7 +277,10 @@ export default function HospitalLayout({ children }) {
           </div>
           <div className="sidebar-title">{wardname || "Ward"}</div>
           {isMobile && (
-            <button className="icon-button close" onClick={() => setSidebarOpen(false)}>
+            <button
+              className="icon-button close"
+              onClick={() => setSidebarOpen(false)}
+            >
               <FiX />
             </button>
           )}
@@ -259,7 +288,10 @@ export default function HospitalLayout({ children }) {
 
         <div className="sidebar-section">
           {username === "admin" && (
-            <div className="sidebar-item" onClick={() => navigate("/adminpage")}>
+            <div
+              className="sidebar-item"
+              onClick={() => navigate("/adminpage")}
+            >
               <FiSettings className="sidebar-icon" /> Settings
             </div>
           )}
@@ -268,19 +300,25 @@ export default function HospitalLayout({ children }) {
         <div className="sidebar-section-label">เวรการทำงาน</div>
         <div className="sidebar-section shift-section">
           <div
-            className={`sidebar-item input-group ${activeShift === "morning" ? "highlighted" : ""}`}
+            className={`sidebar-item input-group ${
+              activeShift === "morning" ? "highlighted" : ""
+            }`}
             onClick={() => setActiveShift("morning")}
           >
             <FiSun className="sidebar-icon" /> เวรเช้า
           </div>
           <div
-            className={`sidebar-item input-group ${activeShift === "afternoon" ? "highlighted" : ""}`}
+            className={`sidebar-item input-group ${
+              activeShift === "afternoon" ? "highlighted" : ""
+            }`}
             onClick={() => setActiveShift("afternoon")}
           >
             <FiSunset className="sidebar-icon" /> เวรบ่าย
           </div>
           <div
-            className={`sidebar-item input-group ${activeShift === "night" ? "highlighted" : ""}`}
+            className={`sidebar-item input-group ${
+              activeShift === "night" ? "highlighted" : ""
+            }`}
             onClick={() => setActiveShift("night")}
           >
             <FiMoon className="sidebar-icon" /> เวรดึก
@@ -321,14 +359,19 @@ export default function HospitalLayout({ children }) {
       <main className="main-content">
         <div className="top-nav">
           {isMobile && (
-            <button className="icon-button" onClick={() => setSidebarOpen(true)}>
+            <button
+              className="icon-button"
+              onClick={() => setSidebarOpen(true)}
+            >
               <FiMenu />
             </button>
           )}
 
           <div className="tabs-scroll">
             <button
-              className={`nav-tab ${isActiveTab(["/main", "/lrpage"]) ? "active" : ""}`}
+              className={`nav-tab ${
+                isActiveTab(["/main", "/lrpage"]) ? "active" : ""
+              }`}
               onClick={handleGeneralClick}
             >
               ทั่วไป
@@ -354,35 +397,79 @@ export default function HospitalLayout({ children }) {
               MultiDay
             </button>
             <button
-              className={`nav-tab ${isActiveTab(["/dashboard", "/dashboard-or"]) ? "active" : ""}`}
+              className={`nav-tab ${
+                isActiveTab(["/dashboard", "/dashboard-or"]) ? "active" : ""
+              }`}
               onClick={() => {
-                if (norm(wardname) === "ห้องผ่าตัด" || norm(username) === "or") {
+                if (
+                  norm(wardname) === "ห้องผ่าตัด" ||
+                  norm(username) === "or"
+                ) {
                   go("/dashboard-or");
-                } else if (norm(wardname) === "ไตเทียม" || norm(username) === "hd") {
+                } else if (
+                  norm(wardname) === "ไตเทียม" ||
+                  norm(username) === "hd"
+                ) {
                   go("/dashboard-hd");
-                } else if (norm(wardname) === "Cath lab" || norm(username) === "cl") {
+                } else if (
+                  norm(wardname) === "Cath lab" ||
+                  norm(username) === "cl"
+                ) {
                   go("/dashboard-cl");
-                } else if (norm(wardname) === "หน่วยโรคหัวใจ" || norm(username) === "cu") {
+                } else if (
+                  norm(wardname) === "หน่วยโรคหัวใจ" ||
+                  norm(username) === "cu"
+                ) {
                   go("/dashboard-cu");
-                } else if (norm(wardname) === "เคมีบำบัด(ตรวจรักษาพิเศษ)" || norm(username) === "stch") {
+                } else if (
+                  norm(wardname) === "เคมีบำบัด(ตรวจรักษาพิเศษ)" ||
+                  norm(username) === "stch"
+                ) {
                   go("/dashboard-stch");
-                } else if (norm(wardname) === "ส่องกล้อง" || norm(username) === "endo") {
+                } else if (
+                  norm(wardname) === "ส่องกล้อง" ||
+                  norm(username) === "endo"
+                ) {
                   go("/dashboard-endo");
-                } else if (norm(wardname) === "รังสีรักษา" || norm(username) === "rt") {
+                } else if (
+                  norm(wardname) === "รังสีรักษา" ||
+                  norm(username) === "rt"
+                ) {
                   go("/dashboard-rt");
-                } else if (norm(wardname) === "รังสีร่วมรักษา" || norm(username) === "ir") {
+                } else if (
+                  norm(wardname) === "รังสีร่วมรักษา" ||
+                  norm(username) === "ir"
+                ) {
                   go("/dashboard-ir");
-                } else if (norm(wardname) === "เวชศาสตร์นิวเคลียร์" || norm(username) === "nm") {
+                } else if (
+                  norm(wardname) === "เวชศาสตร์นิวเคลียร์" ||
+                  norm(username) === "nm"
+                ) {
                   go("/dashboard-nm");
-                } else if (norm(wardname) === "Sleep lab" || norm(username) === "sl") {
+                } else if (
+                  norm(wardname) === "Sleep lab" ||
+                  norm(username) === "sl"
+                ) {
                   go("/dashboard-sl");
-                } else if (norm(wardname) === "สมรรถภาพปอด" || norm(username) === "pft") {
+                } else if (
+                  norm(wardname) === "สมรรถภาพปอด" ||
+                  norm(username) === "pft"
+                ) {
                   go("/dashboard-pft");
-                } else if (norm(wardname) === "ศูนย์พักนวชีวา" || norm(username) === "nwcw") {
+                } else if (
+                  norm(wardname) === "ศูนย์พักนวชีวา" ||
+                  norm(username) === "nwcw"
+                ) {
                   go("/dashboard-nwcw");
-                } else if (norm(wardname) === "อุบัติเหตุ" || norm(username) === "er") {
+                } else if (
+                  norm(wardname) === "อุบัติเหตุ" ||
+                  norm(username) === "er"
+                ) {
                   go("/dashboard-er");
-                } else if (norm(wardname) === "ผู้ป่วยนอก" || norm(username) === "opd") {
+                } else if (
+                  norm(wardname) === "ผู้ป่วยนอก" ||
+                  norm(username) === "opd"
+                ) {
                   go("/dashboard-opd");
                 } else {
                   go("/dashboard");
@@ -394,6 +481,15 @@ export default function HospitalLayout({ children }) {
               Dashboard
             </button>
           </div>
+
+          <button
+            className={`nav-tab ${isActiveTab("/compare") ? "active" : ""}`}
+            onClick={() => go("/compare")}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <FiBarChart className="sidebar-icon" />
+            Compare
+          </button>
 
           <div className="date-selector">
             <input
