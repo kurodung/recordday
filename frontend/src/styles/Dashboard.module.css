@@ -644,7 +644,156 @@ input[name="cleaner"] {
   opacity: 0.8;
 }
 
+/* === ตาราง Compare Dashboard === */
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
 
+.compareTable th,
+.compareTable td {
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 14px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.compareTable thead th {
+  font-weight: 700;
+  font-size: 15px;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.compareTable tbody tr:hover {
+  background-color: #faf5ff;
+  transition: background-color 0.2s ease;
+}
+
+/* สีแถวเวร */
+.compareTable th:nth-child(2),
+.compareTable td:nth-child(2) {
+  background-color: #fffbee; /* เช้า */
+}
+.compareTable th:nth-child(3),
+.compareTable td:nth-child(3) {
+  background-color: #fff0e0; /* บ่าย */
+}
+.compareTable th:nth-child(4),
+.compareTable td:nth-child(4) {
+  background-color: #e7f0ff; /* ดึก */
+}
+.compareTable th:nth-child(5),
+.compareTable td:nth-child(5) {
+  background-color: #f3e8ff; /* รวม */
+}
+
+/* ปุ่มดูรายละเอียด */
+.compareTable td:last-child {
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.compareTable tr.expandedRow td {
+  background-color: #faf8ff !important;
+  font-size: 13px;
+  text-align: left;
+  padding: 10px 20px;
+}
+
+.compareTable th,
+.compareTable td {
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.compareTable td:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.compareTable tr td:first-child {
+  font-weight: 500;
+}
+
+.compareTable tr td:first-child::before {
+  content: "";
+}
+
+/* 🟣 แถวหมวดใหญ่ */
+.compareTable tr:nth-child(odd):has(td:first-child:contains("🟣")) {
+  background-color: #f4f0ff;
+  font-weight: 700;
+  color: #6b21a8;
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.compareTable th {
+  background: #f3f4f6;
+  font-weight: 600;
+  padding: 8px 10px;
+}
+
+.compareTable td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.compareTable tr.group-row td {
+  background-color: var(--group-color);
+  font-weight: 700;
+  color: #3b0764;
+  border-top: 3px solid #7e22ce;
+}
+
+.compareTable tr td:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ==== ตาราง CompareDashboard สีหมวดหลัก ==== */
+.groupHeader td {
+  font-weight: 700;
+  color: #3b0764;
+  border-top: 3px solid #7e22ce;
+  padding: 8px 10px;
+}
+
+/* หมวดคงพยาบาล */
+.group-nursing td {
+  background-color: #f8e8ff !important;
+}
+
+/* หมวดประเภทผู้ป่วย */
+.group-patient td {
+  background-color: #e6f4ff !important;
+}
+
+/* หมวด Ventilator */
+.group-vent td {
+  background-color: #fff7d1 !important;
+}
+
+/* หมวดสรุปอื่น ๆ */
+.group-summary td {
+  background-color: #e7ffe9 !important;
+}
+
+/* หมวดไข้เลือดออก */
+.group-dengue td {
+  background-color: #f0fff4 !important;
+}
 
 
 
