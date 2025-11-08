@@ -1781,7 +1781,7 @@ export default function Dashboard({ username, wardname }) {
       {/* View: ICU */}
       <Block
         styles={styles}
-        title="สรุป คงพยาบาล ICU"
+        title="สรุป คงพยาบาล ICU ทุกวอร์ด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}
@@ -1795,7 +1795,7 @@ export default function Dashboard({ username, wardname }) {
       {/* View: สามัญ / Semi ICU / ทารก + รวม 5 ช่อง */}
       <Block
         styles={styles}
-        title="สรุป สามัญ / Semi ICU / ทารก"
+        title="สรุป สามัญ / Semi ICU / ทารก ทุกวอร์ด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}
@@ -1832,7 +1832,7 @@ export default function Dashboard({ username, wardname }) {
       {/* View: Ventilator */}
       <Block
         styles={styles}
-        title="สรุป Ventilator "
+        title="สรุป Ventilator ทุกวอร์ด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={
@@ -2009,7 +2009,7 @@ export default function Dashboard({ username, wardname }) {
 
       <Block
         styles={styles}
-        title="สรุปกำลังพยาบาล (RN)"
+        title="สรุปกำลังพยาบาล (RN) ทุกวอร์ด"
         loading={unifiedLoading}
         error={unifiedError}
         empty={!unifiedLoading && !unifiedError && !unifiedHasData}

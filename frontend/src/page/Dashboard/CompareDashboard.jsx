@@ -5,8 +5,6 @@ import { API_BASE } from "../../config";
 import styles from "../../styles/Dashboard.module.css";
 import FilterPanel from "../../components/dashboard/FilterPanel";
 import Block from "../../components/common/Block";
-import TableBox from "../../components/common/TableBox";
-import CompareTable from "../../components/dashboard/CompareTable";
 
 import {
   SPECIAL_WARDS,
@@ -474,46 +472,259 @@ export default function CompareDashboard({ username, wardname }) {
     return out;
   }, [sumByShift, prodByShift, dengueByShift]);
 
-  /* ------------------------------- Table rows ------------------------------- */
-  const makeRow = (label, pick) => [
-    label,
-    fmt(pick(metrics.morning)),
-    fmt(pick(metrics.afternoon)),
-    fmt(pick(metrics.night)),
-    fmt(pick(metrics.total)),
-  ];
+  // ✅ 1. State และฟังก์ชันประกาศไว้ “เหนือ” useMemo
+  const [expanded, setExpanded] = useState(null);
+  const toggleRow = (index) =>
+    setExpanded((prev) => (prev === index ? null : index));
 
-  // DF/DHF/DSS – แตกเป็น 12 บรรทัด (รับใหม่/กลับบ้าน/เสียชีวิต/คงพยาบาล)
-  const dengueRows = (typeKey, typeLabel) => [
-    [
-      `${typeLabel} - รับใหม่`,
-      fmt(metrics.morning.dengue[typeKey].admit),
-      fmt(metrics.afternoon.dengue[typeKey].admit),
-      fmt(metrics.night.dengue[typeKey].admit),
-      fmt(metrics.total.dengue[typeKey].admit),
-    ],
-    [
-      `${typeLabel} - กลับบ้าน`,
-      fmt(metrics.morning.dengue[typeKey].home),
-      fmt(metrics.afternoon.dengue[typeKey].home),
-      fmt(metrics.night.dengue[typeKey].home),
-      fmt(metrics.total.dengue[typeKey].home),
-    ],
-    [
-      `${typeLabel} - เสียชีวิต`,
-      fmt(metrics.morning.dengue[typeKey].death),
-      fmt(metrics.afternoon.dengue[typeKey].death),
-      fmt(metrics.night.dengue[typeKey].death),
-      fmt(metrics.total.dengue[typeKey].death),
-    ],
-    [
-      `${typeLabel} - คงพยาบาล`,
-      fmt(metrics.morning.dengue[typeKey].remain),
-      fmt(metrics.afternoon.dengue[typeKey].remain),
-      fmt(metrics.night.dengue[typeKey].remain),
-      fmt(metrics.total.dengue[typeKey].remain),
-    ],
-  ];
+  const getDetailText = (name, shiftKey) => {
+    const rowsAll = sumByShift[shiftKey] || [];
+    const rows = rowsAll.filter((r) => !isRollup(r)); // ตัดแถวรวม
+    const lower = String(name).toLowerCase();
+    const n = (v) => Number(v) || 0;
+
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\-_.]/g, "");
+
+    // ช่วยฟังก์ชันแสดงผล
+    const formatList = (list, key = "bed_remain") => {
+      if (!list.length) return "-";
+      return list
+        .map((r) => {
+          const ward = r.wardname ? r.wardname.trim() : "-";
+          const sub = r.subward ? r.subward.trim() : "-";
+          let value = 0;
+
+          // ✅ ถ้าเป็นข้อมูล ventilator ให้รวม invasive + noninvasive
+          if (key === "vent_invasive") {
+            value =
+              (Number(r.vent_invasive) || 0) +
+              (Number(r.vent_noninvasive) || 0);
+          } else {
+            value = Number(r[key]) || 0;
+          }
+
+          return `${ward}${
+            sub && sub !== ward ? " / " + sub : ""
+          } (${value} คน)`;
+        })
+        .join(", ");
+    };
+
+    // ------------------ Dengue details (ใช้ dengueByShift แทน summary) ------------------
+    const formatDengue = (rows, key) => {
+      if (!rows.length) return "-";
+      const n = (v) => Number(v) || 0;
+      return rows
+        .map((r) => {
+          const ward = (r.wardname || "-").trim();
+          const sub = (r.subward || "-").trim();
+          return `${ward}${sub && sub !== ward ? " / " + sub : ""} (${n(
+            r[key]
+          )} คน)`;
+        })
+        .join(", ");
+    };
+
+    const dengueRowsSrc = (dengueType) => {
+      const all = dengueByShift[shiftKey]?.rows || [];
+      return all.filter(
+        (r) => String(r.dengue_type || "").toUpperCase() === dengueType
+      );
+    };
+
+    // 🏥 คงพยาบาล
+    if (lower.includes("วอร์ดทั้งหมด")) return formatList(rows, "bed_remain");
+    if (lower.includes("วอร์ดพิเศษ"))
+      return formatList(
+        rows.filter((r) => {
+          const w = r.wardname || "";
+          const s = r.subward || "";
+          return (
+            w.startsWith("พิเศษ") || (w.startsWith("เฉลิม") && s === "ผู้ใหญ่")
+          );
+        }),
+        "bed_remain"
+      );
+
+    if (lower.includes("icu (ผู้ใหญ่)"))
+      return formatList(rows.filter((r) => ICUAD_WARDS.includes(r.wardname)));
+    if (lower.includes("icu (เด็ก)"))
+      return formatList(rows.filter((r) => ICUCH_WARDS.includes(r.wardname)));
+    if (lower.includes("semi icu"))
+      return formatList(
+        rows.filter((r) => {
+          const sub = norm(r.subward || "");
+          // ✅ ดึงเฉพาะ subward ที่มีคำว่า ICU หรือ NICU
+          return sub.includes("icu") || sub.includes("nicu");
+        }),
+        "bed_remain"
+      );
+
+    if (lower.includes("ทารก"))
+      return formatList(
+        rows.filter((r) => {
+          const sub = norm(r.subward || "");
+          // ✅ ดึงเฉพาะ subward ที่อยู่ใน Newborn หรือมีคำว่า “ทารก” หรือ “SNB”
+          return Newborn.some(
+            (x) =>
+              norm(sub).includes(norm(x)) ||
+              norm(sub).includes("ทารก") ||
+              norm(sub).includes("snb")
+          );
+        }),
+        "bed_remain"
+      );
+
+    // 👨‍⚕️ ประเภทผู้ป่วย
+    if (lower.includes("ประเภทที่ 5"))
+      return formatList(
+        rows.filter((r) => n(r.type5) > 0),
+        "type5"
+      );
+    if (lower.includes("ประเภทที่ 4"))
+      return formatList(
+        rows.filter((r) => n(r.type4) > 0),
+        "type4"
+      );
+
+    // 💨 Ventilator
+    // 💨 Ventilator (ICU / ผู้ใหญ่ / เด็ก / รวม)
+    const label = norm(name); // ลบช่องว่าง เครื่องหมายพิเศษออก
+    const hasVent = (r) => n(r.vent_invasive) > 0 || n(r.vent_noninvasive) > 0;
+
+    // 🔸 ICU
+    if (label === "icu" || label.includes("ventilatoricu"))
+      return formatList(
+        rows.filter((r) => ICU_Ven.includes(r.wardname) && hasVent(r)),
+        "vent_invasive"
+      );
+
+    // 🔸 ผู้ใหญ่
+    if (label.includes("ผู้ใหญ่") || label.includes("adultvent"))
+      return formatList(
+        rows.filter((r) => AD_Ven.includes(r.wardname) && hasVent(r)),
+        "vent_invasive"
+      );
+
+    // 🔸 เด็ก
+    if (label.includes("เด็ก") || label.includes("childvent"))
+      return formatList(
+        rows.filter((r) => CH_Ven.includes(r.wardname) && hasVent(r)),
+        "vent_invasive"
+      );
+
+// 🔸 รวมทั้งหมด (เอาทุกกลุ่ม Vent มารวม)
+if (label === "รวม" || label.includes("vent") || label.includes("เครื่องช่วยหายใจ")) {
+  const allVentRows = rows.filter(
+    (r) =>
+      ICU_Ven.includes(r.wardname) ||
+      AD_Ven.includes(r.wardname) ||
+      CH_Ven.includes(r.wardname)
+  );
+  return formatList(allVentRows.filter(hasVent), "vent_invasive");
+}
+
+
+    // 🦠 DF
+    if (lower.includes("df - รับใหม่"))
+      return formatDengue(dengueRowsSrc("DF"), "admit_new");
+
+    if (lower.includes("df - กลับบ้าน"))
+      return formatDengue(dengueRowsSrc("DF"), "discharge_home");
+
+    if (lower.includes("df - เสียชีวิต"))
+      return formatDengue(dengueRowsSrc("DF"), "discharge_died");
+
+    if (lower.includes("df - คงพยาบาล"))
+      return formatDengue(dengueRowsSrc("DF"), "bed_remain");
+
+    // 🦠 DHF
+    if (lower.includes("dhf - รับใหม่"))
+      return formatDengue(dengueRowsSrc("DHF"), "admit_new");
+
+    if (lower.includes("dhf - กลับบ้าน"))
+      return formatDengue(dengueRowsSrc("DHF"), "discharge_home");
+
+    if (lower.includes("dhf - เสียชีวิต"))
+      return formatDengue(dengueRowsSrc("DHF"), "discharge_died");
+
+    if (lower.includes("dhf - คงพยาบาล"))
+      return formatDengue(dengueRowsSrc("DHF"), "bed_remain");
+
+    // 🦠 DSS
+    if (lower.includes("dss - รับใหม่"))
+      return formatDengue(dengueRowsSrc("DSS"), "admit_new");
+
+    if (lower.includes("dss - กลับบ้าน"))
+      return formatDengue(dengueRowsSrc("DSS"), "discharge_home");
+
+    if (lower.includes("dss - เสียชีวิต"))
+      return formatDengue(dengueRowsSrc("DSS"), "discharge_died");
+
+    if (lower.includes("dss - คงพยาบาล"))
+      return formatDengue(dengueRowsSrc("DSS"), "bed_remain");
+
+    // 👇 พวกนี้ค่อยตามมา
+    if (lower.includes("รับใหม่"))
+      return formatList(
+        rows.filter((r) => n(r.bed_new) > 0),
+        "bed_new"
+      );
+
+    if (lower.includes("จำหน่ายกลับบ้าน"))
+      return formatList(
+        rows.filter((r) => n(r.discharge_home) > 0),
+        "discharge_home"
+      );
+
+    if (lower.includes("เสียชีวิต"))
+      return formatList(
+        rows.filter((r) => n(r.discharge_died) > 0),
+        "discharge_died"
+      );
+
+    // 🧠 Stroke
+    if (lower.includes("stroke"))
+      return formatList(
+        rows.filter((r) => n(r.stroke) > 0),
+        "stroke"
+      );
+
+    // 🧍‍♂️ จิตเวช
+    if (lower.includes("จิตเวช") || lower.includes("psych"))
+      return formatList(
+        rows.filter((r) => n(r.psych) > 0),
+        "psych"
+      );
+
+    // 👮‍♂️ นักโทษ
+    if (lower.includes("นักโทษ") || lower.includes("prison"))
+      return formatList(
+        rows.filter((r) => n(r.prisoner) > 0),
+        "prisoner"
+      );
+
+    // 👩‍⚕️ RN
+    if (lower.includes("rn"))
+      return formatList(
+        rows.filter((r) => n(r.rn) > 0 || n(r.rn_extra) > 0),
+        "rn"
+      );
+
+    // 📈 Productivity
+    if (lower.includes("productivity"))
+      return formatList(
+        rows.filter((r) => n(r.productivity) > 0),
+        "productivity"
+      );
+
+    return "-";
+  };
+
   const tableRows = useMemo(() => {
     if (!metrics?.total) return [];
 
@@ -528,7 +739,7 @@ export default function CompareDashboard({ username, wardname }) {
     const groups = [
       {
         title: "คงพยาบาล",
-        color: "#f5e8ff",
+        color: "#e0e0e0", // สีเทาอ่อน (ตามโซนผู้ป่วยในภาพ)
         items: [
           mk("วอร์ดทั้งหมด", (m) => m.allRemain),
           mk("วอร์ดพิเศษ", (m) => m.specialRemain),
@@ -539,8 +750,8 @@ export default function CompareDashboard({ username, wardname }) {
         ],
       },
       {
-        title: "ประเภทผู้ป่วย",
-        color: "#e6f4ff",
+        title: "ประเภทผู้ป่วย / รับใหม่ - จำหน่าย",
+        color: "#d9edf7", // สีฟ้าอ่อน ๆ
         items: [
           mk("ประเภทที่ 5", (m) => m.t5),
           mk("ประเภทที่ 4", (m) => m.t4),
@@ -551,7 +762,7 @@ export default function CompareDashboard({ username, wardname }) {
       },
       {
         title: "Ventilator",
-        color: "#fff9e5",
+        color: "#ffeb99", // สีเหลืองส้มอ่อน (ตามภาพหัวข้อ Ventilator)
         items: [
           mk("ICU", (m) => m.ventICU),
           mk("ผู้ใหญ่", (m) => m.ventAD),
@@ -560,12 +771,32 @@ export default function CompareDashboard({ username, wardname }) {
         ],
       },
       {
-        title: "สรุปอื่น ๆ",
-        color: "#e8ffea",
+        title: "ไข้เลือดออก (DF / DHF / DSS)",
+        color: "#ccffcc", // สีเขียวอ่อน (ตามภาพหัวข้อ DF)
+        items: [
+          mk("DF - รับใหม่", (m) => m.dengue.DF.admit),
+          mk("DF - กลับบ้าน", (m) => m.dengue.DF.home),
+          mk("DF - เสียชีวิต", (m) => m.dengue.DF.death),
+          mk("DF - คงพยาบาล", (m) => m.dengue.DF.remain),
+          // คุณอาจจะอยากแยกหัวข้อย่อย DHF/DSS เพื่อใส่สีต่างกันในอนาคต
+          mk("DHF - รับใหม่", (m) => m.dengue.DHF.admit),
+          mk("DHF - กลับบ้าน", (m) => m.dengue.DHF.home),
+          mk("DHF - เสียชีวิต", (m) => m.dengue.DHF.death),
+          mk("DHF - คงพยาบาล", (m) => m.dengue.DHF.remain),
+          mk("DSS - รับใหม่", (m) => m.dengue.DSS.admit),
+          mk("DSS - กลับบ้าน", (m) => m.dengue.DSS.home),
+          mk("DSS - เสียชีวิต", (m) => m.dengue.DSS.death),
+          mk("DSS - คงพยาบาล", (m) => m.dengue.DSS.remain),
+        ],
+      },
+      {
+        title: "กลุ่มเฉพาะโรค / อื่น ๆ",
+        color: "#ffcccc", // สีชมพูอ่อน (ตามภาพหัวข้อ Stroke)
         items: [
           mk("รวม Stroke", (m) => m.strokeTotal),
           mk("รวม จิตเวช", (m) => m.psychTotal),
           mk("รวม นักโทษ", (m) => m.prisonerTotal),
+          mk("รวม RN", (m) => m.rnAll), // เพิ่ม RN เข้ามา
           [
             "Productivity (%)",
             Number.isFinite(+metrics.morning.prodAvg)
@@ -581,24 +812,6 @@ export default function CompareDashboard({ username, wardname }) {
               ? (+metrics.total.prodAvg).toFixed(2)
               : "-",
           ],
-        ],
-      },
-      {
-        title: "ไข้เลือดออก (DF / DHF / DSS)",
-        color: "#f0fff4",
-        items: [
-          mk("DF - รับใหม่", (m) => m.dengue.DF.admit),
-          mk("DF - กลับบ้าน", (m) => m.dengue.DF.home),
-          mk("DF - เสียชีวิต", (m) => m.dengue.DF.death),
-          mk("DF - คงพยาบาล", (m) => m.dengue.DF.remain),
-          mk("DHF - รับใหม่", (m) => m.dengue.DHF.admit),
-          mk("DHF - กลับบ้าน", (m) => m.dengue.DHF.home),
-          mk("DHF - เสียชีวิต", (m) => m.dengue.DHF.death),
-          mk("DHF - คงพยาบาล", (m) => m.dengue.DHF.remain),
-          mk("DSS - รับใหม่", (m) => m.dengue.DSS.admit),
-          mk("DSS - กลับบ้าน", (m) => m.dengue.DSS.home),
-          mk("DSS - เสียชีวิต", (m) => m.dengue.DSS.death),
-          mk("DSS - คงพยาบาล", (m) => m.dengue.DSS.remain),
         ],
       },
     ];
@@ -741,53 +954,86 @@ export default function CompareDashboard({ username, wardname }) {
           <table className={styles.compareTable}>
             <thead>
               <tr>
-                <th>หัวข้อ</th>
+                <th></th>
                 <th>เช้า</th>
                 <th>บ่าย</th>
                 <th>ดึก</th>
                 <th>รวม</th>
+                <th>รายละเอียด</th>
               </tr>
             </thead>
+
             <tbody>
               {tableRows.map((row, i) =>
                 row.type === "group" ? (
                   <tr
                     key={`g-${i}`}
-                    style={{
-                      backgroundColor: row.color,
-                      fontWeight: "700",
-                      color: "#3b0764",
-                      borderTop: "3px solid #7e22ce",
-                    }}
+                    className={styles.groupRow}
+                    style={{ "--group-color": row.color }}
                   >
-                    <td colSpan={5} style={{ padding: "8px 10px" }}>
+                    <td colSpan={6} style={{ padding: "12px 16px" }}>
                       {row.title}
                     </td>
                   </tr>
                 ) : (
-                  <tr key={`r-${i}`}>
-                    {row.cells.map((c, j) => (
+                  <React.Fragment key={`r-${i}`}>
+                    <tr>
+                      {row.cells.map((c, j) => (
+                        <td
+                          key={j}
+                          style={{
+                            textAlign: j === 0 ? "left" : "center",
+                          }}
+                        >
+                          {c}
+                        </td>
+                      ))}
+
+                      {/* ✅ ปุ่มดูรายละเอียด */}
                       <td
-                        key={j}
                         style={{
-                          background:
-                            j === 1
-                              ? "#fffbee"
-                              : j === 2
-                              ? "#fff0e0"
-                              : j === 3
-                              ? "#e7f0ff"
-                              : j === 4
-                              ? "#f3e8ff"
-                              : "white",
-                          borderBottom: "1px solid #eee",
-                          textAlign: j === 0 ? "left" : "center",
+                          background: "#f8fafc",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          color: "#7e3cbd",
                         }}
+                        onClick={() => toggleRow(i)}
                       >
-                        {c}
+                        {expanded === i ? "▲" : "▼"}
                       </td>
-                    ))}
-                  </tr>
+                    </tr>
+
+                    {/* ✅ แถวรายละเอียด */}
+                    {expanded === i && (
+                      <tr className={styles.expandedRow}>
+                        <td colSpan={6}>
+                          <div>
+                            <strong>เช้า:</strong>{" "}
+                            {getDetailText(row.cells[0], "morning")}
+                          </div>
+                          <div>
+                            <strong>บ่าย:</strong>{" "}
+                            {getDetailText(row.cells[0], "afternoon")}
+                          </div>
+                          <div>
+                            <strong>ดึก:</strong>{" "}
+                            {getDetailText(row.cells[0], "night")}
+                          </div>
+                          <div
+                            style={{
+                              borderTop: "1px solid #ddd",
+                              marginTop: 4,
+                              paddingTop: 4,
+                            }}
+                          >
+                            <strong>รวม:</strong>{" "}
+                            {getDetailText(row.cells[0], "total")}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 )
               )}
             </tbody>

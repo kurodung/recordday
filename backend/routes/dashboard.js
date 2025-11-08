@@ -258,16 +258,8 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
     const isSupervisor = role === "3";
     const isUser = role === "1";
 
-    const {
-      start,
-      end,
-      date,
-      dateFrom,
-      dateTo,
-      shift,
-      ward,
-      wardname,
-    } = req.query;
+    const { start, end, date, dateFrom, dateTo, shift, ward, wardname } =
+      req.query;
 
     const where = ["1=1"];
     const params = [];
@@ -297,7 +289,9 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
       // เห็นทั้งหมด
     } else if (isHeadNurse && user.department_id) {
       // หัวหน้าตึกเห็น ward ทั้งหมดในแผนกเดียวกัน
-      where.push(`dr.wardname IN (SELECT wardname FROM wards WHERE department_id = ?)`); 
+      where.push(
+        `dr.wardname IN (SELECT wardname FROM wards WHERE department_id = ?)`
+      );
       params.push(user.department_id);
     } else if (isSupervisor || isUser) {
       if (user.wardname) {
@@ -313,97 +307,56 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
       params.push(effectiveWard.trim());
     }
 
-    // ✅ ดึงข้อมูลรวม พร้อมคำนวณ remain_* จากสูตร
-    const sql = `
-      SELECT
-        -- DF
-        SUM(COALESCE(dr.new_df, 0))       AS new_df,
-        SUM(COALESCE(dr.discharge_df, 0)) AS dis_df,
-        SUM(COALESCE(dr.died_df, 0))      AS died_df,
-        SUM(COALESCE(dr.carry_df, 0))     AS carry_df,
-        SUM(COALESCE(dr.transfer_df, 0))  AS transfer_df,
-        SUM(
-          (COALESCE(dr.carry_df, 0) + COALESCE(dr.new_df, 0) + COALESCE(dr.transfer_df, 0))
-          - (COALESCE(dr.discharge_df, 0) + COALESCE(dr.move_df, 0) + COALESCE(dr.died_df, 0))
-        ) AS calc_rem_df,
+// ✅ Query template
+const dengueSql = (type) => `
+  SELECT
+    dr.wardname,
+    dr.subward,
+    '${type}' AS dengue_type,
+    SUM(COALESCE(dr.new_${type.toLowerCase()}, 0))       AS admit_new,
+    SUM(COALESCE(dr.discharge_${type.toLowerCase()}, 0)) AS discharge_home,
+    SUM(COALESCE(dr.died_${type.toLowerCase()}, 0))      AS discharge_died,
+    SUM(
+      (COALESCE(dr.carry_${type.toLowerCase()}, 0)
+      + COALESCE(dr.new_${type.toLowerCase()}, 0)
+      + COALESCE(dr.transfer_${type.toLowerCase()}, 0))
+      - (COALESCE(dr.discharge_${type.toLowerCase()}, 0)
+      + COALESCE(dr.move_${type.toLowerCase()}, 0)
+      + COALESCE(dr.died_${type.toLowerCase()}, 0))
+    ) AS bed_remain
+  FROM dengue_reports dr
+  WHERE ${where.join(" AND ")}
+  GROUP BY dr.wardname, dr.subward
+  ORDER BY dr.wardname, dr.subward
+`;
 
-        -- DHF
-        SUM(COALESCE(dr.new_dhf, 0))       AS new_dhf,
-        SUM(COALESCE(dr.discharge_dhf, 0)) AS dis_dhf,
-        SUM(COALESCE(dr.died_dhf, 0))      AS died_dhf,
-        SUM(COALESCE(dr.carry_dhf, 0))     AS carry_dhf,
-        SUM(COALESCE(dr.transfer_dhf, 0))  AS transfer_dhf,
-        SUM(
-          (COALESCE(dr.carry_dhf, 0) + COALESCE(dr.new_dhf, 0) + COALESCE(dr.transfer_dhf, 0))
-          - (COALESCE(dr.discharge_dhf, 0) + COALESCE(dr.move_dhf, 0) + COALESCE(dr.died_dhf, 0))
-        ) AS calc_rem_dhf,
+const [dfRows]  = await db.query(dengueSql("DF"), params);
+const [dhfRows] = await db.query(dengueSql("DHF"), params);
+const [dssRows] = await db.query(dengueSql("DSS"), params);
 
-        -- DSS
-        SUM(COALESCE(dr.new_dss, 0))       AS new_dss,
-        SUM(COALESCE(dr.discharge_dss, 0)) AS dis_dss,
-        SUM(COALESCE(dr.died_dss, 0))      AS died_dss,
-        SUM(COALESCE(dr.carry_dss, 0))     AS carry_dss,
-        SUM(COALESCE(dr.transfer_dss, 0))  AS transfer_dss,
-        SUM(
-          (COALESCE(dr.carry_dss, 0) + COALESCE(dr.new_dss, 0) + COALESCE(dr.transfer_dss, 0))
-          - (COALESCE(dr.discharge_dss, 0) + COALESCE(dr.move_dss, 0) + COALESCE(dr.died_dss, 0))
-        ) AS calc_rem_dss
-      FROM dengue_reports dr
-      WHERE ${where.join(" AND ")}
-    `;
+// รวมทั้งหมด
+const rows = [...dfRows, ...dhfRows, ...dssRows];
 
-    const [rows] = await db.query(sql, params);
-    const r = rows?.[0] || {};
+// ✅ รวมสรุปทั้งหมด
+// ✅ รวมสรุปทั้งหมด (แก้เวอร์ชันนี้)
+const total = rows.reduce(
+  (a, x) => {
+    a.admit_new += Number(x.admit_new) || 0;
+    a.discharge_home += Number(x.discharge_home) || 0;
+    a.discharge_died += Number(x.discharge_died) || 0;
+    a.bed_remain += Number(x.bed_remain) || 0;
+    return a;
+  },
+  { dengue_type: "รวม", admit_new: 0, discharge_home: 0, discharge_died: 0, bed_remain: 0 }
+);
 
-    const data = [
-      {
-        dengue_type: "DF",
-        admit_new: Number(r.new_df || 0),
-        discharge_home: Number(r.dis_df || 0),
-        discharge_died: Number(r.died_df || 0),
-        bed_remain: Number(r.calc_rem_df || 0),
-      },
-      {
-        dengue_type: "DHF",
-        admit_new: Number(r.new_dhf || 0),
-        discharge_home: Number(r.dis_dhf || 0),
-        discharge_died: Number(r.died_dhf || 0),
-        bed_remain: Number(r.calc_rem_dhf || 0),
-      },
-      {
-        dengue_type: "DSS",
-        admit_new: Number(r.new_dss || 0),
-        discharge_home: Number(r.dis_dss || 0),
-        discharge_died: Number(r.died_dss || 0),
-        bed_remain: Number(r.calc_rem_dss || 0),
-      },
-    ];
 
-    // ✅ รวมทั้งหมด
-    const total = data.reduce(
-      (a, x) => ({
-        dengue_type: "รวม",
-        admit_new: a.admit_new + x.admit_new,
-        discharge_home: a.discharge_home + x.discharge_home,
-        discharge_died: a.discharge_died + x.discharge_died,
-        bed_remain: a.bed_remain + x.bed_remain,
-      }),
-      {
-        dengue_type: "รวม",
-        admit_new: 0,
-        discharge_home: 0,
-        discharge_died: 0,
-        bed_remain: 0,
-      }
-    );
+res.json({ ok: true, data: rows, total });
 
-    res.json({ ok: true, data, total });
   } catch (err) {
     console.error("GET /dashboard/dengue-summary error:", err);
     res.status(500).json({ ok: false, message: "Database error" });
   }
 });
-
-
 
 module.exports = router;

@@ -644,155 +644,121 @@ input[name="cleaner"] {
   opacity: 0.8;
 }
 
-/* === ตาราง Compare Dashboard === */
+/* === ตาราง Compare Dashboard (ปรับปรุงเพื่อให้อ่านง่ายสำหรับผู้สูงอายุ) === */
 .compareTable {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+  width: 50%;             /* ปรับให้เต็มพื้นที่ container */
+  margin: 0 auto;
+  border-collapse: separate;
+  border-spacing: 0;
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-size: 16px;         /* เพิ่มขนาดตัวอักษรพื้นฐาน */
+  table-layout: fixed;
+  border: 2px solid #94a3b8; /* เปลี่ยนจากสีม่วงจัด ๆ เป็นสีเทาอมฟ้าที่ดูสบายตาแต่ชัดเจน */
 }
 
-.compareTable th,
-.compareTable td {
-  padding: 10px 14px;
-  text-align: center;
-  font-size: 14px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
+/* หัวตาราง */
 .compareTable thead th {
+  background: #475569;     /* หัวตารางสีเข้มเพื่อตัดกับเนื้อหา */
+  color: #ffffff;          /* ตัวอักษรสีขาว อ่านง่ายที่สุด */
   font-weight: 700;
-  font-size: 15px;
-  color: #111827;
+  font-size: 17px;         /* หัวตารางตัวใหญ่ขึ้น */
+  padding: 12px 8px !important; /* เพิ่มพื้นที่ให้ไม่อึดอัด */
+  text-align: center;
   white-space: nowrap;
+  border: 1px solid #64748b;
 }
 
-.compareTable tbody tr:hover {
-  background-color: #faf5ff;
-  transition: background-color 0.2s ease;
+/* เนื้อหาตาราง */
+.compareTable td {
+  padding: 10px 8px !important; /* เพิ่มช่องว่างให้อ่านสบาย */
+  line-height: 1.4;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #000000;          /* ใช้สีดำสนิทเพื่อความคมชัดสูงสุด */
+  border-top: 1px solid #cbd5e1;   /* เส้นแนวนอนสีเทาอ่อน */
+  border-bottom: 1px solid #cbd5e1;
 }
 
-/* สีแถวเวร */
-.compareTable th:nth-child(2),
-.compareTable td:nth-child(2) {
-  background-color: #fffbee; /* เช้า */
-}
-.compareTable th:nth-child(3),
-.compareTable td:nth-child(3) {
-  background-color: #fff0e0; /* บ่าย */
-}
-.compareTable th:nth-child(4),
-.compareTable td:nth-child(4) {
-  background-color: #e7f0ff; /* ดึก */
-}
-.compareTable th:nth-child(5),
-.compareTable td:nth-child(5) {
-  background-color: #f3e8ff; /* รวม */
+/* เส้นแนวตั้งระหว่างคอลัมน์ */
+.compareTable td:not(:last-child),
+.compareTable th:not(:last-child) {
+  border-right: 2px solid #94a3b8; /* เส้นแบ่งคอลัมน์ชัดเจนแต่ไม่แสบตา */
 }
 
-/* ปุ่มดูรายละเอียด */
+/* คอลัมน์หัวข้อซ้ายสุด */
+.compareTable th:first-child,
+.compareTable td:first-child {
+  width: 28%;              /* เพิ่มความกว้างให้หัวข้ออ่านง่าย ไม่เบียด */
+  text-align: left;
+  padding-left: 16px !important;
+  font-weight: 400;
+  background-color: #f8fafc; /* สีพื้นอ่อน ๆ ให้แยกจากข้อมูล */
+}
+
+/* --- สีพื้นหลังแยกตามเวร (ตามภาพ Screenshot) --- */
+
+/* เวรเช้า: สีเหลืองสด */
+.compareTable th:nth-child(2) { background-color: #ffe600 !important; color: #000 !important; }
+.compareTable td:nth-child(2) { background-color: #ffff99 !important; } 
+
+/* เวรบ่าย: สีส้มพีช */
+.compareTable th:nth-child(3) { background-color: #ff9933 !important; color: #000 !important; }
+.compareTable td:nth-child(3) { background-color: #ffcc99 !important; }
+
+/* เวรดึก: สีฟ้าอมเทา */
+.compareTable th:nth-child(4) { background-color: #6699cc !important; color: #000 !important; }
+.compareTable td:nth-child(4) { background-color: #ccddff !important; }
+
+/* รวม: สีชมพูม่วง */
+.compareTable th:nth-child(5) { background-color: #cc6699 !important; color: #fff !important; }
+.compareTable td:nth-child(5) { 
+  background-color: #eebbdd !important; 
+  font-weight: 700;
+}
+
+/* ปรับสีหัวตารางหลัก (มุมซ้ายบน) ให้เป็นโทนฟ้าตามภาพ */
+.compareTable thead tr:first-child th:first-child {
+    background-color: #00bfff !important; /* สีฟ้าสด */
+    color: #000 !important;
+}
+
+/* หัวข้อหมวดหมู่ (Group Row) */
+.compareTable tr.group-row td {
+  background-color: var(--group-color, #e0e0e0) !important;
+  color: #000 !important;         /* ตัวอักษรสีดำเพื่อให้ตัดกับสีพื้นสว่าง */
+  font-weight: 800;
+  font-size: 18px;
+  border-top: 2px solid #999;
+  border-bottom: 2px solid #999;
+}
+
+/* Hover effect เพื่อช่วยนำสายตา */
+.compareTable tbody tr:hover td {
+  filter: brightness(0.95); /* ทำให้แถวที่ชี้เข้มขึ้นเล็กน้อย ช่วยนำสายตา */
+  transition: all 0.1s ease;
+}
+
+
 .compareTable td:last-child {
   background: #f8fafc;
   cursor: pointer;
+  font-weight: 500;
+  color: #031025;
 }
 
 .compareTable tr.expandedRow td {
+  white-space: normal !important;
+  word-break: break-word;
   background-color: #faf8ff !important;
-  font-size: 13px;
-  text-align: left;
-  padding: 10px 20px;
-}
-
-.compareTable th,
-.compareTable td {
   font-size: 14px;
-  border-bottom: 1px solid #eee;
-}
-
-.compareTable td:first-child {
   text-align: left;
-  white-space: nowrap;
-}
-
-.compareTable tr td:first-child {
-  font-weight: 500;
-}
-
-.compareTable tr td:first-child::before {
-  content: "";
-}
-
-/* 🟣 แถวหมวดใหญ่ */
-.compareTable tr:nth-child(odd):has(td:first-child:contains("🟣")) {
-  background-color: #f4f0ff;
-  font-weight: 700;
-  color: #6b21a8;
-}
-
-.compareTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.compareTable th {
-  background: #f3f4f6;
-  font-weight: 600;
-  padding: 8px 10px;
-}
-
-.compareTable td {
-  padding: 6px 10px;
-  border-bottom: 1px solid #eee;
-  vertical-align: middle;
-}
-
-.compareTable tr.group-row td {
-  background-color: var(--group-color);
-  font-weight: 700;
-  color: #3b0764;
-  border-top: 3px solid #7e22ce;
-}
-
-.compareTable tr td:first-child {
-  text-align: left;
-  white-space: nowrap;
-}
-
-/* ==== ตาราง CompareDashboard สีหมวดหลัก ==== */
-.groupHeader td {
-  font-weight: 700;
-  color: #3b0764;
-  border-top: 3px solid #7e22ce;
-  padding: 8px 10px;
-}
-
-/* หมวดคงพยาบาล */
-.group-nursing td {
-  background-color: #f8e8ff !important;
-}
-
-/* หมวดประเภทผู้ป่วย */
-.group-patient td {
-  background-color: #e6f4ff !important;
-}
-
-/* หมวด Ventilator */
-.group-vent td {
-  background-color: #fff7d1 !important;
-}
-
-/* หมวดสรุปอื่น ๆ */
-.group-summary td {
-  background-color: #e7ffe9 !important;
-}
-
-/* หมวดไข้เลือดออก */
-.group-dengue td {
-  background-color: #f0fff4 !important;
+  padding: 10px 16px;
+  line-height: 1.5;
+  border-top: 1px solid #ddd;
 }
 
 
