@@ -482,14 +482,17 @@ export default function HospitalLayout({ children }) {
             </button>
           </div>
 
-          <button
-            className={`nav-tab ${isActiveTab("/compare") ? "active" : ""}`}
-            onClick={() => go("/compare")}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <FiBarChart className="sidebar-icon" />
-            Compare
-          </button>
+          {/* ✅ แสดงปุ่ม Compare เฉพาะ username = admin หรือ nso */}
+          {["admin", "nso"].includes(String(username).toLowerCase()) && (
+            <button
+              className={`nav-tab ${isActiveTab("/compare") ? "active" : ""}`}
+              onClick={() => go("/compare")}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <FiBarChart className="sidebar-icon" />
+              Compare
+            </button>
+          )}
 
           <div className="date-selector">
             <input

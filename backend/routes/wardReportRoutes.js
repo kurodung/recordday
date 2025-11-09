@@ -12,7 +12,8 @@ const toMysqlDate = (v) => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 };
 
-const toInt = (v) => (v === "" || v == null ? 0 : Number(v) || 0);
+const toInt = (v) =>
+  v === "" || v == null || isNaN(Number(v)) ? null : Number(v);
 const isNonEmpty = (v) => typeof v === "string" && v.trim() !== "";
 
 /* ✅ เงื่อนไข subward (รองรับ null/ว่าง) */
@@ -23,15 +24,41 @@ const subwardCond = (subward) =>
 
 /* ✅ field whitelist */
 const ALLOWED_INT = new Set([
-  "bed_total", "bed_carry", "bed_new", "bed_transfer_in",
-  "discharge_home", "discharge_transfer_out", "discharge_refer_out",
-  "discharge_refer_back", "discharge_died",
-  "type1", "type2", "type3", "type4", "type5",
-  "vent_invasive", "vent_noninvasive", "hfnc", "oxygen",
-  "extra_bed", "pas", "cpr", "infection", "gcs",
-  "stroke", "psych", "prisoner", "palliative",
-  "pre_op", "post_op", "rn", "pn", "na",
-  "other_staff", "rn_extra", "rn_down",
+  "bed_total",
+  "bed_carry",
+  "bed_new",
+  "bed_transfer_in",
+  "discharge_home",
+  "discharge_transfer_out",
+  "discharge_refer_out",
+  "discharge_refer_back",
+  "discharge_died",
+  "type1",
+  "type2",
+  "type3",
+  "type4",
+  "type5",
+  "vent_invasive",
+  "vent_noninvasive",
+  "hfnc",
+  "oxygen",
+  "extra_bed",
+  "pas",
+  "cpr",
+  "infection",
+  "gcs",
+  "stroke",
+  "psych",
+  "prisoner",
+  "palliative",
+  "pre_op",
+  "post_op",
+  "rn",
+  "pn",
+  "na",
+  "other_staff",
+  "rn_extra",
+  "rn_down",
 ]);
 const ALLOWED_TEXT = new Set(["incident", "head_nurse"]);
 
@@ -95,19 +122,23 @@ function calcProductivity(row, subSum, isICU) {
   switch (shift) {
     case "morning":
       weight5 = isICU ? 4.8 : 4.0;
-      numerator = type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
+      numerator =
+        type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
       break;
     case "afternoon":
       weight5 = isICU ? 4.2 : 3.5;
-      numerator = type5 * weight5 + type4 * 2.6 + type3 * 1.9 + type2 * 1.2 + type1 * 0.5;
+      numerator =
+        type5 * weight5 + type4 * 2.6 + type3 * 1.9 + type2 * 1.2 + type1 * 0.5;
       break;
     case "night":
       weight5 = isICU ? 3.0 : 2.5;
-      numerator = type5 * weight5 + type4 * 1.9 + type3 * 1.4 + type2 * 0.9 + type1 * 0.4;
+      numerator =
+        type5 * weight5 + type4 * 1.9 + type3 * 1.4 + type2 * 0.9 + type1 * 0.4;
       break;
     default:
       weight5 = isICU ? 4.8 : 4.0;
-      numerator = type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
+      numerator =
+        type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
   }
 
   const denom = (rn + pn) * 7;
@@ -155,11 +186,20 @@ router.get("/bed-total", async (req, res) => {
     let rows;
 
     if (!isNonEmpty(subward) || ["null", "undefined"].includes(subward)) {
-      [rows] = await db.query(`${baseQuery} AND (subward IS NULL OR subward='') LIMIT 1`, [wardname]);
+      [rows] = await db.query(
+        `${baseQuery} AND (subward IS NULL OR subward='') LIMIT 1`,
+        [wardname]
+      );
     } else {
-      [rows] = await db.query(`${baseQuery} AND subward=? LIMIT 1`, [wardname, subward.trim()]);
+      [rows] = await db.query(`${baseQuery} AND subward=? LIMIT 1`, [
+        wardname,
+        subward.trim(),
+      ]);
       if (!rows.length)
-        [rows] = await db.query(`${baseQuery} AND (subward IS NULL OR subward='') LIMIT 1`, [wardname]);
+        [rows] = await db.query(
+          `${baseQuery} AND (subward IS NULL OR subward='') LIMIT 1`,
+          [wardname]
+        );
     }
 
     return res.json({ bed_total: Number(rows[0]?.bed_total) || 0 });
@@ -204,7 +244,11 @@ async function updateMainProductivity(record) {
     const rn = Number(main.rn) || 0;
     const pn = Number(main.pn) || 0;
     const isICU = ICU_Ven.includes(wardname);
-    const productivity = calcProductivity({ shift, rn, pn, ...total }, {}, isICU);
+    const productivity = calcProductivity(
+      { shift, rn, pn, ...total },
+      {},
+      isICU
+    );
 
     if (productivity <= 0) return;
 
@@ -245,19 +289,74 @@ router.post("/", requireBearer, async (req, res) => {
     const isICU = ICU_Ven.includes(record.wardname);
     record.productivity = calcProductivity(record, subSum, isICU);
 
+    // ✅ เพิ่มคอลัมน์สถานะกรอกครบหรือไม่
+    const REQUIRED_NUMERIC_FIELDS = [
+      "bed_carry",
+      "bed_new",
+      "bed_transfer_in",
+      "discharge_home",
+      "discharge_transfer_out",
+      "discharge_refer_out",
+      "discharge_refer_back",
+      "discharge_died",
+      "type1",
+      "type2",
+      "type3",
+      "type4",
+      "type5",
+      "vent_invasive",
+      "vent_noninvasive",
+      "hfnc",
+      "oxygen",
+      "extra_bed",
+      "pas",
+      "cpr",
+      "infection",
+      "gcs",
+      "stroke",
+      "psych",
+      "prisoner",
+      "palliative",
+      "pre_op",
+      "post_op",
+      "rn",
+      "pn",
+      "na",
+      "other_staff",
+      "rn_extra",
+      "rn_down",
+    ];
+
+    const missing = REQUIRED_NUMERIC_FIELDS.filter(
+      (f) => record[f] === null || record[f] === undefined || record[f] === ""
+    );
+
+    // ✅ is_complete = 1 ถ้ากรอกครบทุกช่อง
+    record.is_complete = missing.length === 0 ? 1 : 0;
+
     const cols = Object.keys(record);
     const sql = `
       INSERT INTO ward_reports (${cols.join(",")})
       VALUES (${cols.map(() => "?").join(",")})
       ON DUPLICATE KEY UPDATE ${cols
-        .filter((c) => !["username", "wardname", "date", "shift", "subward"].includes(c))
+        .filter(
+          (c) =>
+            !["username", "wardname", "date", "shift", "subward"].includes(c)
+        )
         .map((c) => `${c}=VALUES(${c})`)
         .join(", ")}
     `;
-    await db.query(sql, cols.map((c) => record[c]));
+    await db.query(
+      sql,
+      cols.map((c) => record[c])
+    );
 
     setTimeout(() => updateMainProductivity(record), 200);
-    return res.json({ message: "บันทึกสำเร็จ", productivity: record.productivity });
+    return res.json({
+      message: "บันทึกสำเร็จ",
+      productivity: record.productivity,
+      is_complete: record.is_complete,
+    });
   } catch (err) {
     return respondDbError(res, err);
   }
@@ -290,14 +389,62 @@ router.put("/:id", async (req, res) => {
     const isICU = ICU_Ven.includes(record.wardname);
     record.productivity = calcProductivity(record, subSum, isICU);
 
-    const setClause = Object.keys(record).map((k) => `${k}=?`).join(", ");
+    // ✅ คำนวณ is_complete ใหม่ทุกครั้งที่แก้ไข
+    const REQUIRED_NUMERIC_FIELDS = [
+      "bed_carry",
+      "bed_new",
+      "bed_transfer_in",
+      "discharge_home",
+      "discharge_transfer_out",
+      "discharge_refer_out",
+      "discharge_refer_back",
+      "discharge_died",
+      "type1",
+      "type2",
+      "type3",
+      "type4",
+      "type5",
+      "vent_invasive",
+      "vent_noninvasive",
+      "hfnc",
+      "oxygen",
+      "extra_bed",
+      "pas",
+      "cpr",
+      "infection",
+      "gcs",
+      "stroke",
+      "psych",
+      "prisoner",
+      "palliative",
+      "pre_op",
+      "post_op",
+      "rn",
+      "pn",
+      "na",
+      "other_staff",
+      "rn_extra",
+      "rn_down",
+    ];
+
+    const missing = REQUIRED_NUMERIC_FIELDS.filter(
+      (f) => record[f] === null || record[f] === undefined || record[f] === ""
+    );
+    record.is_complete = missing.length === 0 ? 1 : 0;
+
+    const setClause = Object.keys(record)
+      .map((k) => `${k}=?`)
+      .join(", ");
     await db.query(`UPDATE ward_reports SET ${setClause} WHERE id=?`, [
       ...Object.values(record),
       id,
     ]);
 
     setTimeout(() => updateMainProductivity(record), 200);
-    return res.json({ message: "อัพเดทสำเร็จ", productivity: record.productivity });
+    return res.json({
+      message: "อัพเดทสำเร็จ",
+      productivity: record.productivity,
+    });
   } catch (err) {
     return respondDbError(res, err);
   }

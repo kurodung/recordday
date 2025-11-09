@@ -30,6 +30,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -617,17 +618,20 @@ export default function CompareDashboard({ username, wardname }) {
         "vent_invasive"
       );
 
-// 🔸 รวมทั้งหมด (เอาทุกกลุ่ม Vent มารวม)
-if (label === "รวม" || label.includes("vent") || label.includes("เครื่องช่วยหายใจ")) {
-  const allVentRows = rows.filter(
-    (r) =>
-      ICU_Ven.includes(r.wardname) ||
-      AD_Ven.includes(r.wardname) ||
-      CH_Ven.includes(r.wardname)
-  );
-  return formatList(allVentRows.filter(hasVent), "vent_invasive");
-}
-
+    // 🔸 รวมทั้งหมด (เอาทุกกลุ่ม Vent มารวม)
+    if (
+      label === "รวม" ||
+      label.includes("vent") ||
+      label.includes("เครื่องช่วยหายใจ")
+    ) {
+      const allVentRows = rows.filter(
+        (r) =>
+          ICU_Ven.includes(r.wardname) ||
+          AD_Ven.includes(r.wardname) ||
+          CH_Ven.includes(r.wardname)
+      );
+      return formatList(allVentRows.filter(hasVent), "vent_invasive");
+    }
 
     // 🦠 DF
     if (lower.includes("df - รับใหม่"))
@@ -859,10 +863,21 @@ if (label === "รวม" || label.includes("vent") || label.includes("เคร
   const barData = useMemo(() => {
     if (!metrics?.total) return [];
     return [
-      { label: SHIFT_TH.morning, value: metrics.morning[barMetric] || 0 },
-      { label: SHIFT_TH.afternoon, value: metrics.afternoon[barMetric] || 0 },
-      { label: SHIFT_TH.night, value: metrics.night[barMetric] || 0 },
-      { label: SHIFT_TH.total, value: metrics.total[barMetric] || 0 },
+      {
+        label: SHIFT_TH.morning,
+        value: metrics.morning[barMetric] || 0,
+        color: "#facc15",
+      }, // เหลือง
+      {
+        label: SHIFT_TH.afternoon,
+        value: metrics.afternoon[barMetric] || 0,
+        color: "#fb923c",
+      }, // ส้ม
+      {
+        label: SHIFT_TH.night,
+        value: metrics.night[barMetric] || 0,
+        color: "#3b82f6",
+      }, // น้ำเงิน
     ];
   }, [metrics, barMetric]);
 
@@ -1070,28 +1085,35 @@ if (label === "รวม" || label.includes("vent") || label.includes("เคร
         </div>
 
         <ResponsiveContainer width="100%" height={360}>
-          <BarChart
-            data={barData}
-            margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="label" />
-            <YAxis />
-            <Tooltip
-              formatter={(v) =>
-                barMetric === "prodAvg"
-                  ? `${Number(v).toFixed(2)}%`
-                  : `${fmt(v)} คน`
-              }
-            />
-            <Legend />
-            <Bar
-              dataKey="value"
-              name={METRIC_FIELDS.find((m) => m.key === barMetric)?.label}
-              fill="#7e3cbd"
-            />
-          </BarChart>
-        </ResponsiveContainer>
+  <BarChart
+    data={[
+      {
+        label: "รวมเวร",
+        morning: metrics.morning[barMetric] || 0,
+        afternoon: metrics.afternoon[barMetric] || 0,
+        night: metrics.night[barMetric] || 0,
+      },
+    ]}
+    margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="label" />
+    <YAxis />
+    <Tooltip
+      formatter={(v) =>
+        barMetric === "prodAvg"
+          ? `${Number(v).toFixed(2)}%`
+          : `${fmt(v)} คน`
+      }
+    />
+    {/* ✅ legend จะโชว์ 3 สีพร้อมชื่อ */}
+    <Legend verticalAlign="top" height={36} />
+    <Bar dataKey="morning" name="เช้า" fill="#facc15" />
+    <Bar dataKey="afternoon" name="บ่าย" fill="#fb923c" />
+    <Bar dataKey="night" name="ดึก" fill="#3b82f6" />
+  </BarChart>
+</ResponsiveContainer>
+
       </Block>
     </div>
   );

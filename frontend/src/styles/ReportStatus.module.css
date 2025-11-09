@@ -53,10 +53,24 @@
 .tableMatrix th,
 .tableMatrix td {
   box-sizing: border-box;
-  border-right: 1px solid #f0f2f5;
-  border-bottom: 1px solid #f0f2f5;
+  border-right: 1px solid #d3d3d3;
+  border-bottom: 1px solid #d3d3d3;
   padding: 10px 8px;
-  background: #fff;
+  background: transparent; /* ✅ ให้สีจาก tr แสดงได้ */
+}
+
+.tableMatrix tr:nth-child(even) {
+  background-color: #faf5ff;
+}
+
+.tableMatrix tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+.tableMatrix tr:hover {
+  background-color: #ede9fe;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
 }
 
 /* ความกว้างคงที่ของคอลัมน์ชื่อ ward และคอลัมน์วัน */
@@ -86,14 +100,31 @@
 .centerCell .dot { vertical-align: middle; }  /* กัน baseline เพี้ยน */
 .dot {
   display: inline-block;
-  width: 12px;              /* เดิม 8px → ขยาย */
-  height: 12px;             /* เดิม 8px → ขยาย */
-  border-radius: 999px;
-  margin: 0 5px;            /* เว้นระยะเพิ่มอีกนิด */
-  border: 1.5px solid #d1d5db;  /* เส้นขอบหนาขึ้นเล็กน้อยให้คมชัด */
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 3px;
 }
-.on { background: #16a34a; }   /* เขียว */
-.off { background: #e5e7eb; }  /* เทา */
+
+/* ปิดไฟ */
+.off {
+  background-color: #e5e7eb;
+  opacity: 0.5;
+}
+
+/* เปิดไฟแต่ละเวร */
+.dot.on[aria-label="morning"] {
+  background-color: #facc15; /* เหลือง */
+}
+
+.dot.on[aria-label="afternoon"] {
+  background-color: #fb923c; /* ส้ม */
+}
+
+.dot.on[aria-label="night"] {
+  background-color: #3b82f6; /* น้ำเงิน */
+}
+
 
 .rangeHintSmall { font-size: 12px; opacity: .8; margin-top: 2px; }
 

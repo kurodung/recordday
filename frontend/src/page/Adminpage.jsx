@@ -227,8 +227,6 @@ export default function Adminpage() {
                   onChange={handleChange}
                 >
                   <option value="1">User</option>
-                  <option value="2">หัวหน้าตึก</option>
-                  <option value="3">ผู้ตรวจการ</option>
                   <option value="4">Admin</option>
                 </select>
               </div>

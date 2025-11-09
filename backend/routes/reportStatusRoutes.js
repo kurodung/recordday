@@ -97,14 +97,18 @@ router.get("/report-status-range", async (req, res) => {
       if (wardname) cond = " AND wardname = ?";
       else if (wardname_like) cond = " AND wardname LIKE ?";
 
+      const hasIsComplete = t === "ward_reports";
+      const completeFilter = hasIsComplete ? "AND is_complete = 1" : "";
+
       unionSQL.push(`
-    SELECT wardname,
-           ${subwardExpr},
-           DATE_FORMAT(date, '%Y-%m-%d') AS date,
-           shift
-    FROM ${t}
-    WHERE date BETWEEN ? AND ?${cond}
-  `);
+  SELECT wardname,
+         ${subwardExpr},
+         DATE_FORMAT(date, '%Y-%m-%d') AS date,
+         shift
+  FROM ${t}
+  WHERE date BETWEEN ? AND ?${cond}
+  ${completeFilter}
+`);
 
       argsR.push(start, end);
       if (wardname) argsR.push(wardname);

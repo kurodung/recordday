@@ -5,7 +5,7 @@ import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
 
 /* ----------------------- Helper Functions ----------------------- */
-const displayZeroAsBlank = (v) => (v === 0 || v === "0" ? "" : v ?? "");
+const displayZeroAsBlank = (v) => (v == null ? "" : v);
 const toInt = (v) =>
   v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
 
@@ -276,12 +276,17 @@ export default function HospitalUI({
       subward: subward?.trim() ? subward : null,
     };
 
-    const numeric = Object.fromEntries(
-      NUMERIC_FIELDS.map((k) => [
-        k,
-        k === "bed_total" ? toInt(bedTotal) : toInt(formData[k]),
-      ])
-    );
+    const numeric = {};
+    for (const k of NUMERIC_FIELDS) {
+      if (k === "bed_total") {
+        numeric[k] = toInt(bedTotal);
+      } else {
+        const val = formData[k];
+        if (val !== "" && val !== null && val !== undefined)
+          numeric[k] = toInt(val);
+      }
+    }
+
     const text = Object.fromEntries(
       TEXT_FIELDS.map((k) => [k, formData[k] ?? ""])
     );
@@ -311,7 +316,14 @@ export default function HospitalUI({
       const data = await res.json();
       if (!res.ok) return alert(data.message || "บันทึกไม่สำเร็จ");
 
-      alert("✅ บันทึกสำเร็จ");
+      if (data.is_complete === 1) {
+        alert("✅ บันทึกสำเร็จ");
+      } else {
+        alert(
+          "✅ บันทึกแล้ว แต่ต้องกรอก 0 ให้ครบทุกช่องเพื่อยืนยันข้อมูลให้สมบูรณ์"
+        );
+      }
+
       setTimeout(() => fetchExistingData(), 500);
     } catch {
       alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
@@ -416,7 +428,9 @@ export default function HospitalUI({
           </div>
 
           <div className="form-column">
-            <div className="section-header eqiment">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
+            <div className="section-header eqiment">
+              กลุ่มการให้ออกซิเจนและอุปกรณ์
+            </div>
             <div className="horizontal-inputs">
               {renderInput("ใช้เครื่อง HFNC:", "hfnc")}
               {renderInput("ให้ออกซิเจน:", "oxygen")}
@@ -454,7 +468,7 @@ export default function HospitalUI({
             <div className="section-header">
               ติดเชื้อดื้อยา(XDR/CRE/VRE)
             </div>{" "}
-            {renderInput("", "infection", "number", "180px")}{" "}
+            {renderInput("", "infection", "number", "150px")}{" "}
           </div>
           <div className="form-column">
             {" "}
@@ -524,7 +538,15 @@ export default function HospitalUI({
         </div>
       </div>
 
-      <div className="button-container">
+      <div
+        className="button-container"
+        style={{
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <button
           type="button"
           className="save-button"
@@ -533,6 +555,21 @@ export default function HospitalUI({
         >
           {loading ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
         </button>
+
+        {/* 🟣 ข้อความแจ้งเตือนอยู่ด้านล่าง */}
+        <div
+          style={{
+            marginTop: "10px",
+            backgroundColor: "#f3e8ff",
+            borderRadius: "8px",
+            padding: "6px 12px",
+            color: "#ff0000",
+            fontSize: "16px",
+            maxWidth: "80%",
+          }}
+        >
+          ⚠️ กรุณากรอก 0 ให้ครบทุกช่องเพื่อยืนยันว่ากรอกข้อมูลถูกต้อง
+        </div>
       </div>
     </div>
   );

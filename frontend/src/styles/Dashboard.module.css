@@ -609,7 +609,7 @@
 
 /* ช่อง พยาบาลหัวหน้าเวร */
 input[name="head_nurse"] {
-  width: 180px !important;
+  width: 150px !important;
 }
 
 /* ช่อง พ.ทำความสะอาด */
