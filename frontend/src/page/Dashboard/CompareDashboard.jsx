@@ -592,7 +592,6 @@ export default function CompareDashboard({ username, wardname }) {
         "type4"
       );
 
-    // 💨 Ventilator
     // 💨 Ventilator (ICU / ผู้ใหญ่ / เด็ก / รวม)
     const label = norm(name); // ลบช่องว่าง เครื่องหมายพิเศษออก
     const hasVent = (r) => n(r.vent_invasive) > 0 || n(r.vent_noninvasive) > 0;
@@ -918,6 +917,34 @@ export default function CompareDashboard({ username, wardname }) {
     return { departments, wards: uniqueWards, years, subwards: [] };
   }, [departments, wardOptions, filters.department]);
 
+  // ✅ เพิ่ม state สำหรับโหมดเปรียบเทียบ
+  const [compareMode, setCompareMode] = useState("shift"); // shift, month, year
+  const [timeSummary, setTimeSummary] = useState([]);
+
+  // ✅ ฟังก์ชันดึงข้อมูลรายเดือน/รายปี
+  const fetchTimeSummary = async () => {
+    const tk = localStorage.getItem("token") || "";
+    const year = filters.year || new Date().getFullYear();
+    let url = "";
+
+    if (compareMode === "month") {
+      url = `${API_BASE}/api/dashboard/monthly-summary?year=${year}`;
+    } else if (compareMode === "year") {
+      url = `${API_BASE}/api/dashboard/yearly-summary`;
+    } else return;
+
+    const res = await fetch(url, {
+      headers: tk ? { Authorization: `Bearer ${tk}` } : {},
+    });
+    const data = await res.json();
+    setTimeSummary(data);
+  };
+
+  // ✅ ให้โหลดข้อมูลเมื่อเปลี่ยนโหมด
+  useEffect(() => {
+    if (compareMode !== "shift") fetchTimeSummary();
+  }, [compareMode, filters.year]);
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -956,103 +983,238 @@ export default function CompareDashboard({ username, wardname }) {
         onChangeDate={handleDateChange}
         onClear={clearFilters}
         disabledFields={{ department: isUser, ward: isUser }}
+        compareMode={compareMode} // ✅ เพิ่ม
+        setCompareMode={setCompareMode} // ✅ เพิ่ม
       />
+
+      {/* ✅ UI dropdown เลือกโหมดเปรียบเทียบ */}
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontWeight: 600, marginRight: 8 }}>
+          โหมดเปรียบเทียบ:
+        </label>
+        <select
+          value={compareMode}
+          onChange={(e) => setCompareMode(e.target.value)}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 8,
+            border: "1px solid #ddd",
+          }}
+        >
+          <option value="shift">เปรียบเทียบ 3 เวร</option>
+          <option value="month">เปรียบเทียบรายเดือน</option>
+          <option value="year">เปรียบเทียบรายปี</option>
+        </select>
+      </div>
 
       <Block
         styles={styles}
-        title="ตารางสรุปทุกหัวข้อ (เช้า / บ่าย / ดึก / รวม)"
+        title={
+          compareMode === "shift"
+            ? "ตารางสรุปทุกหัวข้อ (เช้า / บ่าย / ดึก / รวม)"
+            : compareMode === "month"
+            ? "ตารางสรุปทุกหัวข้อ (รายเดือน)"
+            : "ตารางสรุปทุกหัวข้อ (รายปี)"
+        }
         loading={false}
         error={null}
-        empty={!tableRows.length}
+        empty={
+          compareMode === "shift" ? !tableRows.length : !timeSummary.length
+        }
       >
         <div style={{ overflowX: "auto" }}>
-          <table className={styles.compareTable}>
-            <thead>
-              <tr>
-                <th></th>
-                <th>เช้า</th>
-                <th>บ่าย</th>
-                <th>ดึก</th>
-                <th>รวม</th>
-                <th>รายละเอียด</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {tableRows.map((row, i) =>
-                row.type === "group" ? (
-                  <tr
-                    key={`g-${i}`}
-                    className={styles.groupRow}
-                    style={{ "--group-color": row.color }}
-                  >
-                    <td colSpan={6} style={{ padding: "12px 16px" }}>
-                      {row.title}
-                    </td>
-                  </tr>
-                ) : (
-                  <React.Fragment key={`r-${i}`}>
-                    <tr>
-                      {row.cells.map((c, j) => (
-                        <td
-                          key={j}
-                          style={{
-                            textAlign: j === 0 ? "left" : "center",
-                          }}
-                        >
-                          {c}
-                        </td>
-                      ))}
-
-                      {/* ✅ ปุ่มดูรายละเอียด */}
-                      <td
-                        style={{
-                          background: "#f8fafc",
-                          textAlign: "center",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                          color: "#7e3cbd",
-                        }}
-                        onClick={() => toggleRow(i)}
-                      >
-                        {expanded === i ? "▲" : "▼"}
+          {compareMode === "shift" ? (
+            /* ✅ ตารางโหมด 3 เวร (เหมือนเดิม) */
+            <table className={styles.compareTable}>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>เช้า</th>
+                  <th>บ่าย</th>
+                  <th>ดึก</th>
+                  <th>รวม</th>
+                  <th>รายละเอียด</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row, i) =>
+                  row.type === "group" ? (
+                    <tr
+                      key={`g-${i}`}
+                      className={styles.groupRow}
+                      style={{ "--group-color": row.color }}
+                    >
+                      <td colSpan={6} style={{ padding: "12px 16px" }}>
+                        {row.title}
                       </td>
                     </tr>
-
-                    {/* ✅ แถวรายละเอียด */}
-                    {expanded === i && (
-                      <tr className={styles.expandedRow}>
-                        <td colSpan={6}>
-                          <div>
-                            <strong>เช้า:</strong>{" "}
-                            {getDetailText(row.cells[0], "morning")}
-                          </div>
-                          <div>
-                            <strong>บ่าย:</strong>{" "}
-                            {getDetailText(row.cells[0], "afternoon")}
-                          </div>
-                          <div>
-                            <strong>ดึก:</strong>{" "}
-                            {getDetailText(row.cells[0], "night")}
-                          </div>
-                          <div
+                  ) : (
+                    <React.Fragment key={`r-${i}`}>
+                      <tr>
+                        {row.cells.map((c, j) => (
+                          <td
+                            key={j}
                             style={{
-                              borderTop: "1px solid #ddd",
-                              marginTop: 4,
-                              paddingTop: 4,
+                              textAlign: j === 0 ? "left" : "center",
                             }}
                           >
-                            <strong>รวม:</strong>{" "}
-                            {getDetailText(row.cells[0], "total")}
-                          </div>
+                            {c}
+                          </td>
+                        ))}
+                        <td
+                          style={{
+                            background: "#f8fafc",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            color: "#7e3cbd",
+                          }}
+                          onClick={() => toggleRow(i)}
+                        >
+                          {expanded === i ? "▲" : "▼"}
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                )
-              )}
-            </tbody>
-          </table>
+                      {expanded === i && (
+                        <tr className={styles.expandedRow}>
+                          <td colSpan={6}>
+                            <div>
+                              <strong>เช้า:</strong>{" "}
+                              {getDetailText(row.cells[0], "morning")}
+                            </div>
+                            <div>
+                              <strong>บ่าย:</strong>{" "}
+                              {getDetailText(row.cells[0], "afternoon")}
+                            </div>
+                            <div>
+                              <strong>ดึก:</strong>{" "}
+                              {getDetailText(row.cells[0], "night")}
+                            </div>
+                            <div
+                              style={{
+                                borderTop: "1px solid #ddd",
+                                marginTop: 4,
+                                paddingTop: 4,
+                              }}
+                            >
+                              <strong>รวม:</strong>{" "}
+                              {getDetailText(row.cells[0], "total")}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                )}
+              </tbody>
+            </table>
+          ) : (
+            /* ✅ ตารางแบบรายเดือน / รายปี แสดงหัวข้อทั้งหมด */
+            <table className={styles.compareTable}>
+              <thead>
+                <tr>
+                  <th>หัวข้อ</th>
+                  {timeSummary.map((r, i) => (
+                    <th key={i} style={{ textAlign: "center" }}>
+                      {compareMode === "month"
+                        ? new Date(0, r.month - 1).toLocaleString("th-TH", {
+                            month: "short",
+                          })
+                        : r.year}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* ✅ หมวด: คงพยาบาล */}
+                <tr className={styles.groupRow}>
+                  <td colSpan={timeSummary.length + 1}>คงพยาบาล</td>
+                </tr>
+                {[
+                  { key: "ward_all", label: "วอร์ดทั้งหมด" },
+                  { key: "ward_special", label: "วอร์ดพิเศษ" },
+                  { key: "icu_adult", label: "ICU (ผู้ใหญ่)" },
+                  { key: "icu_child", label: "ICU (เด็ก)" },
+                  { key: "semi_icu", label: "Semi ICU" },
+                  { key: "newborn", label: "ทารก" },
+                ].map((row, i) => (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 600 }}>{row.label}</td>
+                    {timeSummary.map((r, j) => (
+                      <td key={j} style={{ textAlign: "center" }}>
+                        {fmt(r[row.key] || 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+
+                {/* ✅ หมวด: ประเภทผู้ป่วย */}
+                <tr className={styles.groupRow}>
+                  <td colSpan={timeSummary.length + 1}>
+                    ประเภทผู้ป่วย / รับใหม่ - จำหน่าย
+                  </td>
+                </tr>
+                {[
+                  { key: "type5", label: "ประเภทที่ 5" },
+                  { key: "type4", label: "ประเภทที่ 4" },
+                  { key: "admit", label: "รับใหม่" },
+                  { key: "home", label: "จำหน่ายกลับบ้าน" },
+                  { key: "died", label: "เสียชีวิต" },
+                ].map((row, i) => (
+                  <tr key={`type-${i}`}>
+                    <td style={{ fontWeight: 600 }}>{row.label}</td>
+                    {timeSummary.map((r, j) => (
+                      <td key={j} style={{ textAlign: "center" }}>
+                        {fmt(r[row.key] || 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+
+                {/* ✅ หมวด: Ventilator */}
+                <tr className={styles.groupRow}>
+                  <td colSpan={timeSummary.length + 1}>Ventilator</td>
+                </tr>
+                {[
+                  { key: "vent_icu", label: "ICU" },
+                  { key: "vent_adult", label: "ผู้ใหญ่" },
+                  { key: "vent_child", label: "เด็ก" },
+                  { key: "vent_total", label: "รวม" },
+                ].map((row, i) => (
+                  <tr key={`vent-${i}`}>
+                    <td style={{ fontWeight: 600 }}>{row.label}</td>
+                    {timeSummary.map((r, j) => (
+                      <td key={j} style={{ textAlign: "center" }}>
+                        {fmt(r[row.key] || 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+
+                {/* ✅ หมวด: Productivity / อื่น ๆ */}
+                <tr className={styles.groupRow}>
+                  <td colSpan={timeSummary.length + 1}>อื่น ๆ</td>
+                </tr>
+                {[
+                  { key: "stroke_total", label: "Stroke" },
+                  { key: "psych_total", label: "จิตเวช" },
+                  { key: "prisoner_total", label: "นักโทษ" },
+                  { key: "rn_total", label: "RN" },
+                  { key: "productivity", label: "Productivity (%)" },
+                ].map((row, i) => (
+                  <tr key={`etc-${i}`}>
+                    <td style={{ fontWeight: 600 }}>{row.label}</td>
+                    {timeSummary.map((r, j) => (
+                      <td key={j} style={{ textAlign: "center" }}>
+                        {row.key === "productivity"
+                          ? Number(r[row.key] || 0).toFixed(2)
+                          : fmt(r[row.key] || 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </Block>
 
@@ -1084,36 +1246,63 @@ export default function CompareDashboard({ username, wardname }) {
           </select>
         </div>
 
-        <ResponsiveContainer width="100%" height={360}>
-  <BarChart
-    data={[
-      {
-        label: "รวมเวร",
-        morning: metrics.morning[barMetric] || 0,
-        afternoon: metrics.afternoon[barMetric] || 0,
-        night: metrics.night[barMetric] || 0,
-      },
-    ]}
-    margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
-  >
-    <CartesianGrid strokeDasharray="3 3" />
-    <XAxis dataKey="label" />
-    <YAxis />
-    <Tooltip
-      formatter={(v) =>
-        barMetric === "prodAvg"
-          ? `${Number(v).toFixed(2)}%`
-          : `${fmt(v)} คน`
-      }
-    />
-    {/* ✅ legend จะโชว์ 3 สีพร้อมชื่อ */}
-    <Legend verticalAlign="top" height={36} />
-    <Bar dataKey="morning" name="เช้า" fill="#facc15" />
-    <Bar dataKey="afternoon" name="บ่าย" fill="#fb923c" />
-    <Bar dataKey="night" name="ดึก" fill="#3b82f6" />
-  </BarChart>
-</ResponsiveContainer>
-
+        {/* ✅ แสดงกราฟตามโหมด */}
+        {compareMode === "shift" ? (
+          // 🟡 โหมดเปรียบเทียบเวร (เหมือนเดิม)
+          <ResponsiveContainer width="100%" height={360}>
+            <BarChart
+              data={[
+                {
+                  label: "รวมเวร",
+                  morning: metrics.morning[barMetric] || 0,
+                  afternoon: metrics.afternoon[barMetric] || 0,
+                  night: metrics.night[barMetric] || 0,
+                },
+              ]}
+              margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="label" />
+              <YAxis />
+              <Tooltip
+                formatter={(v) =>
+                  barMetric === "prodAvg"
+                    ? `${Number(v).toFixed(2)}%`
+                    : `${fmt(v)} คน`
+                }
+              />
+              <Legend verticalAlign="top" height={36} />
+              <Bar dataKey="morning" name="เช้า" fill="#facc15" />
+              <Bar dataKey="afternoon" name="บ่าย" fill="#fb923c" />
+              <Bar dataKey="night" name="ดึก" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          // 🔵 โหมดรายเดือน / รายปี
+          <ResponsiveContainer width="100%" height={360}>
+            <BarChart
+              data={timeSummary.map((r) => ({
+                name:
+                  compareMode === "month" ? `เดือน ${r.month}` : `ปี ${r.year}`,
+                remain: r.total_remain,
+                admit: r.total_admit,
+                home: r.total_home,
+                died: r.total_died,
+              }))}
+              margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip formatter={(v) => `${fmt(v)} คน`} />
+              <Legend verticalAlign="top" height={36} />
+              <Bar dataKey="remain" name="คงพยาบาล" fill="#6366f1" />
+              <Bar dataKey="admit" name="รับใหม่" fill="#22c55e" />
+              <Bar dataKey="home" name="กลับบ้าน" fill="#f59e0b" />
+              <Bar dataKey="died" name="เสียชีวิต" fill="#ef4444" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </Block>
     </div>
   );

@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const jwt = require("jsonwebtoken");
+const { ICUAD_WARDS, ICUCH_WARDS } = require("../constants/wards");
 
 /** --------- Auth --------- **/
 const requireBearer = (req, res, next) => {
@@ -307,8 +308,8 @@ router.get("/dengue-summary", requireBearer, async (req, res) => {
       params.push(effectiveWard.trim());
     }
 
-// ✅ Query template
-const dengueSql = (type) => `
+    // ✅ Query template
+    const dengueSql = (type) => `
   SELECT
     dr.wardname,
     dr.subward,
@@ -330,33 +331,248 @@ const dengueSql = (type) => `
   ORDER BY dr.wardname, dr.subward
 `;
 
-const [dfRows]  = await db.query(dengueSql("DF"), params);
-const [dhfRows] = await db.query(dengueSql("DHF"), params);
-const [dssRows] = await db.query(dengueSql("DSS"), params);
+    const [dfRows] = await db.query(dengueSql("DF"), params);
+    const [dhfRows] = await db.query(dengueSql("DHF"), params);
+    const [dssRows] = await db.query(dengueSql("DSS"), params);
 
-// รวมทั้งหมด
-const rows = [...dfRows, ...dhfRows, ...dssRows];
+    // รวมทั้งหมด
+    const rows = [...dfRows, ...dhfRows, ...dssRows];
 
-// ✅ รวมสรุปทั้งหมด
-// ✅ รวมสรุปทั้งหมด (แก้เวอร์ชันนี้)
-const total = rows.reduce(
-  (a, x) => {
-    a.admit_new += Number(x.admit_new) || 0;
-    a.discharge_home += Number(x.discharge_home) || 0;
-    a.discharge_died += Number(x.discharge_died) || 0;
-    a.bed_remain += Number(x.bed_remain) || 0;
-    return a;
-  },
-  { dengue_type: "รวม", admit_new: 0, discharge_home: 0, discharge_died: 0, bed_remain: 0 }
-);
+    // ✅ รวมสรุปทั้งหมด
+    // ✅ รวมสรุปทั้งหมด (แก้เวอร์ชันนี้)
+    const total = rows.reduce(
+      (a, x) => {
+        a.admit_new += Number(x.admit_new) || 0;
+        a.discharge_home += Number(x.discharge_home) || 0;
+        a.discharge_died += Number(x.discharge_died) || 0;
+        a.bed_remain += Number(x.bed_remain) || 0;
+        return a;
+      },
+      {
+        dengue_type: "รวม",
+        admit_new: 0,
+        discharge_home: 0,
+        discharge_died: 0,
+        bed_remain: 0,
+      }
+    );
 
-
-res.json({ ok: true, data: rows, total });
-
+    res.json({ ok: true, data: rows, total });
   } catch (err) {
     console.error("GET /dashboard/dengue-summary error:", err);
     res.status(500).json({ ok: false, message: "Database error" });
   }
 });
+
+/* =====================================================
+   📊 รายเดือน: /api/dashboard/monthly-summary?year=2025
+   ===================================================== */
+router.get("/monthly-summary", requireBearer, async (req, res) => {
+  try {
+    const { year } = req.query;
+    if (!year)
+      return res.status(400).json({ ok: false, message: "กรุณาระบุปี" });
+
+    // ✅ ป้องกัน array ว่าง
+    const ICUAD = ICUAD_WARDS?.length ? ICUAD_WARDS : ["ICU_AD_DUMMY"];
+    const ICUCH = ICUCH_WARDS?.length ? ICUCH_WARDS : ["ICU_CH_DUMMY"];
+
+    const placeholdersICUAD = ICUAD.map(() => "?").join(",");
+    const placeholdersICUCH = ICUCH.map(() => "?").join(",");
+
+    const sql = `
+      SELECT 
+        YEAR(vu.report_date) AS year,
+        MONTH(vu.report_date) AS month,
+
+        -- 🏥 คงพยาบาลทั้งหมด
+        SUM(COALESCE(vu.bed_remain,0)) AS ward_all,
+
+        -- 🏥 วอร์ดพิเศษ
+        SUM(CASE 
+              WHEN vu.wardname LIKE '%พิเศษ%' 
+                OR vu.subward LIKE '%พิเศษ%' 
+                OR vu.wardname LIKE '%เฉลิม%' 
+                OR vu.wardname LIKE '%VIP%' 
+              THEN COALESCE(vu.bed_remain,0) 
+              ELSE 0 
+            END) AS ward_special,
+
+        -- 🧠 ICU แยกชัดเจน
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_adult,
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_child,
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
+                       OR vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_all,
+
+        -- 🛏️ Semi ICU / ทารก
+        SUM(CASE WHEN vu.wardname LIKE '%Semi%' 
+                  OR vu.subward LIKE '%Semi%' 
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS semi_icu,
+        SUM(CASE WHEN vu.wardname LIKE '%ทารก%' 
+                  OR vu.subward LIKE '%ทารก%' 
+                  OR vu.subward LIKE '%NB%' 
+                  OR vu.subward LIKE '%NICU%' 
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS newborn,
+
+        -- 👨‍⚕️ ประเภทผู้ป่วย
+        SUM(COALESCE(vu.type5,0)) AS type5,
+        SUM(COALESCE(vu.type4,0)) AS type4,
+        SUM(COALESCE(vu.bed_new,0)) AS admit,
+        SUM(COALESCE(vu.discharge_home,0)) AS home,
+        SUM(COALESCE(vu.discharge_died,0)) AS died,
+
+        -- 💨 Ventilator แยกไม่ซ้ำ
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
+                      OR vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_icu,
+
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_adult,
+
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_child,
+
+        SUM(COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)) AS vent_total,
+
+        -- 🧠 อื่น ๆ
+        SUM(COALESCE(vu.stroke,0)) AS stroke_total,
+        SUM(COALESCE(vu.psych,0)) AS psych_total,
+        SUM(COALESCE(vu.prisoner,0)) AS prisoner_total,
+        SUM(COALESCE(vu.rn,0)+COALESCE(vu.rn_extra,0)) AS rn_total,
+        ROUND(AVG(NULLIF(vu.productivity,0)),2) AS productivity
+
+      FROM v_reports_unified vu
+      WHERE (YEAR(vu.report_date) = ? OR YEAR(vu.report_date) = ? + 543)
+      GROUP BY YEAR(vu.report_date), MONTH(vu.report_date)
+      ORDER BY YEAR(vu.report_date), MONTH(vu.report_date)
+    `;
+
+    const params = [
+      ...ICUAD, // icu_adult
+      ...ICUCH, // icu_child
+      ...ICUAD, ...ICUCH, // icu_all
+      ...ICUAD, ...ICUCH, ...ICUAD, ...ICUCH, // vent_icu/adult/child
+      year, year,
+    ];
+
+    const [rows] = await db.query(sql, params);
+    res.json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    console.error("❌ monthly-summary error:", err.sqlMessage || err.message);
+    res.status(500).json({
+      ok: false,
+      message: "โหลดรายเดือนล้มเหลว",
+      error: err.sqlMessage || err.message,
+    });
+  }
+});
+
+
+/* =====================================================
+   📊 รายปี: /api/dashboard/yearly-summary
+   ===================================================== */
+router.get("/yearly-summary", requireBearer, async (req, res) => {
+  try {
+    // ✅ ป้องกัน array ว่าง
+    const ICUAD = ICUAD_WARDS?.length ? ICUAD_WARDS : ["ICU_AD_DUMMY"];
+    const ICUCH = ICUCH_WARDS?.length ? ICUCH_WARDS : ["ICU_CH_DUMMY"];
+    const placeholdersICUAD = ICUAD.map(() => "?").join(",");
+    const placeholdersICUCH = ICUCH.map(() => "?").join(",");
+
+    const sql = `
+      SELECT 
+        YEAR(vu.report_date) AS year,
+
+        -- 🏥 คงพยาบาลทั้งหมด
+        SUM(COALESCE(vu.bed_remain,0)) AS ward_all,
+
+        -- 🏥 วอร์ดพิเศษ
+        SUM(CASE 
+              WHEN vu.wardname LIKE '%พิเศษ%' 
+                OR vu.subward LIKE '%พิเศษ%' 
+                OR vu.wardname LIKE '%เฉลิม%' 
+                OR vu.wardname LIKE '%VIP%' 
+              THEN COALESCE(vu.bed_remain,0) 
+              ELSE 0 
+            END) AS ward_special,
+
+        -- 🧠 ICU
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_adult,
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_child,
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
+                       OR vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_all,
+
+        -- 🛏️ Semi ICU / ทารก
+        SUM(CASE WHEN vu.wardname LIKE '%Semi%' 
+                  OR vu.subward LIKE '%Semi%' 
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS semi_icu,
+        SUM(CASE WHEN vu.wardname LIKE '%ทารก%' 
+                  OR vu.subward LIKE '%ทารก%' 
+                  OR vu.subward LIKE '%NB%' 
+                  OR vu.subward LIKE '%NICU%' 
+                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS newborn,
+
+        -- 👨‍⚕️ ประเภทผู้ป่วย
+        SUM(COALESCE(vu.type5,0)) AS type5,
+        SUM(COALESCE(vu.type4,0)) AS type4,
+        SUM(COALESCE(vu.bed_new,0)) AS admit,
+        SUM(COALESCE(vu.discharge_home,0)) AS home,
+        SUM(COALESCE(vu.discharge_died,0)) AS died,
+
+        -- 💨 Ventilator
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
+                      OR vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_icu,
+
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_adult,
+
+        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
+                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+                 ELSE 0 END) AS vent_child,
+
+        SUM(COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)) AS vent_total,
+
+        -- 🧠 อื่น ๆ
+        SUM(COALESCE(vu.stroke,0)) AS stroke_total,
+        SUM(COALESCE(vu.psych,0)) AS psych_total,
+        SUM(COALESCE(vu.prisoner,0)) AS prisoner_total,
+        SUM(COALESCE(vu.rn,0)+COALESCE(vu.rn_extra,0)) AS rn_total,
+        ROUND(AVG(NULLIF(vu.productivity,0)),2) AS productivity
+
+      FROM v_reports_unified vu
+      GROUP BY YEAR(vu.report_date)
+      ORDER BY YEAR(vu.report_date)
+    `;
+
+    const params = [
+      ...ICUAD, ...ICUCH, // icu_adult + icu_child
+      ...ICUAD, ...ICUCH, // icu_all
+      ...ICUAD, ...ICUCH, ...ICUAD, ...ICUCH, // vent_xx
+    ];
+
+    const [rows] = await db.query(sql, params);
+    res.json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    console.error("❌ yearly-summary error:", err.sqlMessage || err.message);
+    res.status(500).json({
+      ok: false,
+      message: "โหลดรายปีล้มเหลว",
+      error: err.sqlMessage || err.message,
+    });
+  }
+});
+
 
 module.exports = router;

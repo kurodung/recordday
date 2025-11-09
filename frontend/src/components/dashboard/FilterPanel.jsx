@@ -18,6 +18,8 @@ export default function FilterPanel({
   onChangeDate,
   onClear,
   disabledFields = {}, // ✅ รองรับ prop disabledFields
+  compareMode, // ✅ เพิ่ม
+  setCompareMode, // ✅ เพิ่ม
 }) {
   /* -------------------------- Static options -------------------------- */
   const shiftOptions = useMemo(
@@ -125,6 +127,21 @@ export default function FilterPanel({
       </div>
 
       <div className={styles.filterGrid}>
+        {/* ✅ เพิ่มตัวเลือกโหมดเปรียบเทียบ */}
+        <div className={styles.filterItem}>
+          <label className={styles.filterLabel}>โหมดเปรียบเทียบ</label>
+          <select
+            name="compareMode"
+            value={compareMode}
+            onChange={(e) => setCompareMode(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="shift">เปรียบเทียบ 3 เวร</option>
+            <option value="month">เปรียบเทียบรายเดือน</option>
+            <option value="year">เปรียบเทียบรายปี</option>
+          </select>
+        </div>
+
         {fields.map((field) => (
           <div
             key={field.name}
