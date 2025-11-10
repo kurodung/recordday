@@ -373,13 +373,6 @@ router.get("/monthly-summary", requireBearer, async (req, res) => {
     if (!year)
       return res.status(400).json({ ok: false, message: "กรุณาระบุปี" });
 
-    // ✅ ป้องกัน array ว่าง
-    const ICUAD = ICUAD_WARDS?.length ? ICUAD_WARDS : ["ICU_AD_DUMMY"];
-    const ICUCH = ICUCH_WARDS?.length ? ICUCH_WARDS : ["ICU_CH_DUMMY"];
-
-    const placeholdersICUAD = ICUAD.map(() => "?").join(",");
-    const placeholdersICUCH = ICUCH.map(() => "?").join(",");
-
     const sql = `
       SELECT 
         YEAR(vu.report_date) AS year,
@@ -388,59 +381,46 @@ router.get("/monthly-summary", requireBearer, async (req, res) => {
         -- 🏥 คงพยาบาลทั้งหมด
         SUM(COALESCE(vu.bed_remain,0)) AS ward_all,
 
-        -- 🏥 วอร์ดพิเศษ
-        SUM(CASE 
-              WHEN vu.wardname LIKE '%พิเศษ%' 
-                OR vu.subward LIKE '%พิเศษ%' 
-                OR vu.wardname LIKE '%เฉลิม%' 
-                OR vu.wardname LIKE '%VIP%' 
-              THEN COALESCE(vu.bed_remain,0) 
-              ELSE 0 
-            END) AS ward_special,
-
-        -- 🧠 ICU แยกชัดเจน
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
-                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_adult,
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
-                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_child,
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
-                       OR vu.wardname IN (${placeholdersICUCH})
-                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS icu_all,
-
-        -- 🛏️ Semi ICU / ทารก
-        SUM(CASE WHEN vu.wardname LIKE '%Semi%' 
-                  OR vu.subward LIKE '%Semi%' 
-                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS semi_icu,
-        SUM(CASE WHEN vu.wardname LIKE '%ทารก%' 
-                  OR vu.subward LIKE '%ทารก%' 
-                  OR vu.subward LIKE '%NB%' 
-                  OR vu.subward LIKE '%NICU%' 
-                 THEN COALESCE(vu.bed_remain,0) ELSE 0 END) AS newborn,
-
-        -- 👨‍⚕️ ประเภทผู้ป่วย
+        -- 🧠 ประเภทผู้ป่วย
         SUM(COALESCE(vu.type5,0)) AS type5,
         SUM(COALESCE(vu.type4,0)) AS type4,
         SUM(COALESCE(vu.bed_new,0)) AS admit,
         SUM(COALESCE(vu.discharge_home,0)) AS home,
         SUM(COALESCE(vu.discharge_died,0)) AS died,
 
-        -- 💨 Ventilator แยกไม่ซ้ำ
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
-                      OR vu.wardname IN (${placeholdersICUCH})
+        -- 💨 Ventilator (ICU / ผู้ใหญ่ / เด็ก / รวม)
+        SUM(CASE WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname)
+                  IN ('SICU 3','MICU 2','MICU 2 - AIIR','MICU 1','RCU','SICU 1','SICU 2','CCU','CVT','NICU','PICU')
                  THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
                  ELSE 0 END) AS vent_icu,
 
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
+        SUM(CASE WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname)
+                  IN (
+                    'หลังคลอด - ผู้ใหญ่','นรีเวชกรรม','Stroke Unit','เคมีบำบัด','EENT','พิเศษ EENT',
+                    'อายุรกรรมหญิง 3 - อายุรกรรมหญิง 3','อายุรกรรมหญิง 3 - Semi ICU','พิเศษอายุรกรรม 3',
+                    'อายุรกรรมหญิง 4 - อายุรกรรมหญิง 4','อายุรกรรมหญิง 4 - Semi ICU','พิเศษอายุรกรรม 4',
+                    'อายุรกรรมชาย 5 - อายุรกรรมชาย 5','อายุรกรรมชาย 5 - Semi ICU','พิเศษอายุรกรรม 5',
+                    'อายุรกรรมชาย 6 - อายุรกรรมชาย 6','อายุรกรรมชาย 6 - Semi ICU','พิเศษอายุรกรรม 6',
+                    'อายุรกรรมชาย 7/สงฆ์','พิเศษอายุรกรรม 7',
+                    'เฉลิมฯ 2 - ผู้ใหญ่','เฉลิมฯ 3 - ผู้ใหญ่','เฉลิมฯ 4 - ผู้ใหญ่',
+                    'ออร์โธปิดิกส์ชาย - ออร์โธปิดิกส์ชาย','ออร์โธปิดิกส์ชาย - URO','พิเศษ 3',
+                    'ออร์โธปิดิกส์หญิง','พิเศษ 4',
+                    'ศัลยกรรมหญิง 1 - ศัลยกรรมหญิง 1','ศัลยกรรมหญิง 1 - Semi ICU',
+                    'ศัลยกรรมหญิง 2 - ศัลยกรรมหญิง 2','ศัลยกรรมหญิง 2 - URO','พิเศษ 5',
+                    'ศัลยกรรมชาย 2 - ศัลยกรรมชาย 2','ศัลยกรรมชาย 2 - Semi ICU','พิเศษ 6',
+                    'ศัลยกรรมชาย 1 - ศัลยกรรมชาย 1','ศัลยกรรมชาย 1 - Semi ICU','พิเศษ 7','ปาริชาติ'
+                  )
                  THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
                  ELSE 0 END) AS vent_adult,
 
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
+        SUM(CASE WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname)
+                  IN ('SNB - SNB','SNB - NICU','กุมารเวชกรรม 1','กุมารเวชกรรม 2','พิเศษ 2')
                  THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
                  ELSE 0 END) AS vent_child,
 
         SUM(COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)) AS vent_total,
 
-        -- 🧠 อื่น ๆ
+        -- อื่น ๆ
         SUM(COALESCE(vu.stroke,0)) AS stroke_total,
         SUM(COALESCE(vu.psych,0)) AS psych_total,
         SUM(COALESCE(vu.prisoner,0)) AS prisoner_total,
@@ -453,15 +433,7 @@ router.get("/monthly-summary", requireBearer, async (req, res) => {
       ORDER BY YEAR(vu.report_date), MONTH(vu.report_date)
     `;
 
-    const params = [
-      ...ICUAD, // icu_adult
-      ...ICUCH, // icu_child
-      ...ICUAD, ...ICUCH, // icu_all
-      ...ICUAD, ...ICUCH, ...ICUAD, ...ICUCH, // vent_icu/adult/child
-      year, year,
-    ];
-
-    const [rows] = await db.query(sql, params);
+    const [rows] = await db.query(sql, [year, year]);
     res.json(Array.isArray(rows) ? rows : []);
   } catch (err) {
     console.error("❌ monthly-summary error:", err.sqlMessage || err.message);
@@ -472,6 +444,7 @@ router.get("/monthly-summary", requireBearer, async (req, res) => {
     });
   }
 });
+
 
 
 /* =====================================================
