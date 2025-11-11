@@ -556,21 +556,46 @@ router.get("/yearly-summary", requireBearer, async (req, res) => {
         SUM(COALESCE(vu.discharge_home,0)) AS home,
         SUM(COALESCE(vu.discharge_died,0)) AS died,
 
-        -- 💨 Ventilator
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD}) 
-                      OR vu.wardname IN (${placeholdersICUCH})
-                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
-                 ELSE 0 END) AS vent_icu,
+        -- 💨 Ventilator (Fixed Logic)
+        SUM(CASE 
+            WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname) IN (
+                -- รายการที่ 1 (ICU)
+                'SICU 3','MICU 2','MICU 2 - AIIR','MICU 1','RCU','SICU 1','SICU 2','CCU','CVT','NICU','PICU'
+            )
+            THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+            ELSE 0 
+        END) AS vent_icu,
 
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUAD})
-                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
-                 ELSE 0 END) AS vent_adult,
+        SUM(CASE 
+            WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname) IN (
+                -- รายการที่ 2 (ผู้ใหญ่)
+                'หลังคลอด - ผู้ใหญ่','นรีเวชกรรม','Stroke Unit','เคมีบำบัด','EENT','พิเศษ EENT',
+                'อายุรกรรมหญิง 3 - อายุรกรรมหญิง 3','อายุรกรรมหญิง 3 - Semi ICU','พิเศษอายุรกรรม 3',
+                'อายุรกรรมหญิง 4 - อายุรกรรมหญิง 4','อายุรกรรมหญิง 4 - Semi ICU','พิเศษอายุรกรรม 4',
+                'อายุรกรรมชาย 5 - อายุรกรรมชาย 5','อายุรกรรมชาย 5 - Semi ICU','พิเศษอายุรกรรม 5',
+                'อายุรกรรมชาย 6 - อายุรกรรมชาย 6','อายุรกรรมชาย 6 - Semi ICU','พิเศษอายุรกรรม 6',
+                'อายุรกรรมชาย 7/สงฆ์','พิเศษอายุรกรรม 7',
+                'เฉลิมฯ 2 - ผู้ใหญ่','เฉลิมฯ 3 - ผู้ใหญ่','เฉลิมฯ 4 - ผู้ใหญ่',
+                'ออร์โธปิดิกส์ชาย - ออร์โธปิดิกส์ชาย','ออร์โธปิดิกส์ชาย - URO','พิเศษ 3',
+                'ออร์โธปิดิกส์หญิง','พิเศษ 4',
+                'ศัลยกรรมหญิง 1 - ศัลยกรรมหญิง 1','ศัลยกรรมหญิง 1 - Semi ICU',
+                'ศัลยกรรมหญิง 2 - ศัลยกรรมหญิง 2','ศัลยกรรมหญิง 2 - URO','พิเศษ 5',
+                'ศัลยกรรมชาย 2 - ศัลยกรรมชาย 2','ศัลยกรรมชาย 2 - Semi ICU','พิเศษ 6',
+                'ศัลยกรรมชาย 1 - ศัลยกรรมชาย 1','ศัลยกรรมชาย 1 - Semi ICU','พิเศษ 7','ปาริชาติ'
+            )
+            THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+            ELSE 0 
+        END) AS vent_adult,
 
-        SUM(CASE WHEN vu.wardname IN (${placeholdersICUCH})
-                 THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
-                 ELSE 0 END) AS vent_child,
+        SUM(CASE 
+            WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname) IN (
+                -- รายการที่ 3 (เด็ก)
+                'SNB - SNB','SNB - NICU','กุมารเวชกรรม 1','กุมารเวชกรรม 2','พิเศษ 2'
+            )
+            THEN COALESCE(vu.vent_invasive,0)+COALESCE(vu.vent_noninvasive,0)
+            ELSE 0 
+        END) AS vent_child,
 
-        -- ✅ แก้ไข vent_total ให้รวมจาก 3 รายการข้างบนเท่านั้น
         SUM(CASE 
             WHEN COALESCE(CONCAT(vu.wardname, ' - ', vu.subward), vu.wardname) IN (
                 -- รายการที่ 1 (ICU)
@@ -618,10 +643,6 @@ router.get("/yearly-summary", requireBearer, async (req, res) => {
       ...ICUCH, // icu_adult + icu_child
       ...ICUAD,
       ...ICUCH, // icu_all
-      ...ICUAD,
-      ...ICUCH,
-      ...ICUAD,
-      ...ICUCH, // vent_xx
     ];
 
     const [rows] = await db.query(sql, params);
