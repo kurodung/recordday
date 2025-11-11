@@ -211,7 +211,7 @@ export default function Adminpage() {
                 <label className={styles.filterLabel}>รหัสผ่าน</label>
                 <input
                   name="password"
-                  type="password"
+                  type="text"
                   className={styles.filterInput}
                   value={form.password}
                   onChange={handleChange}
