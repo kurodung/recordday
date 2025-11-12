@@ -121,27 +121,44 @@ function calcProductivity(row, subSum, isICU) {
   let weight5, numerator;
   switch (shift) {
     case "morning":
+      // เวรเช้า ICU (4.8) และ Non-ICU (4.0) - สูตรเดิม
       weight5 = isICU ? 4.8 : 4.0;
       numerator =
         type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
       break;
     case "afternoon":
-      weight5 = isICU ? 4.2 : 3.5;
-      numerator =
-        type5 * weight5 + type4 * 2.6 + type3 * 1.9 + type2 * 1.2 + type1 * 0.5;
+      if (isICU) {
+        // ✅ สูตรใหม่ ICU เวรบ่าย
+        numerator =
+          type5 * 3.6 + type4 * 2.25 + type3 * 1.65 + type2 * 1.05 + type1 * 0.45;
+      } else {
+        // สูตรเดิม Non-ICU เวรบ่าย
+        weight5 = 3.5;
+        numerator =
+          type5 * weight5 + type4 * 2.6 + type3 * 1.9 + type2 * 1.2 + type1 * 0.5;
+      }
       break;
     case "night":
-      weight5 = isICU ? 3.0 : 2.5;
-      numerator =
-        type5 * weight5 + type4 * 1.9 + type3 * 1.4 + type2 * 0.9 + type1 * 0.4;
+      if (isICU) {
+        // ✅ สูตรใหม่ ICU เวรดึก
+        numerator =
+          type5 * 3.6 + type4 * 2.25 + type3 * 1.65 + type2 * 1.05 + type1 * 0.45;
+      } else {
+        // สูตรเดิม Non-ICU เวรดึก
+        weight5 = 2.5;
+        numerator =
+          type5 * weight5 + type4 * 1.9 + type3 * 1.4 + type2 * 0.9 + type1 * 0.4;
+      }
       break;
     default:
+      // (Default to morning)
       weight5 = isICU ? 4.8 : 4.0;
       numerator =
         type5 * weight5 + type4 * 3 + type3 * 2.2 + type2 * 1.4 + type1 * 0.6;
   }
 
-  const denom = (rn + pn) * 7;
+  // ✅ ถ้าเป็น ICU จะไม่นับ PN (ใช้แค่ RN), ถ้าไม่ใช่ ICU นับทั้ง RN + PN
+  const denom = (isICU ? rn : rn + pn) * 7;
   return denom > 0 ? Math.round(((numerator * 100) / denom) * 100) / 100 : 0;
 }
 

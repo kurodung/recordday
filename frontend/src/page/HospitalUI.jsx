@@ -9,20 +9,6 @@ const displayZeroAsBlank = (v) => (v == null ? "" : v);
 const toInt = (v) =>
   v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
 
-const calcProductivity = (fd, wardname) => {
-  const isICU = /ICU|CCU|RCU|PICU|NICU/i.test(wardname || "");
-  const weight5 = isICU ? 4.8 : 4;
-  const numerator =
-    toInt(fd.type5) * weight5 +
-    toInt(fd.type4) * 3 +
-    toInt(fd.type3) * 2.2 +
-    toInt(fd.type2) * 1.4 +
-    toInt(fd.type1) * 0.6;
-  const denominator = (toInt(fd.rn) + toInt(fd.pn)) * 7;
-  return denominator > 0
-    ? Math.round(((numerator * 100) / denominator) * 100) / 100
-    : 0;
-};
 
 const NUMERIC_FIELDS = [
   "bed_total",
