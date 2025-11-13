@@ -1468,6 +1468,39 @@ export default function Dashboard({ username, wardname }) {
       );
   }, [filteredData]);
 
+  // ✅ รวม Fast Track จาก unifiedRows (ไม่มี ftAllSum)
+  const { ftStrokeSum, ftSepsisSum, ftStemiSum, ftTraumaSum } = useMemo(() => {
+    const n = (v) => Number(v ?? 0) || 0;
+    const isRollup = (r) =>
+      (r?.wardname == null && r?.subward == null) ||
+      String(r?.wardname || "").trim() === "รวม";
+
+    if (!Array.isArray(unifiedRows) || unifiedRows.length === 0) {
+      return { ftStrokeSum: 0, ftSepsisSum: 0, ftStemiSum: 0, ftTraumaSum: 0 };
+    }
+
+    const roll = unifiedRows.find(isRollup);
+
+    // ใช้ roll ถ้ามี หรือรวมจากทุกแถวถ้าไม่มี
+    const sumField = (field) => {
+      return roll
+        ? n(roll[field])
+        : unifiedRows.reduce((a, r) => a + n(r[field]), 0);
+    };
+
+    const ftStroke = sumField("ft_stroke");
+    const ftSepsis = sumField("ft_sepsis");
+    const ftStemi = sumField("ft_stemi");
+    const ftTrauma = sumField("ft_trauma");
+
+    return {
+      ftStrokeSum: ftStroke,
+      ftSepsisSum: ftSepsis,
+      ftStemiSum: ftStemi,
+      ftTraumaSum: ftTrauma,
+    };
+  }, [unifiedRows]);
+
   const totalLogPages = useMemo(
     () => Math.max(1, Math.ceil(logItems.length / LOG_PAGE_SIZE)),
     [logItems.length]
@@ -1845,19 +1878,30 @@ export default function Dashboard({ username, wardname }) {
         />
       </Block>
 
-      {/* View: Ventilator */}
+      {/* ✅ View: สรุป Fast Track (ปรับใหม่ ไม่มีรวมทั้งหมด) */}
       <Block
         styles={styles}
-        title="สรุป Fast track"
+        title="สรุป Fast Track"
         loading={unifiedLoading}
         error={unifiedError}
+        // ใช้ผลรวมของแต่ละ field เป็นเงื่อนไข empty แทน
         empty={
-          !unifiedLoading && !unifiedError && ventICU + ventAD + ventCH === 0
+          !unifiedLoading &&
+          !unifiedError &&
+          ftStrokeSum + ftSepsisSum + ftStemiSum + ftTraumaSum === 0
         }
       >
         <TableBox
-          headers={["ICU (รวม)", "ผู้ใหญ่", "เด็ก", "รวมทั้งหมด"]}
-          rows={[[fmt(ventICU), fmt(ventAD), fmt(ventCH), fmt(ventAll)]]}
+          // ✅ ตัด "รวมทั้งหมด" ออกจาก headers
+          headers={["Stroke", "Sepsis", "STEMI", "Trauma"]}
+          rows={[
+            [
+              fmt(ftStrokeSum),
+              fmt(ftSepsisSum),
+              fmt(ftStemiSum),
+              fmt(ftTraumaSum),
+            ],
+          ]}
         />
       </Block>
 

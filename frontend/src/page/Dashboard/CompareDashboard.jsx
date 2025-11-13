@@ -305,7 +305,7 @@ export default function CompareDashboard({ username, wardname }) {
   /* ------------------------- Compute metrics per shift ------------------------- */
   // คืน object metrics ต่อเวร: { allRemain, specialRemain, icuAdRemain, icuChRemain, icuAllRemain,
   // normalRemain, semiRemain, newbornRemain, t5, t4, admit, disHome, death, ventICU, ventAD, ventCH, ventAll,
-  // strokeTotal, psychTotal, prisonerTotal, rn, rnExtra, rnAll, prodAvg,
+  // strokeTotal, psychTotal, prisonerTotal, ftStroke, ftSepsis, ftStemi, ftTrauma, rn, rnExtra, rnAll, prodAvg,
   // dengue: { DF:{admit,home,death,remain}, DHF:{...}, DSS:{...} } }
   const computeMetricsFromSummary = (
     rows = [],
@@ -314,7 +314,6 @@ export default function CompareDashboard({ username, wardname }) {
   ) => {
     const normalRows = (rows || []).filter((r) => !isRollup(r));
     const roll = (rows || []).find(isRollup) || {};
-
     // ✅ ประกาศก่อนใช้
     const prodAvg = prodValue || 0;
 
@@ -402,6 +401,24 @@ export default function CompareDashboard({ username, wardname }) {
         ? n(roll.prisoner)
         : normalRows.reduce((s, r) => s + n(r.prisoner), 0);
 
+    // ✅ NEW: Fast Track (ft_stroke, ft_sepsis, ft_stemi, ft_trauma)
+    const ftStroke =
+        roll?.ft_stroke != null
+            ? n(roll.ft_stroke)
+            : normalRows.reduce((s, r) => s + n(r.ft_stroke), 0);
+    const ftSepsis =
+        roll?.ft_sepsis != null
+            ? n(roll.ft_sepsis)
+            : normalRows.reduce((s, r) => s + n(r.ft_sepsis), 0);
+    const ftStemi =
+        roll?.ft_stemi != null
+            ? n(roll.ft_stemi)
+            : normalRows.reduce((s, r) => s + n(r.ft_stemi), 0);
+    const ftTrauma =
+        roll?.ft_trauma != null
+            ? n(roll.ft_trauma)
+            : normalRows.reduce((s, r) => s + n(r.ft_trauma), 0);
+    // -------------------------------------------------------------
     // RN
     const rn =
       roll?.rn != null
@@ -453,6 +470,10 @@ export default function CompareDashboard({ username, wardname }) {
       strokeTotal,
       psychTotal,
       prisonerTotal,
+      ftStroke, 
+      ftSepsis, 
+      ftStemi, 
+      ftTrauma,
       rn,
       rnExtra,
       rnAll,
@@ -690,7 +711,34 @@ export default function CompareDashboard({ username, wardname }) {
         "discharge_died"
       );
 
-    // 🧠 Stroke
+    // ------------------------------------
+    // ✅ แก้ไข: ย้าย Fast Track ขึ้นมาก่อน Stroke เพื่อให้มี Priority สูงกว่า
+    // ------------------------------------
+    
+    // ✅ NEW: Fast Track
+    if (lower.includes("ft stroke"))
+      return formatList(
+        rows.filter((r) => n(r.ft_stroke) > 0),
+        "ft_stroke"
+      );
+    if (lower.includes("ft sepsis"))
+      return formatList(
+        rows.filter((r) => n(r.ft_sepsis) > 0),
+        "ft_sepsis"
+      );
+    if (lower.includes("ft stemi"))
+      return formatList(
+        rows.filter((r) => n(r.ft_stemi) > 0),
+        "ft_stemi"
+      );
+    if (lower.includes("ft trauma"))
+      return formatList(
+        rows.filter((r) => n(r.ft_trauma) > 0),
+        "ft_trauma"
+      );
+    // ------------------------------------
+
+    // 🧠 Stroke (ถูกย้ายลงมา)
     if (lower.includes("stroke"))
       return formatList(
         rows.filter((r) => n(r.stroke) > 0),
@@ -817,6 +865,16 @@ export default function CompareDashboard({ username, wardname }) {
           ],
         ],
       },
+      {
+        title: "Fast Track",
+        color: "#e6f7ff", // สีฟ้าอ่อนมากสำหรับกลุ่มใหม่
+        items: [
+          mk("FT Stroke", (m) => m.ftStroke), 
+          mk("FT Sepsis", (m) => m.ftSepsis), 
+          mk("FT STEMI", (m) => m.ftStemi), 
+          mk("FT Trauma", (m) => m.ftTrauma),
+        ],
+      }
     ];
 
     const rows = [];
@@ -856,6 +914,10 @@ export default function CompareDashboard({ username, wardname }) {
     { key: "strokeTotal", label: "รวม Stroke" },
     { key: "psychTotal", label: "รวม จิตเวช" },
     { key: "prisonerTotal", label: "รวม นักโทษ" },
+    { key: "ftStroke", label: "FT Stroke" }, 
+    { key: "ftSepsis", label: "FT Sepsis" },
+    { key: "ftStemi", label: "FT STEMI" }, 
+    { key: "ftTrauma", label: "FT Trauma" },
     { key: "prodAvg", label: "Productivity (%)" },
   ];
   const [barMetric, setBarMetric] = useState("allRemain");
