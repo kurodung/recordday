@@ -38,6 +38,10 @@ const NUMERIC_FIELDS = [
   "stroke",
   "psych",
   "prisoner",
+  "ft_stroke",
+  "ft_sepsis",
+  "ft_stemi",
+  "ft_trauma",
   "palliative",
   "pre_op",
   "post_op",
@@ -475,6 +479,15 @@ export default function HospitalUI({
             {" "}
             <div className="section-header note">นักโทษในตึก</div>{" "}
             {renderInput("", "prisoner")}{" "}
+          </div>
+          <div className="form-column">
+            <div className="section-header general">Fast track</div>
+            <div className="horizontal-inputs">
+              {renderInput("Stroke:", "ft_stroke")}
+              {renderInput("Sepsis shock:", "ft_sepsis")}
+              {renderInput("STEMI:", "ft_stemi")}
+              {renderInput("Trauma:", "ft_trauma")}
+            </div>
           </div>
           <div className="form-column">
             <div className="section-header">Palliative</div>

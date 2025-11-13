@@ -50,6 +50,10 @@ const ALLOWED_INT = new Set([
   "stroke",
   "psych",
   "prisoner",
+  "ft_stroke", // เพิ่ม
+  "ft_sepsis", // เพิ่ม
+  "ft_stemi", // เพิ่ม
+  "ft_trauma", // เพิ่ม
   "palliative",
   "pre_op",
   "post_op",
@@ -333,6 +337,10 @@ router.post("/", requireBearer, async (req, res) => {
       "stroke",
       "psych",
       "prisoner",
+      "ft_stroke", // เพิ่ม
+      "ft_sepsis", // เพิ่ม
+      "ft_stemi", // เพิ่ม
+      "ft_trauma", // เพิ่ม
       "palliative",
       "pre_op",
       "post_op",
@@ -433,6 +441,10 @@ router.put("/:id", async (req, res) => {
       "stroke",
       "psych",
       "prisoner",
+      "ft_stroke", // เพิ่ม
+      "ft_sepsis", // เพิ่ม
+      "ft_stemi", // เพิ่ม
+      "ft_trauma", // เพิ่ม
       "palliative",
       "pre_op",
       "post_op",

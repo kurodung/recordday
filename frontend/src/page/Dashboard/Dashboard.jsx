@@ -1845,6 +1845,22 @@ export default function Dashboard({ username, wardname }) {
         />
       </Block>
 
+      {/* View: Ventilator */}
+      <Block
+        styles={styles}
+        title="สรุป Fast track"
+        loading={unifiedLoading}
+        error={unifiedError}
+        empty={
+          !unifiedLoading && !unifiedError && ventICU + ventAD + ventCH === 0
+        }
+      >
+        <TableBox
+          headers={["ICU (รวม)", "ผู้ใหญ่", "เด็ก", "รวมทั้งหมด"]}
+          rows={[[fmt(ventICU), fmt(ventAD), fmt(ventCH), fmt(ventAll)]]}
+        />
+      </Block>
+
       {/* View: ไข้เลือดออก (DF / DHF / DSS) */}
       <Block
         styles={styles}

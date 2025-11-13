@@ -123,6 +123,10 @@ router.get("/", requireBearer, async (req, res) => {
         vu.extra_bed,
         vu.psych,
         vu.prisoner,
+        vu.ft_stroke,
+        vu.ft_sepsis,
+        vu.ft_stemi,
+        vu.ft_trauma,
         vu.rn,
         vu.rn_extra,
         vu.productivity,
@@ -169,6 +173,10 @@ router.get("/summary", requireBearer, async (req, res) => {
         SUM(COALESCE(vu.extra_bed,0))         AS extra_bed,
         SUM(COALESCE(vu.psych,0))             AS psych,
         SUM(COALESCE(vu.prisoner,0))          AS prisoner,
+        SUM(COALESCE(vu.ft_stroke,0))        AS ft_stroke,
+        SUM(COALESCE(vu.ft_sepsis,0))        AS ft_sepsis,
+        SUM(COALESCE(vu.ft_stemi,0))         AS ft_stemi,
+        SUM(COALESCE(vu.ft_trauma,0))        AS ft_trauma,
         SUM(COALESCE(vu.rn,0))                AS rn,
         SUM(COALESCE(vu.rn_extra,0))          AS rn_extra
       FROM v_reports_unified vu
