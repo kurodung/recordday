@@ -481,7 +481,7 @@ export default function HospitalUI({
             {renderInput("", "prisoner")}{" "}
           </div>
           <div className="form-column">
-            <div className="section-header general">Fast track</div>
+            <div className="section-header note">Fast track</div>
             <div className="horizontal-inputs">
               {renderInput("Stroke:", "ft_stroke")}
               {renderInput("Sepsis shock:", "ft_sepsis")}

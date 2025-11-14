@@ -208,11 +208,13 @@ router.get("/report-status-range", async (req, res) => {
 router.get("/report-status-departments", async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT DISTINCT department
-      FROM wards
-      WHERE department IS NOT NULL AND department <> ''
-      ORDER BY department
+      SELECT DISTINCT d.department_name AS department
+      FROM wards w
+      JOIN departments d ON w.department_id = d.id
+      WHERE d.department_name IS NOT NULL AND d.department_name <> ''
+      ORDER BY d.department_name
     `);
+    // ใช้ alias 'department' เพื่อให้โค้ดส่วน map ดำเนินการต่อได้
     const departments = (rows || []).map((r) => r.department);
     return res.json({ departments });
   } catch (e) {

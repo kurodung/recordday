@@ -10,6 +10,61 @@ const toMysqlDate = (value) => {
   return date.toISOString().split("T")[0];
 };
 
+const toMysqlDateTime = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return date.toISOString().slice(0, 19).replace("T", " ");
+};
+
+/* ----------------------- Helpers (แก้ไข toInt ให้เป็น 0) ----------------------- */
+const toInt = (v) => {
+  // ✅ ถ้า v เป็นสตริงว่างเปล่า ("") หรือ null/undefined ให้ส่ง 0 แทน
+  if (v === "" || v == null) {
+    return 0; 
+  }
+  
+  const num = Number(v);
+  
+  // ถ้าแปลงเป็นตัวเลขไม่ได้ (เช่น 'abc') ให้กลับเป็น 0
+  if (isNaN(num)) {
+      return 0; 
+  }
+  
+  return num;
+};
+
+const isNonEmpty = (v) => typeof v === "string" && v.trim() !== "";
+
+// กำหนด Field ตัวเลขทั้งหมดที่ควรถูกแปลง
+const NUMERIC_FIELDS = [
+  "bed_total", "bed_carry", "bed_new", "bed_transfer_in", "bed_remain", 
+  "discharge_home", "discharge_transfer_out", "discharge_refer_out", 
+  "discharge_refer_back", "discharge_died", "nl", "forcep", "vac", "br", 
+  "cs", "vent_invasive", "vent_noninvasive", "hfnc", "oxygen", "extra_bed", 
+  "pas", "cpr", "infection", "gcs", "stroke", "psych", "prisoner", 
+  "pre_op", "post_op", "rn", "pn", "na", "other_staff", "rn_extra", 
+  "rn_down", "productivity"
+];
+
+const sanitizeRecord = (body) => {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(body)) {
+        if (NUMERIC_FIELDS.includes(key)) {
+            // ใช้ toInt ที่แก้ไขแล้ว
+            sanitized[key] = toInt(value); 
+        } else if (key === 'date') {
+            sanitized[key] = toMysqlDate(value);
+        } else if (key === 'subward') {
+            sanitized[key] = isNonEmpty(value) ? value : null;
+        } else {
+            // Field อื่น ๆ เช่น username, wardname, shift, head_nurse, incident
+            sanitized[key] = value;
+        }
+    }
+    return sanitized;
+};
+/* --------------------------------------------------------------------- */
+
 // ✅ GET ข้อมูลรายงาน lr
 router.get("/", async (req, res) => {
   const { date, shift, wardname, username, subward } = req.query;
@@ -41,29 +96,44 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ POST เพิ่มข้อมูลรายงาน lr
+
+// ✅ POST เพิ่ม/แก้ไขข้อมูลรายงาน lr (เปลี่ยนเป็น Upsert)
 router.post("/", async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token" });
 
   try {
     jwt.verify(token, process.env.JWT_SECRET);
-    const data = req.body;
-
-    console.log("📦 POST /api/lr-report - Received data:", data); // <<<
     
-    const fields = Object.keys(data).join(",");
-    const placeholders = Object.keys(data).map(() => "?").join(",");
-    const values = Object.values(data);
+    // ✅ ใช้ sanitizeRecord เพื่อแปลงค่าตัวเลขก่อนบันทึก
+    const data = sanitizeRecord(req.body); 
 
-    await db.query(
-      `INSERT INTO lr_reports (${fields}) VALUES (${placeholders})`,
-      values
-    );
+    // หาก payload มี ID แสดงว่าเป็น PUT แต่ใช้ POST (ไม่แนะนำ) ให้ใช้ PUT API ดีกว่า
+    if (data.id) return res.status(400).json({ message: "Use PUT for updates" });
+
+    const fields = Object.keys(data);
+    const placeholders = fields.map(() => "?").join(",");
+    const values = Object.values(data);
+    
+    // สร้าง SET clause สำหรับ ON DUPLICATE KEY UPDATE
+    const updateFields = fields.filter(
+        (c) =>
+          !["id", "username", "wardname", "date", "shift", "subward"].includes(c)
+      )
+      .map((c) => `${c}=VALUES(${c})`)
+      .join(", ");
+
+    const sql = `
+      INSERT INTO lr_reports (${fields.join(",")})
+      VALUES (${placeholders})
+      ON DUPLICATE KEY UPDATE ${updateFields}
+    `;
+
+    await db.query(sql, values);
 
     res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
   } catch (err) {
-    console.error("❌ POST /api/lr-report error:", err); // <<<
+    console.error("❌ POST /api/lr-report error:", err); 
     res.status(500).json({ message: "Database or token error" });
   }
 });
@@ -72,14 +142,16 @@ router.post("/", async (req, res) => {
 // ✅ PUT แก้ไขข้อมูลรายงาน lr
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const data = req.body;
 
   try {
-    if (data.date) data.date = toMysqlDate(data.date);
-    if (data.created_at) data.created_at = toMysqlDateTime(data.created_at);
-    if (data.updated_at) data.updated_at = toMysqlDateTime(data.updated_at);
+    // ✅ ใช้ sanitizeRecord เพื่อแปลงค่าตัวเลขก่อนอัปเดต
+    let data = sanitizeRecord(req.body);
+    
+    // ลบ Field ที่ไม่ต้องการอัปเดต (เช่น id ที่ไม่ควรอยู่ใน set clause)
+    delete data.id; 
 
-    const fields = Object.keys(data).filter((key) => key !== "id");
+    // สร้าง setClause โดยใช้ data ที่ถูก sanitize แล้ว
+    const fields = Object.keys(data);
     const values = fields.map((key) => data[key]);
 
     const setClause = fields.map((field) => `${field} = ?`).join(", ");
@@ -99,15 +171,5 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ message: "Database update failed", error: err.message });
   }
 });
-
-const toMysqlDateTime = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return date.toISOString().slice(0, 19).replace("T", " ");
-};
-
-
-
-
 
 module.exports = router;

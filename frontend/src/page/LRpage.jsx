@@ -1,13 +1,54 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react"; 
 import { useSearchParams } from "react-router-dom";
 import "../styles/HospitalUI.css";
 import { API_BASE } from "../config";
+
+/* ----------------------- Helper Functions ----------------------- */
+const toInt = (v) =>
+  v === "" || v === undefined || v === null ? 0 : Number(v) || 0;
+
+const SHIFT_ORDER = ["morning", "afternoon", "night"];
+
+const prevShiftInfo = (dateStr, curShift) => {
+  const idx = SHIFT_ORDER.indexOf(curShift);
+  if (idx === -1) return { date: dateStr, shift: curShift };
+  if (idx === 0) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() - 1);
+    return { date: d.toISOString().slice(0, 10), shift: SHIFT_ORDER[2] };
+  }
+  return { date: dateStr, shift: SHIFT_ORDER[idx - 1] };
+};
+/* ------------------------------------------------------------------------- */
 
 export default function LRpage({ username, wardname, selectedDate, shift }) {
   const [formData, setFormData] = useState({});
   const formRef = useRef(null);
   const [searchParams] = useSearchParams();
   const subward = searchParams.get("subward");
+
+  // 1. คำนวณคงพยาบาลแบบเรียลไทม์
+  const computedRemain = useMemo(() => {
+    const carry = toInt(formData.bed_carry);
+    const newIn = toInt(formData.bed_new);
+    const trIn = toInt(formData.bed_transfer_in);
+    const out =
+      toInt(formData.discharge_home) +
+      toInt(formData.discharge_transfer_out) +
+      toInt(formData.discharge_refer_out) +
+      toInt(formData.discharge_refer_back) +
+      toInt(formData.discharge_died);
+    return Math.max(0, carry + newIn + trIn - out);
+  }, [formData]);
+
+  // 2. อัปเดต bed_remain ใน formData เมื่อ computedRemain เปลี่ยน
+  useEffect(() => {
+    setFormData((prev) =>
+      prev.bed_remain === computedRemain
+        ? prev
+        : { ...prev, bed_remain: computedRemain }
+    );
+  }, [computedRemain]);
 
   // ดึงข้อมูลเดิมจาก API
   useEffect(() => {
@@ -32,6 +73,40 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
         );
 
         if (res.status === 204) {
+          // 3. ถ้าไม่พบข้อมูลของเวรปัจจุบัน ให้ลองดึงของเวรก่อนหน้า (carry over)
+          const prev = prevShiftInfo(selectedDate, shift);
+          const prevParams = new URLSearchParams({
+            date: prev.date,
+            shift: prev.shift,
+            wardname,
+            username,
+          });
+          if (subward) prevParams.append("subward", subward);
+
+          const prevRes = await fetch(
+            `${API_BASE}/api/lr-report?${prevParams.toString()}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          if (prevRes.ok) {
+            const text = await prevRes.text();
+            const prevData = text ? JSON.parse(text) : null;
+            if (prevData) {
+              setFormData({
+                username,
+                wardname,
+                date: selectedDate,
+                shift,
+                ...(subward && { subward }),
+                bed_carry: prevData.bed_remain ?? 0, 
+              });
+              return;
+            }
+          }
+          
+          // ไม่มีข้อมูลใด ๆ → สร้างใหม่เปล่า
           setFormData((prev) => ({
             ...prev,
             username,
@@ -39,6 +114,7 @@ export default function LRpage({ username, wardname, selectedDate, shift }) {
             date: selectedDate,
             shift,
             ...(subward && { subward }),
+            bed_carry: 0,
           }));
           return;
         }
@@ -152,7 +228,7 @@ const handleSubmit = async () => {
     // ลบข้อมูลไม่ต้องการส่ง
     delete payload.productivity;
     delete payload.type;
-    delete payload.bed_remain;
+    // ไม่ต้องลบ bed_remain แล้ว
 
     const method = formData.id ? "PUT" : "POST";
     const url = formData.id
@@ -197,7 +273,7 @@ const handleSubmit = async () => {
         name={name}
         min={type === "number" ? "0" : undefined}
         className="input-field"
-        value={formData[name] || ""}
+        value={formData[name] ?? ""} 
         onChange={handleChange}
         style={width ? { width } : {}}
         readOnly={isReadOnly}
@@ -212,6 +288,8 @@ const handleSubmit = async () => {
       >
         กลุ่ม: {subward || "-"}
       </h2>
+      
+      {/* 🟢 ข้อมูลเตียง (ทั่วไป: general) */}
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
@@ -221,18 +299,18 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดยกมา</div>
+            <div className="section-header general">ยอดยกมา</div>
             {renderInput("", "bed_carry")}
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดรับ</div>
+            <div className="section-header general">ยอดรับ</div>
             <div className="horizontal-inputs">
               {renderInput("รับใหม่:", "bed_new")}
               {renderInput("รับย้าย:", "bed_transfer_in")}
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">ยอดจำหน่าย</div>
+            <div className="section-header general">ยอดจำหน่าย</div>
             <div className="horizontal-inputs">
               {renderInput("กลับบ้าน:", "discharge_home")}
               {renderInput("ย้ายตึก:", "discharge_transfer_out")}
@@ -243,11 +321,14 @@ const handleSubmit = async () => {
           </div>
           <div className="form-column">
             <div className="section-label">คงพยาบาล</div>
-            {renderInput("", "bed_remain", "number", null, true)}
+            <div className="input-group highlighted">
+                {renderInput("", "bed_remain", "number", null, true)}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* 🔵 ชนิดการคลอด & อุปกรณ์ (อุปกรณ์: eqiment) */}
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
@@ -261,7 +342,7 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div className="form-column">
-            <div className="section-header">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
+            <div className="section-header eqiment">กลุ่มการให้ออกซิเจนและอุปกรณ์</div>
             <div className="horizontal-inputs">
               {renderInput("ใช้เครื่อง HFNC:", "hfnc")}
               {renderInput("ให้ออกซิเจน:", "oxygen")}
@@ -269,7 +350,7 @@ const handleSubmit = async () => {
           </div>
 
           <div className="form-column">
-            <div className="section-header">Ventilator</div>
+            <div className="section-header eqiment">Ventilator</div>
             <div className="horizontal-inputs">
               {renderInput("Invasive:", "vent_invasive")}
               {renderInput("Non invasive:", "vent_noninvasive")}
@@ -279,54 +360,56 @@ const handleSubmit = async () => {
         </div>
       </div>
 
+      {/* 🟣 ข้อมูลอื่นๆ (หมายเหตุ: note) */}
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">เปลเสริม</div>
+            <div className="section-header note">เปลเสริม</div>
             {renderInput("", "extra_bed")}
           </div>
           <div className="form-column">
-            <div className="section-header">PAS</div>
+            <div className="section-header note">PAS</div>
             {renderInput("", "pas")}
           </div>
           <div className="form-column">
-            <div className="section-header">CPR</div>
+            <div className="section-header note">CPR</div>
             {renderInput("", "cpr")}
           </div>
           <div className="form-column">
-            <div className="section-header">การดูแลรอบการผ่าตัด</div>
+            <div className="section-header note">การดูแลรอบการผ่าตัด</div>
             <div className="horizontal-inputs">
               {renderInput("Pre OP:", "pre_op")}
               {renderInput("Post OP:", "post_op")}
             </div>
           </div>
           <div className="form-column" style={{}}>
-            <div className="section-header">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
+            <div className="section-header note">ติดเชื้อดื้อยา(XDR/CRE/VRE)</div>
             {renderInput("", "infection", "number", "180px")}
           </div>
           <div className="form-column">
-            <div className="section-header">GCS 2T</div>
+            <div className="section-header note">GCS 2T</div>
             {renderInput("", "gcs")}
           </div>
           <div className="form-column">
-            <div className="section-header">Strokeในตึก</div>
+            <div className="section-header note">Strokeในตึก</div>
             {renderInput("", "stroke")}
           </div>
           <div className="form-column">
-            <div className="section-header">จิตเวชในตึก</div>
+            <div className="section-header note">จิตเวชในตึก</div>
             {renderInput("", "psych")}
           </div>
           <div className="form-column">
-            <div className="section-header">นักโทษในตึก</div>
+            <div className="section-header note">นักโทษในตึก</div>
             {renderInput("", "prisoner")}
           </div>
         </div>
       </div>
 
+      {/* 🟠 อัตรากำลัง (บุคลากร: staff) */}
       <div className="form-section">
         <div className="flex-grid">
           <div className="form-column">
-            <div className="section-header">อัตรากำลังทั้งหมด</div>
+            <div className="section-header staff">อัตรากำลังทั้งหมด</div>
             <div className="horizontal-inputs">
               {renderInput("RN:", "rn")}
               {renderInput("PN:", "pn")}
